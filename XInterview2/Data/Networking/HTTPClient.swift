@@ -15,6 +15,7 @@ enum HTTPError: Error {
     case networkError(Error)
     case unauthorized
     case serverError(String)
+    case requestCancelled
     
     var localizedDescription: String {
         switch self {
@@ -32,6 +33,8 @@ enum HTTPError: Error {
             return "Unauthorized - Please check your API key"
         case .serverError(let message):
             return "Server error: \(message)"
+        case .requestCancelled:
+            return "Request cancelled"
         }
     }
 }

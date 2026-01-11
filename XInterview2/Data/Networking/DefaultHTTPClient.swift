@@ -58,6 +58,11 @@ class DefaultHTTPClient: HTTPClient {
         } catch let error as HTTPError {
             throw error
         } catch {
+            // Check if error is CancellationError (code -999 in Swift)
+            let nsError = error as NSError
+            if nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError {
+                throw HTTPError.requestCancelled
+            }
             throw HTTPError.networkError(error)
         }
     }

@@ -17,7 +17,7 @@ struct Settings: Codable {
         apiKey: String = "",
         selectedLanguage: Language = .english,
         selectedVoice: String = APIConstants.Voice.alloy,
-        voiceThreshold: Float = 0.25
+        voiceThreshold: Float = 0.5
     ) {
         self.apiKey = apiKey
         self.selectedLanguage = selectedLanguage

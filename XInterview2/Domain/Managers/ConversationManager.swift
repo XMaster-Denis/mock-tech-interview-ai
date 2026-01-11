@@ -232,7 +232,7 @@ class ConversationManager: ObservableObject {
             onAIMessage?(response)
             
             // Convert to speech (opening message - skip speech check to allow playback)
-            Logger.state("Converting AI response to speech")
+            Logger.state("Converting AI response to speech (skipSpeechCheck=true for non-interruptible)")
             await speakResponse(response, language: language, apiKey: apiKey, skipSpeechCheck: true)
             
         } catch {
@@ -330,6 +330,13 @@ class ConversationManager: ObservableObject {
             Logger.state("Converting AI response to speech")
             await speakResponse(response, language: settings.selectedLanguage, apiKey: apiKey)
             
+        } catch HTTPError.requestCancelled {
+            // Request was cancelled due to user speech - this is expected
+            Logger.warning("processUserSpeech() - transcribe request cancelled (expected on user speech)")
+            // Reset state without showing error
+            guard !isStopping else { return }
+            conversationState = .listening
+            isProcessing = false
         } catch {
             // Only handle error if not stopping (cancelled errors are expected on stop)
             guard !isStopping else {

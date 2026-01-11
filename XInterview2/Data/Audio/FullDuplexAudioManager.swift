@@ -153,6 +153,10 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     func speak(_ audioData: Data, canBeInterrupted: Bool = true, skipSpeechCheck: Bool = false) async throws {
         Logger.audio("speak() called - data size: \(audioData.count) bytes, canBeInterrupted: \(canBeInterrupted), skipSpeechCheck: \(skipSpeechCheck)")
         
+        // If skipSpeechCheck is true, force non-interruptible mode
+        let actualCanBeInterrupted = skipSpeechCheck ? false : canBeInterrupted
+        Logger.audio("Actual canBeInterrupted: \(actualCanBeInterrupted)")
+        
         // Validate audio data
         guard !audioData.isEmpty else {
             Logger.error("TTS audio data is empty")
@@ -178,14 +182,15 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         isTTSPrepared = true
         
         // If TTS can be interrupted, continue listening in background
-        if canBeInterrupted {
+        if actualCanBeInterrupted {
             Logger.audio("TTS is interruptible, monitoring for user speech")
         } else {
+            Logger.audio("TTS is non-interruptible, pausing listening")
             pauseListening()
         }
         
         // Play the audio
-        try await playAudioData(audioData, canBeInterrupted: canBeInterrupted)
+        try await playAudioData(audioData, canBeInterrupted: actualCanBeInterrupted)
     }
     
     private func playAudioData(_ data: Data, canBeInterrupted: Bool) async throws {
