@@ -1,30 +1,32 @@
-# XTechInterview
+# XInterview2
 
-**Live coding interviews with real-time AI feedback**
+**Live voice interview practice with AI tutor**
 
 ---
 
 ## Overview
 
-XTechInterview is a macOS application for Swift developers that simulates live coding interviews with an AI interviewer. The application supports voice and text-based conversations, code editing with syntax highlighting, and session history tracking.
+XInterview2 is a macOS application that enables voice-based interview practice with an AI tutor. The app uses OpenAI's APIs for speech recognition, text-to-speech, and conversation to provide an interactive interview experience.
 
 ### Key Features
 
-- 🎤 **Real-Time Voice Interview** - Voice input with Whisper transcription and TTS playback
-- 💻 **Code Editor** - Swift syntax highlighting with NSTextView
-- 🤖 **AI Interview Modes** - Teacher (coaching) and Interview (probing questions)
-- 🌍 **Multi-Language Support** - Russian, English, German
-- 📊 **Experience Levels** - Junior, Middle, Senior
-- 📝 **Session History** - Persistent transcript and code history
+- 🎤 **Full Duplex Audio** - Continuous voice input and interruptible AI responses
+- 🎯 **Voice Activity Detection** - Automatic speech detection with configurable threshold
+- 🗣️ **Speech-to-Text** - OpenAI Whisper API for accurate transcription
+- 🔊 **Text-to-Speech** - 6 OpenAI TTS voices (alloy, echo, fable, onyx, nova, shimmer)
+- 💬 **AI Conversation** - GPT-4 powered interview conversations
+- 🌍 **Multi-Language Support** - English, German, Russian
+- 📝 **Transcript History** - Real-time chat history display
+- 🎛️ **Configurable Settings** - API key, language, voice, voice threshold
 
 ### Technology Stack
 
 - **Platform:** macOS 14+
 - **UI Framework:** SwiftUI
 - **Language:** Swift 5.9+
-- **AI:** OpenAI GPT-4o, Whisper, TTS
-- **Audio:** AVAudioEngine, AVAudioPlayer
-- **Persistence:** JSON files in Application Support
+- **AI Services:** OpenAI GPT-4, Whisper v1, TTS-1
+- **Audio:** AVAudioRecorder, AVAudioPlayer
+- **Architecture:** Clean Architecture (MVVM)
 
 ---
 
@@ -39,63 +41,83 @@ XTechInterview is a macOS application for Swift developers that simulates live c
 
 ### Installation
 
-1. Clone the repository
-2. Open `XTechInterview.xcodeproj` in Xcode
+1. Clone repository
+2. Open `XInterview2.xcodeproj` in Xcode
 3. Build and run (⌘R)
 
 ### First Run
 
 1. **Configure API Key** - Open Settings (⚙️) and enter your OpenAI API key
-2. **Select Topic** - Choose an interview topic from the sidebar
-3. **Start Interview** - Voice interview starts automatically with task briefing
-4. **Write Code** - Type Swift code in the editor with syntax highlighting
-5. **Get Feedback** - AI provides contextual feedback based on your code and conversation
+2. **Select Topic** - Choose an interview topic (Swift Basics, iOS Development, System Design)
+3. **Select Language** - Choose preferred conversation language
+4. **Start Interview** - Voice interview starts with AI greeting
+5. **Speak** - AI will listen and respond to your answers
 
 ---
 
-## Documentation
+## Current Status
+
+### ✅ Version 0.1.0-Baseline (Working)
+
+The application is now in a stable baseline state with all core features working:
+
+#### Working Features
+- ✅ Full duplex audio conversation
+- ✅ Voice activity detection with configurable threshold (default 0.5)
+- ✅ Speech-to-text via OpenAI Whisper API
+- ✅ Text-to-speech via OpenAI TTS API
+- ✅ Interruptible AI responses during conversation
+- ✅ Non-interruptible opening AI greeting
+- ✅ Transcript view with real-time chat history
+- ✅ Audio level visualization
+- ✅ Settings with API key, language, voice, and voice threshold
+- ✅ Multi-language support (English, German, Russian)
+- ✅ Multiple interview topics
+- ✅ Proper error handling for cancellations
+
+#### Known Issues
+- ⚠️ Swift 6 Sendable warnings in DefaultHTTPClient (non-blocking)
+- ⚠️ Voice detection may need adjustment in noisy environments
+
+#### Architecture
+The project follows Clean Architecture principles:
+- **Core Layer:** Constants, Logger utility
+- **Domain Layer:** Models (Settings, Language, InterviewTopic, TranscriptMessage)
+- **Data Layer:** Services (Whisper, Chat, TTS), Repositories, Audio components
+- **Presentation Layer:** ViewModels, Views (Main, Settings, Transcript, AudioLevel)
+
+---
+
+## Project Documentation
+
+### Engineering Rules
+
+The project follows strict engineering guidelines documented in:
+- **[Docs/ENGINEERING_RULES.md](Docs/ENGINEERING_RULES.md)** - Coding standards and best practices
+- **[Docs/ARCHITECTURE_GUIDELINES.md](Docs/ARCHITECTURE_GUIDELINES.md)** - Architecture patterns
+- **[Docs/REFERENCE_PATTERNS.md](Docs/REFERENCE_PATTERNS.md)** - Reference implementation patterns
+- **[Docs/TESTING_AND_QA_RULES.md](Docs/TESTING_AND_QA_RULES.md)** - Testing guidelines
+- **[Docs/WEB_RESEARCH_RULES.md](Docs/WEB_RESEARCH_RULES.md)** - Research guidelines
 
 ### Specification
 
-**[SPECIFICATION.md](SPECIFICATION.md)** is the authoritative source of truth for the project. It contains:
-
-- **Architecture** - MVVM + Coordinators pattern
-- **Domain Model** - All entities and enums
-- **Use Cases** - Complete user scenarios
-- **API Specification** - OpenAI integration details
-- **Business Logic** - AI behavior, modes, languages, levels
-- **Engineering Principles** - Coding standards and best practices
-- **Project Structure** - File organization
-- **Implementation Plan** - Phases and tasks
-
-### Legacy Documentation
-
-Old documentation files have been moved to the **[legacy/](legacy/)** directory for reference only. They may contain contradictions or outdated information. Always refer to **SPECIFICATION.md** for authoritative information.
-
----
-
-## Project Status
-
-### Current Implementation
-
-The current project is in development. See [SPECIFICATION.md](SPECIFICATION.md#implementation-plan) for the detailed implementation plan.
-
-### Known Limitations
-
-- **No voice-activity detection yet** - Manual stop required for recording
-- **Regex-based syntax highlighting** - May miss exotic Swift tokens (raw strings, nested comments)
-- **Mock AI responses** - Actual OpenAI API integration in progress
-- **No session analysis dashboard** - Planned for Phase 5
+**[SPECIFICATION.md](SPECIFICATION.md)** contains the authoritative specification for the project.
 
 ---
 
 ## Troubleshooting
 
-### Microphone Not Working
+### Microphone Issues
 
 1. Check System Settings → Privacy → Microphone
-2. Ensure XTechInterview has microphone permission
-3. Restart the application
+2. Ensure XInterview2 has microphone permission
+3. Adjust voice threshold in Settings if false positives occur
+
+### Voice Detection Issues
+
+- If speech is detected too often (background noise): **Increase voice threshold** (move slider right)
+- If speech is not detected when speaking: **Decrease voice threshold** (move slider left)
+- Threshold range: 0.05 (very sensitive) to 0.5 (least sensitive)
 
 ### API Connection Issues
 
@@ -103,17 +125,10 @@ The current project is in development. See [SPECIFICATION.md](SPECIFICATION.md#i
 2. Check internet connection
 3. Test OpenAI API directly: https://platform.openai.com/playground
 
-See [legacy/VOICE_TROUBLESHOOTING.md](legacy/VOICE_TROUBLESHOOTING.md) for detailed troubleshooting.
+### Build Warnings
 
-### DNS Problems
-
-If you see "A server with a specific hostname couldn't be found" error:
-
-1. Check DNS resolution: `nslookup api.openai.com`
-2. Try changing DNS to Google (8.8.8.8) or Cloudflare (1.1.1.1)
-3. Use VPN if DNS issues persist
-
-See [legacy/DNS_CHECK.md](legacy/DNS_CHECK.md) for detailed DNS diagnostics.
+- Swift 6 Sendable warnings in DefaultHTTPClient are expected and do not affect functionality
+- These will be addressed in a future update
 
 ---
 
@@ -122,12 +137,12 @@ See [legacy/DNS_CHECK.md](legacy/DNS_CHECK.md) for detailed DNS diagnostics.
 ### Building from Source
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone <repository-url>
-cd XTechInterview
+cd XInterview2
 
 # Open in Xcode
-open XTechInterview.xcodeproj
+open XInterview2.xcodeproj
 
 # Build and run (⌘R)
 ```
@@ -144,38 +159,40 @@ open XTechInterview.xcodeproj
 
 ### Code Style
 
-Follow the engineering principles outlined in [SPECIFICATION.md](SPECIFICATION.md#engineering-principles):
-
-- **MVVM** - Strict separation of concerns
+Follow engineering principles outlined in the documentation:
+- **Clean Architecture** - Strict layer separation
 - **Protocol-first** - Define protocols before implementations
-- **MainActor** - All ViewModels must be `@MainActor`
-- **No magic values** - Promote to constants
-- **Feature-based structure** - Organize by feature, not file type
+- **MVVM** - Model-View-ViewModel pattern
+- **@MainActor** - All ViewModels are main actor isolated
+- **No magic values** - Use named constants
+- **Comprehensive logging** - Use Logger utility with timestamps
 
 ---
 
 ## Roadmap
 
-### Phase 1-4 ✅ (Completed)
+### ✅ Completed (v0.1.0-Baseline)
 
-- App Skeleton, Navigation, Settings Storage
-- Code Editor & Topics Sidebar
-- Voice Input/Output (scaffolded)
-- AI Interview Logic (scaffolded)
-
-### Phase 5 (In Progress)
-
-- Session Analysis Dashboard
-- Progress Metrics and Insights
-- Transcript Playback
+- App skeleton with Clean Architecture
+- Settings management (API key, language, voice, threshold)
+- Full duplex audio system
+- Voice activity detection
+- Whisper API integration
+- TTS API integration
+- Chat API integration
+- Transcript view
+- Audio level visualization
 
 ### Future Enhancements
 
-- Voice Activity Detection (VAD) streaming
-- Full parser-based syntax highlighting (SwiftSyntax)
-- Keychain storage for API keys
+- Session history persistence
 - Session export functionality
-- Multi-session comparison
+- Code editor integration
+- Interview performance analytics
+- Multiple session comparison
+- Enhanced voice detection (streaming VAD)
+- UI/UX improvements
+- Fix Swift 6 Sendable warnings
 
 ---
 
@@ -183,8 +200,8 @@ Follow the engineering principles outlined in [SPECIFICATION.md](SPECIFICATION.m
 
 Contributions are welcome! Please:
 
-1. Read [SPECIFICATION.md](SPECIFICATION.md) thoroughly
-2. Follow engineering principles
+1. Read all documentation in the `Docs/` directory
+2. Follow engineering principles and coding standards
 3. Keep changes small and buildable
 4. Add tests for new features
 5. Update documentation
@@ -203,5 +220,6 @@ For issues, questions, or feature requests, please open an issue in the reposito
 
 ---
 
-**Version:** 0.1.0-dev  
-**Last Updated:** 2026-01-10
+**Version:** 0.1.0-baseline  
+**Last Updated:** 2026-01-11
+**Git Tag:** v0.1.0-baseline
