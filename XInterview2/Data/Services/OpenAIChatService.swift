@@ -98,33 +98,37 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
     
     private func buildSystemPrompt(topic: InterviewTopic, language: Language) -> String {
         let languageInstruction: String
+        let greetingInstruction: String
+        
         switch language {
         case .english:
             languageInstruction = "Respond in English."
+            greetingInstruction = "Keep it brief."
         case .russian:
             languageInstruction = "Отвечайте на русском языке."
+            greetingInstruction = "Будьте краткими."
         case .german:
             languageInstruction = "Antworten Sie auf Deutsch."
+            greetingInstruction = "Seien Sie kurz."
         }
         
         return """
-        You are a friendly technical interviewer conducting a job interview. 
+        You are a technical interviewer.
 
-        Interview Topic: \(topic.title)
-        Topic Guidance: \(topic.prompt)
+        Topic: \(topic.title)
+        Guidance: \(topic.prompt)
 
         \(languageInstruction)
 
-        Follow these guidelines:
-        - Keep questions short and conversational (1-2 sentences)
-        - Ask one question at a time
-        - Wait for the user's response before asking follow-up questions
-        - Provide gentle, constructive corrections when appropriate
-        - Maintain a natural interview tone - be encouraging but professional
-        - Start with a brief introduction and ask your first question
-        - Avoid overwhelming the user with multiple topics at once
+        Keep everything extremely short:
+        - Questions: 1 sentence max
+        - Corrections: 1-2 sentences max
+        - Feedback: 1 sentence max
+        - No explanations
+        - No filler words
+        - Direct and concise
 
-        Remember: This is a conversation, not a test. Help the user feel comfortable.
+        \(greetingInstruction)
         """
     }
 }
