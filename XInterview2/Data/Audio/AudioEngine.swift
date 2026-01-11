@@ -22,8 +22,8 @@ class AudioEngine: NSObject, AudioEngineProtocol {
     // MARK: - Properties
     
     private var audioEngine: AVAudioEngine?
+    private var audioRecorder: AVAudioRecorder?
     private var audioPlayer: AVAudioPlayer?
-    private var audioFile: AVAudioFile?
     
     var audioData: Data?
     private(set) var isRecording: Bool = false
@@ -41,59 +41,28 @@ class AudioEngine: NSObject, AudioEngineProtocol {
         
         print("🎙️ Starting recording...")
         
-        // Note: AVAudioSession is iOS-only, macOS handles audio differently
-        audioEngine = AVAudioEngine()
-        let inputNode = audioEngine!.inputNode
-        
-        // Configure format for recording - use standard format compatible with most microphones
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)
-        
-        guard let validFormat = format else {
-            print("❌ Failed to create audio format")
-            throw AudioEngineError.formatCreationFailed
-        }
-        
-        print("📝 Audio format: \(validFormat)")
-        
-        // Create unique file to avoid conflicts
+        // Use AVAudioRecorder for compatibility with Whisper API
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let fileName = "recording_\(UUID().uuidString).m4a"
+        let fileName = "recording_\(UUID().uuidString).wav"
         let audioURL = documentsDirectory.appendingPathComponent(fileName)
         currentRecordingURL = audioURL
         
         print("📁 Recording to: \(audioURL.path)")
         
-        audioFile = try AVAudioFile(forWriting: audioURL, settings: [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100.0,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ])
+        // WAV format settings (Linear PCM) for Whisper API compatibility
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatLinearPCM), // WAV format
+            AVSampleRateKey: 16000, // Whisper recommended sample rate
+            AVNumberOfChannelsKey: 1, // Mono
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false
+        ]
         
-        // Install tap on input node
-        var bufferCount = 0
-        var totalFrames: AVAudioFrameCount = 0
+        print("📝 Audio settings: \(settings)")
         
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: validFormat) { [weak self] buffer, _ in
-            guard let self = self, let file = self.audioFile else {
-                print("❌ Tap callback: Self or audioFile is nil")
-                return
-            }
-            
-            do {
-                try file.write(from: buffer)
-                bufferCount += 1
-                totalFrames += buffer.frameLength
-                
-                if bufferCount % 10 == 0 { // Log every 10 buffers
-                    print("🎵 Written \(totalFrames) frames (\(bufferCount) buffers)")
-                }
-            } catch {
-                print("❌ Error writing buffer: \(error.localizedDescription)")
-            }
-        }
-        
-        try audioEngine?.start()
+        audioRecorder = try AVAudioRecorder(url: audioURL, settings: settings)
+        audioRecorder?.record()
         isRecording = true
         
         print("✅ Recording started successfully")
@@ -107,30 +76,36 @@ class AudioEngine: NSObject, AudioEngineProtocol {
         
         print("⏹️ Stopping recording...")
         
-        audioEngine?.stop()
-        audioEngine?.inputNode.removeTap(onBus: 0)
+        audioRecorder?.stop()
+        isRecording = false
         
         // Read the audio file data
-        if let file = audioFile {
-            do {
-                let fileLength = file.length
-                print("📊 Audio file length: \(fileLength) frames")
-                audioData = try Data(contentsOf: file.url)
-                print("📊 Audio data size: \(audioData?.count ?? 0) bytes")
-            } catch {
-                print("❌ Error reading audio file: \(error.localizedDescription)")
-                throw error
-            }
+        guard let url = currentRecordingURL else {
+            print("❌ No recording URL available")
+            throw AudioEngineError.noRecordingInProgress
         }
         
-        isRecording = false
-        audioEngine = nil
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            if let fileSize = attributes[.size] as? NSNumber {
+                print("📊 Audio file size: \(fileSize.intValue) bytes")
+                
+                if fileSize.intValue == 0 {
+                    print("⚠️ Audio file is empty")
+                    throw AudioEngineError.noRecordingInProgress
+                }
+            }
+        } catch {
+            print("❌ Error getting file attributes: \(error.localizedDescription)")
+            throw error
+        }
+        
+        audioData = try Data(contentsOf: url)
+        print("📊 Audio data loaded: \(audioData?.count ?? 0) bytes")
         
         // Clean up the recording file after reading
-        if let url = currentRecordingURL {
-            try? FileManager.default.removeItem(at: url)
-            currentRecordingURL = nil
-        }
+        try? FileManager.default.removeItem(at: url)
+        currentRecordingURL = nil
         
         print("✅ Recording stopped")
     }
@@ -147,6 +122,7 @@ class AudioEngine: NSObject, AudioEngineProtocol {
         
         audioPlayer = try AVAudioPlayer(data: data)
         audioPlayer?.delegate = self
+        audioPlayer?.rate = 0.8 // Slower speed for clarity
         audioPlayer?.prepareToPlay()
         audioPlayer?.play()
         isPlaying = true
@@ -189,7 +165,7 @@ enum AudioEngineError: LocalizedError {
         case .recordingInProgress:
             return "Recording is already in progress"
         case .noRecordingInProgress:
-            return "No recording is in progress"
+            return "No recording is in progress or file is empty"
         }
     }
 }
