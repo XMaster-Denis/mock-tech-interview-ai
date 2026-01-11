@@ -2,7 +2,7 @@
 //  XInterview2App.swift
 //  XInterview2
 //
-//  Created by XMaster on 11.01.26.
+//  Main app entry point
 //
 
 import SwiftUI
@@ -13,5 +13,20 @@ struct XInterview2App: App {
         WindowGroup {
             ContentView()
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    // Settings will be opened via sheet in MainView
+                    NotificationCenter.default.post(name: .openSettings, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    static let openSettings = Notification.Name("openSettings")
 }
