@@ -29,6 +29,7 @@ class VoiceDetector: NSObject, ObservableObject {
     @Published var speechDetected: Bool = false
     @Published var isSilenceTimerActive: Bool = false  // New: shows when waiting for silence
     @Published var silenceTimerProgress: Double = 0.0  // New: 0.0 to 1.0 progress
+    @Published var silenceTimerElapsed: Double = 0.0  // New: elapsed seconds in silence
     
     // MARK: - Configuration
     
@@ -50,6 +51,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var levelMonitorTimer: Timer?
     private var silenceTimer: Timer?
     private var silenceProgressTimer: Timer?  // New: animates progress
+    private var lastLevelLogTime: Date?  // Track when we last logged level
     
     private var isRecording: Bool = false
     private var isSpeechActive: Bool = false
@@ -173,7 +175,7 @@ class VoiceDetector: NSObject, ObservableObject {
             // Start calibration timer
             Timer.scheduledTimer(withTimeInterval: calibrationDelay, repeats: false) { [weak self] _ in
                 self?.isCalibrated = true
-                Logger.voice("Calibration complete, speech detection enabled")
+                Logger.voice("✅ Calibration complete, speech detection enabled (threshold: \(self?.speechStartThreshold ?? 0.15))")
             }
             
             Logger.success("Recording started (calibrating for \(calibrationDelay)s)")
@@ -186,9 +188,10 @@ class VoiceDetector: NSObject, ObservableObject {
     private func stopRecording() {
         guard isRecording else { return }
         
-        Logger.voice("Stopping recording...")
+        Logger.voice("🛑 Stopping recording...")
         audioRecorder?.stop()
         isRecording = false
+        lastLevelLogTime = nil
         
         if let url = recordingFileURL {
             do {
@@ -214,6 +217,7 @@ class VoiceDetector: NSObject, ObservableObject {
         speechDetected = false
         isSilenceTimerActive = false
         silenceTimerProgress = 0.0
+        silenceTimerElapsed = 0.0
         silenceProgressTimer?.invalidate()
         silenceProgressTimer = nil
         silenceTimer?.invalidate()
@@ -260,6 +264,19 @@ class VoiceDetector: NSObject, ObservableObject {
         
         let isAboveThreshold = level > speechStartThreshold
         
+        // Log level every 1 second regardless of state
+        let now = Date()
+        if lastLevelLogTime == nil || now.timeIntervalSince(lastLevelLogTime!) >= 1.0 {
+            if isCalibrated {
+                if isAboveThreshold {
+                    Logger.voice("🎤 Level: \(String(format: "%.2f", level)) / Threshold: \(speechStartThreshold) - SPEECH DETECTED")
+                } else {
+                    Logger.voice("🔇 Level: \(String(format: "%.2f", level)) / Threshold: \(speechStartThreshold) - below")
+                }
+            }
+            lastLevelLogTime = now
+        }
+        
         // Skip speech detection during calibration
         if !isCalibrated {
             if isAboveThreshold {
@@ -274,13 +291,21 @@ class VoiceDetector: NSObject, ObservableObject {
             speechStartTime = Date()
             speechDetected = true
             silenceTimer?.invalidate()
+            silenceStartTime = nil
             
             Logger.voice("🎤 SPEECH STARTED! Level: \(String(format: "%.2f", level)) > Threshold: \(speechStartThreshold)")
             onVoiceEvent?(.speechStarted)
         }
-        // Speech in progress
+        // Speech in progress (cancel silence timer if still speaking)
         else if isAboveThreshold && isSpeechActive {
+            if let silenceTimer = silenceTimer, silenceTimer.isValid {
+                Logger.voice("🗣️ Speech continues - silence timer cancelled")
+            }
             silenceTimer?.invalidate()
+            silenceStartTime = nil
+            isSilenceTimerActive = false
+            silenceTimerProgress = 0.0
+            silenceTimerElapsed = 0.0
         }
         // Speech possibly ended
         else if !isAboveThreshold && isSpeechActive {
@@ -291,6 +316,7 @@ class VoiceDetector: NSObject, ObservableObject {
             silenceStartTime = Date()
             isSilenceTimerActive = true
             silenceTimerProgress = 0.0
+            silenceTimerElapsed = 0.0
             
             Logger.voice("🔇 SILENCE DETECTED! Level: \(String(format: "%.2f", level)) < Threshold: \(speechStartThreshold)")
             Logger.voice("⏳ Waiting \(String(format: "%.1f", silenceTimeout))s to confirm speech ended...")
@@ -302,17 +328,22 @@ class VoiceDetector: NSObject, ObservableObject {
                 let elapsed = Date().timeIntervalSince(start)
                 let progress = min(1.0, elapsed / self.silenceTimeout)
                 self.silenceTimerProgress = progress
+                self.silenceTimerElapsed = elapsed
                 
                 // Publish to UI every update
                 NotificationCenter.default.post(
                     name: .silenceTimerUpdated,
                     object: self,
-                    userInfo: ["progress": progress]
+                    userInfo: [
+                        "progress": progress,
+                        "elapsed": elapsed,
+                        "timeout": self.silenceTimeout
+                    ]
                 )
                 
                 // Log progress every 0.5 seconds
                 if Int(elapsed * 10) % 5 == 0 {
-                    Logger.voice("⏳ Silence timer: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s (\(Int(progress * 100))%)")
+                    Logger.voice("⏳ Silence: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s")
                 }
             }
             
@@ -347,6 +378,7 @@ class VoiceDetector: NSObject, ObservableObject {
         // Stop silence indicators
         isSilenceTimerActive = false
         silenceTimerProgress = 0.0
+        silenceTimerElapsed = 0.0
         silenceProgressTimer?.invalidate()
         silenceProgressTimer = nil
         silenceTimer?.invalidate()

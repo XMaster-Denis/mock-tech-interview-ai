@@ -21,6 +21,8 @@ struct MainView: View {
     @State private var isSettingsPresented = false
     @State private var code: String = ""
     @State private var silenceTimerProgress: Double = 0.0
+    @State private var silenceTimerElapsed: Double = 0.0  // Elapsed seconds in silence
+    @State private var silenceTimeout: Double = 1.5  // Timeout from settings
     @State private var isSilenceTimerActive: Bool = false
     @State private var showAudioDebug: Bool = false  // Toggle for audio debug info
     
@@ -67,9 +69,16 @@ struct MainView: View {
                 silenceTimerProgress = progress
                 isSilenceTimerActive = true
             }
+            if let elapsed = notification.userInfo?["elapsed"] as? Double {
+                silenceTimerElapsed = elapsed
+            }
+            if let timeout = notification.userInfo?["timeout"] as? Double {
+                silenceTimeout = timeout
+            }
         }
         .onNotification(.silenceTimerReset) { _ in
             silenceTimerProgress = 0.0
+            silenceTimerElapsed = 0.0
             isSilenceTimerActive = false
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
@@ -155,11 +164,12 @@ struct MainView: View {
                                 .animation(.easeInOut(duration: 0.1), value: silenceTimerProgress)
                         }
                         
-                        Text("\(Int(silenceTimerProgress * 100))%")
+                        // Show seconds instead of percentage
+                        Text("\(String(format: "%.1f", silenceTimerElapsed))s")
                             .font(.caption2)
                             .monospacedDigit()
                             .foregroundColor(.orange)
-                            .frame(minWidth: 30)
+                            .frame(minWidth: 40)
                     }
                     .transition(.opacity.combined(with: .scale))
                 }
