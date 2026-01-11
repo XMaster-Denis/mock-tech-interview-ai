@@ -53,6 +53,9 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         language: Language,
         apiKey: String
     ) async throws -> String {
+        Logger.network("Chat sendMessage() START - topic: \(topic.title), language: \(language)")
+        Logger.network("Conversation history count: \(messages.count)")
+        
         let systemPrompt = buildSystemPrompt(topic: topic, language: language)
         
         let chatMessages = [ChatMessage(role: "system", content: systemPrompt)] +
@@ -64,14 +67,18 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         )
         
         guard let body = try? JSONEncoder().encode(request) else {
+            Logger.error("Failed to encode chat request")
             throw HTTPError.serverError("Failed to encode request")
         }
+        
+        Logger.network("Chat request body size: \(body.count) bytes")
         
         let headers = [
             "Content-Type": "application/json",
             "Authorization": "Bearer \(apiKey)"
         ]
         
+        Logger.network("Sending chat request to OpenAI API")
         let response: ChatResponse = try await httpClient.request(
             endpoint: APIConstants.chatEndpoint,
             method: .post,
@@ -81,9 +88,11 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         )
         
         guard let assistantMessage = response.choices.first?.message.content else {
+            Logger.error("No response from AI")
             throw HTTPError.serverError("No response from AI")
         }
         
+        Logger.success("Chat response received - length: \(assistantMessage.count) chars")
         return assistantMessage
     }
     

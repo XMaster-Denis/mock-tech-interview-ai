@@ -30,7 +30,7 @@ class VoiceDetector: NSObject, ObservableObject {
     // MARK: - Configuration
     
     private let silenceThreshold: Float = 0.05
-    private let speechStartThreshold: Float = 0.08
+    private let speechStartThreshold: Float = 0.15 // Increased from 0.08 to reduce false positives
     private let silenceTimeout: TimeInterval = 1.5
     private let minSpeechDuration: TimeInterval = 0.5
     private let maxRecordingDuration: TimeInterval = 30.0
@@ -83,7 +83,7 @@ class VoiceDetector: NSObject, ObservableObject {
     func startListening() {
         guard !isListening else { return }
         
-        print("🎤 VoiceDetector: Starting to listen...")
+        Logger.voice("Starting to listen...")
         isListening = true
         isPaused = false
         
@@ -92,7 +92,7 @@ class VoiceDetector: NSObject, ObservableObject {
     }
     
     func stopListening() {
-        print("🔇 VoiceDetector: Stopping...")
+        Logger.voice("Stopping...")
         isListening = false
         isPaused = true
         
@@ -101,13 +101,13 @@ class VoiceDetector: NSObject, ObservableObject {
     }
     
     func pauseListening() {
-        print("⏸️ VoiceDetector: Pausing...")
+        Logger.voice("Pausing...")
         isPaused = true
         stopLevelMonitoring()
     }
     
     func resumeListening() {
-        print("▶️ VoiceDetector: Resuming...")
+        Logger.voice("Resuming...")
         isPaused = false
         startLevelMonitoring()
     }
@@ -136,9 +136,9 @@ class VoiceDetector: NSObject, ObservableObject {
             isRecording = true
             recordingStartTime = Date()
             audioBuffer = Data()
-            print("✅ VoiceDetector: Recording started")
+            Logger.success("Recording started")
         } catch {
-            print("❌ VoiceDetector: Failed to start recording - \(error)")
+            Logger.error("Failed to start recording", error: error)
             onVoiceEvent?(.error(error))
         }
     }
@@ -146,6 +146,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private func stopRecording() {
         guard isRecording else { return }
         
+        Logger.voice("Stopping recording...")
         audioRecorder?.stop()
         isRecording = false
         
@@ -153,12 +154,14 @@ class VoiceDetector: NSObject, ObservableObject {
             do {
                 let data = try Data(contentsOf: url)
                 if !data.isEmpty {
-                    print("📊 VoiceDetector: Recorded \(data.count) bytes")
+                    Logger.info("Recorded \(data.count) bytes")
                     onVoiceEvent?(.speechEnded(data))
+                } else {
+                    Logger.warning("Recording is empty, ignoring")
                 }
                 try? FileManager.default.removeItem(at: url)
             } catch {
-                print("❌ VoiceDetector: Failed to read recording - \(error)")
+                Logger.error("Failed to read recording", error: error)
             }
         }
         
@@ -178,13 +181,13 @@ class VoiceDetector: NSObject, ObservableObject {
         levelMonitorTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.checkAudioLevel()
         }
-        print("🔊 VoiceDetector: Level monitoring started")
+        Logger.voice("Level monitoring started")
     }
     
     private func stopLevelMonitoring() {
         levelMonitorTimer?.invalidate()
         levelMonitorTimer = nil
-        print("🔇 VoiceDetector: Level monitoring stopped")
+        Logger.voice("Level monitoring stopped")
     }
     
     private func checkAudioLevel() {
@@ -209,7 +212,7 @@ class VoiceDetector: NSObject, ObservableObject {
             speechDetected = true
             silenceTimer?.invalidate()
             
-            print("🗣️ VoiceDetector: Speech started (level: \(String(format: "%.2f", level)))")
+            Logger.voice("Speech started (level: \(String(format: "%.2f", level)), threshold: \(speechStartThreshold))")
             onVoiceEvent?(.speechStarted)
         }
         // Speech in progress
@@ -232,7 +235,7 @@ class VoiceDetector: NSObject, ObservableObject {
         if let startTime = recordingStartTime {
             let duration = Date().timeIntervalSince(startTime)
             if duration >= maxRecordingDuration {
-                print("⏰ VoiceDetector: Max duration reached")
+                Logger.warning("Max duration reached (\(String(format: "%.1f", duration))s)")
                 stopRecording()
                 // Restart immediately for continuous listening
                 startRecording()
@@ -248,7 +251,7 @@ class VoiceDetector: NSObject, ObservableObject {
         
         // Only process if speech lasted long enough
         if duration >= minSpeechDuration {
-            print("🤫 VoiceDetector: Speech ended (duration: \(String(format: "%.2f", duration))s)")
+            Logger.voice("Speech ended (duration: \(String(format: "%.2f", duration))s)")
             
             // Save current recording
             stopRecording()
@@ -260,7 +263,7 @@ class VoiceDetector: NSObject, ObservableObject {
             }
         } else {
             // Too short - treat as noise
-            print("⚠️ VoiceDetector: Speech too short, ignoring")
+            Logger.warning("Speech too short (\(String(format: "%.2f", duration))s), ignoring as noise")
             isSpeechActive = false
             speechStartTime = nil
             silenceTimer?.invalidate()

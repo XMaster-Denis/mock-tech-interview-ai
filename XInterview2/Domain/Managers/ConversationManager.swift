@@ -90,36 +90,44 @@ class ConversationManager: ObservableObject {
     // MARK: - Public Methods
     
     func startConversation(topic: InterviewTopic, language: Language) {
-        guard conversationState == .idle else { return }
+        guard conversationState == .idle else {
+            Logger.warning("Cannot start conversation, current state: \(conversationState)")
+            return
+        }
         
-        print("🎬 ConversationManager: Starting conversation")
+        Logger.state("Starting conversation - topic: \(topic.title), language: \(language)")
         conversationState = .listening
         currentTopic = topic
         
         // Start continuous listening
+        Logger.state("Starting audio listening")
         audioManager.startListening()
         
         // Generate opening message
+        Logger.state("Sending opening message task")
         Task {
             await sendOpeningMessage(topic: topic, language: language)
         }
     }
     
     func stopConversation() {
-        print("🛑 ConversationManager: Stopping conversation")
+        Logger.state("Stopping conversation")
         isStopping = true
         conversationState = .idle
         currentTopic = nil
         
+        Logger.state("Stopping audio manager")
         audioManager.stopListening()
         audioManager.stopPlayback()
         
+        Logger.state("Cancelling processing task")
         processingTask?.cancel()
         processingTask = nil
         
         // Reset stopping flag after a delay to allow pending operations to complete
         Task {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            Logger.state("Resetting isStopping flag")
             isStopping = false
         }
     }
@@ -127,33 +135,40 @@ class ConversationManager: ObservableObject {
     // MARK: - Voice Event Handlers
     
     private func handleUserSpeechStarted() {
-        print("🗣️ ConversationManager: User started speaking")
+        Logger.state("User started speaking")
         
         // Cancel any ongoing processing
-        processingTask?.cancel()
-        processingTask = nil
+        if processingTask != nil {
+            Logger.state("Cancelling processing task due to user speech")
+            processingTask?.cancel()
+            processingTask = nil
+        }
     }
     
     private func handleUserSpeechEnded(audioData: Data) {
-        print("🤫 ConversationManager: User finished speaking")
+        Logger.state("User finished speaking - audio data: \(audioData.count) bytes")
         
-        guard conversationState != .speaking else { return }
+        guard conversationState != .speaking else {
+            Logger.warning("Ignoring speech end - currently speaking")
+            return
+        }
         
         conversationState = .processing
         isProcessing = true
         
+        Logger.state("Creating processing task for user speech")
         processingTask = Task { [weak self] in
             await self?.processUserSpeech(audioData: audioData)
         }
     }
     
     private func handleTTSCancelled() {
-        print("🛑 ConversationManager: TTS was cancelled by user")
+        Logger.state("TTS was cancelled by user")
         conversationState = .listening
     }
     
     private func handleTTSCompleted() {
-        print("✅ ConversationManager: TTS completed")
+        Logger.state("TTS completed")
         conversationState = .listening
         isProcessing = false
     }
@@ -161,22 +176,30 @@ class ConversationManager: ObservableObject {
     // MARK: - Message Processing
     
     private func sendOpeningMessage(topic: InterviewTopic, language: Language) async {
+        Logger.state("sendOpeningMessage() START - topic: \(topic.title), language: \(language)")
+        
         // Check if stopping
-        guard !isStopping else { return }
+        guard !isStopping else {
+            Logger.warning("sendOpeningMessage() cancelled - isStopping=true")
+            return
+        }
         
         let settings = settingsRepository.loadSettings()
         let apiKey = settings.apiKey
         
         guard !apiKey.isEmpty else {
+            Logger.error("API key is not configured")
             onError?("API key is not configured")
             return
         }
         
         do {
             // Generate opening prompt
+            Logger.state("Generating opening prompt")
             let openingPrompt = generateOpeningPrompt(topic: topic, language: language)
             
             // Get AI response (empty messages for opening)
+            Logger.state("Calling chatService.sendMessage() for opening message")
             let response = try await chatService.sendMessage(
                 messages: [],
                 topic: topic,
@@ -184,26 +207,34 @@ class ConversationManager: ObservableObject {
                 apiKey: apiKey
             )
             
+            Logger.state("Received AI opening response: \(String(response.prefix(100)))...")
+            
             // Check if stopping before proceeding
-            guard !isStopping else { return }
+            guard !isStopping else {
+                Logger.warning("sendOpeningMessage() cancelled after getting response - isStopping=true")
+                return
+            }
             
             // Add to conversation history
+            Logger.state("Adding AI response to conversation history")
             addMessage(role: TranscriptMessage.MessageRole.assistant, content: response)
             
             // Notify UI
+            Logger.state("Notifying UI of AI message")
             onAIMessage?(response)
             
             // Convert to speech
+            Logger.state("Converting AI response to speech")
             await speakResponse(response, language: language, apiKey: apiKey)
             
         } catch {
             // Only handle error if not stopping
             guard !isStopping else {
-                print("⚠️ ConversationManager: Opening message cancelled due to stop")
+                Logger.warning("sendOpeningMessage() error cancelled due to stop")
                 return
             }
             
-            print("❌ ConversationManager: Failed to send opening message - \(error)")
+            Logger.error("Failed to send opening message", error: error)
             onError?(error.localizedDescription)
             conversationState = .listening
             isProcessing = false
@@ -211,9 +242,11 @@ class ConversationManager: ObservableObject {
     }
     
     private func processUserSpeech(audioData: Data) async {
+        Logger.state("processUserSpeech() START - audio data: \(audioData.count) bytes")
+        
         // Check if stopping before processing
         guard !isStopping else {
-            print("⚠️ ConversationManager: Ignoring speech - conversation is stopping")
+            Logger.warning("processUserSpeech() cancelled - isStopping=true")
             return
         }
         
@@ -221,6 +254,7 @@ class ConversationManager: ObservableObject {
         let apiKey = settings.apiKey
         
         guard !apiKey.isEmpty else {
+            Logger.error("API key is not configured")
             onError?("API key is not configured")
             guard !isStopping else { return }
             conversationState = .listening
@@ -230,33 +264,38 @@ class ConversationManager: ObservableObject {
         
         do {
             // Transcribe audio
-            print("📝 ConversationManager: Transcribing audio...")
+            Logger.state("Calling whisperService.transcribe()")
             let userText = try await whisperService.transcribe(
                 audioData: audioData,
                 apiKey: apiKey,
                 language: settings.selectedLanguage.rawValue
             )
             
+            Logger.state("Received transcription: '\(userText)'")
+            
             // Check if stopping after transcription
             guard !isStopping else {
-                print("⚠️ ConversationManager: Transcription cancelled due to stop")
+                Logger.warning("processUserSpeech() cancelled after transcription - isStopping=true")
                 return
             }
             
             guard !userText.isEmpty else {
-                print("⚠️ ConversationManager: Empty transcription, ignoring")
+                Logger.warning("Empty transcription, ignoring")
                 guard !isStopping else { return }
                 conversationState = .listening
                 isProcessing = false
                 return
             }
             
-            print("👤 User: \(userText)")
+            Logger.state("User message: '\(userText)'")
             onUserMessage?(userText)
             
             // Get AI response
-            print("🤖 ConversationManager: Getting AI response...")
-            guard let topic = currentTopic else { return }
+            Logger.state("Calling chatService.sendMessage() for user message")
+            guard let topic = currentTopic else {
+                Logger.error("No current topic available")
+                return
+            }
             let response = try await chatService.sendMessage(
                 messages: conversationHistory,
                 topic: topic,
@@ -264,29 +303,33 @@ class ConversationManager: ObservableObject {
                 apiKey: apiKey
             )
             
+            Logger.state("Received AI response: \(String(response.prefix(100)))...")
+            
             // Check if stopping after getting AI response
             guard !isStopping else {
-                print("⚠️ ConversationManager: AI response cancelled due to stop")
+                Logger.warning("processUserSpeech() cancelled after AI response - isStopping=true")
                 return
             }
             
             // Add user message to history
+            Logger.state("Adding user message to history")
             addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
             
-            print("🤖 AI: \(response)")
+            Logger.state("AI message: '\(response)'")
             onAIMessage?(response)
             
             // Convert to speech
+            Logger.state("Converting AI response to speech")
             await speakResponse(response, language: settings.selectedLanguage, apiKey: apiKey)
             
         } catch {
             // Only handle error if not stopping (cancelled errors are expected on stop)
             guard !isStopping else {
-                print("⚠️ ConversationManager: Processing cancelled due to stop")
+                Logger.warning("processUserSpeech() error cancelled due to stop")
                 return
             }
             
-            print("❌ ConversationManager: Processing failed - \(error)")
+            Logger.error("Processing failed", error: error)
             onError?(error.localizedDescription)
             conversationState = .listening
             isProcessing = false
@@ -294,39 +337,45 @@ class ConversationManager: ObservableObject {
     }
     
     private func speakResponse(_ text: String, language: Language, apiKey: String) async {
+        Logger.state("speakResponse() START - text length: \(text.count)")
+        
         // Check if stopping before TTS
         guard !isStopping else {
-            print("⚠️ ConversationManager: TTS cancelled - conversation is stopping")
+            Logger.warning("speakResponse() cancelled - isStopping=true")
             return
         }
         
         do {
             // Generate speech
             let settings = settingsRepository.loadSettings()
+            Logger.state("Calling ttsService.generateSpeech() - voice: \(settings.selectedVoice)")
             let audioData = try await ttsService.generateSpeech(
                 text: text,
                 voice: settings.selectedVoice,
                 apiKey: apiKey
             )
             
+            Logger.state("Received TTS audio data: \(audioData.count) bytes")
+            
             // Check if stopping after generating speech
             guard !isStopping else {
-                print("⚠️ ConversationManager: TTS generation cancelled due to stop")
+                Logger.warning("speakResponse() cancelled after generation - isStopping=true")
                 return
             }
             
             // Play (interruptible)
+            Logger.state("Calling audioManager.speak()")
             conversationState = .speaking
             try await audioManager.speak(audioData, canBeInterrupted: true)
             
         } catch {
             // Only handle error if not stopping
             guard !isStopping else {
-                print("⚠️ ConversationManager: TTS cancelled due to stop")
+                Logger.warning("speakResponse() error cancelled due to stop")
                 return
             }
             
-            print("❌ ConversationManager: TTS failed - \(error)")
+            Logger.error("TTS failed", error: error)
             conversationState = .listening
             isProcessing = false
         }

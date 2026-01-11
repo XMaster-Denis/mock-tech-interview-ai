@@ -59,9 +59,10 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
         try? session.setActive(true)
+        Logger.audio("Audio session setup complete (playAndRecord)")
         #elseif os(macOS)
         // On macOS, AVAudioSession is limited - audio output is handled differently
-        print("✅ FullDuplexAudioManager: macOS audio setup complete")
+        Logger.audio("macOS audio setup complete")
         #endif
     }
     
@@ -71,13 +72,13 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         do {
             try session.setCategory(.playback, mode: .default, options: [.duckOthers])
             try session.setActive(true)
-            print("✅ FullDuplexAudioManager: Audio session configured for playback")
+            Logger.audio("Audio session configured for playback (playback + duckOthers)")
         } catch {
-            print("❌ FullDuplexAudioManager: Failed to configure playback session - \(error)")
+            Logger.error("Failed to configure playback session", error: error)
         }
         #elseif os(macOS)
         // On macOS, AVAudioPlayer handles output automatically
-        print("✅ FullDuplexAudioManager: macOS playback ready")
+        Logger.audio("macOS playback ready")
         #endif
     }
     
@@ -87,13 +88,13 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true)
-            print("✅ FullDuplexAudioManager: Audio session configured for recording")
+            Logger.audio("Audio session configured for recording (playAndRecord)")
         } catch {
-            print("❌ FullDuplexAudioManager: Failed to configure recording session - \(error)")
+            Logger.error("Failed to configure recording session", error: error)
         }
         #elseif os(macOS)
         // On macOS, recording is handled by AVAudioRecorder
-        print("✅ FullDuplexAudioManager: macOS recording ready")
+        Logger.audio("macOS recording ready")
         #endif
     }
     
@@ -110,9 +111,12 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     // MARK: - Public Methods
     
     func startListening() {
-        guard audioState == .idle || audioState == .listening else { return }
+        guard audioState == .idle || audioState == .listening else {
+            Logger.warning("Cannot start listening, current state: \(audioState)")
+            return
+        }
         
-        print("🎤 FullDuplexAudioManager: Starting continuous listening")
+        Logger.audio("Starting continuous listening")
         configureAudioSessionForRecording()
         audioState = .listening
         isListening = true
@@ -120,7 +124,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     }
     
     func stopListening() {
-        print("🔇 FullDuplexAudioManager: Stopping listening")
+        Logger.audio("Stopping listening")
         audioState = .idle
         isListening = false
         voiceDetector.stopListening()
@@ -128,24 +132,32 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     }
     
     func pauseListening() {
-        print("⏸️ FullDuplexAudioManager: Pausing listening during AI speech")
+        Logger.audio("Pausing listening during AI speech")
         voiceDetector.pauseListening()
     }
     
     func resumeListening() {
-        print("▶️ FullDuplexAudioManager: Resuming listening")
+        Logger.audio("Resuming listening")
         voiceDetector.resumeListening()
     }
     
     // MARK: - TTS Playback
     
     func speak(_ audioData: Data, canBeInterrupted: Bool = true) async throws {
+        Logger.audio("speak() called - data size: \(audioData.count) bytes, canBeInterrupted: \(canBeInterrupted)")
+        
+        // Validate audio data
+        guard !audioData.isEmpty else {
+            Logger.error("TTS audio data is empty")
+            throw NSError(domain: "AudioManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Empty audio data"])
+        }
+        
         // Stop any current playback
         stopPlayback()
         
         // If user is speaking, cancel TTS
         if voiceDetector.speechDetected {
-            print("⚠️ FullDuplexAudioManager: User is speaking, cancelling TTS")
+            Logger.warning("User is speaking, cancelling TTS")
             audioState = .listening
             return
         }
@@ -153,14 +165,14 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         // Configure audio session for playback (important for macOS)
         configureAudioSessionForPlayback()
         
-        print("🔊 FullDuplexAudioManager: Starting TTS playback (\(audioData.count) bytes)")
+        Logger.audio("Starting TTS playback (\(audioData.count) bytes)")
         audioState = .speaking
         isSpeaking = true
         isTTSPrepared = true
         
         // If TTS can be interrupted, continue listening in background
         if canBeInterrupted {
-            print("👂 FullDuplexAudioManager: TTS is interruptible, monitoring for user speech")
+            Logger.audio("TTS is interruptible, monitoring for user speech")
         } else {
             pauseListening()
         }
@@ -177,16 +189,22 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
                 ttsPlayer?.rate = 0.5 // Slower for clarity (like working example)
                 ttsPlayer?.volume = 1.0 // Ensure full volume
                 ttsPlayer?.prepareToPlay()
-                print("🎵 FullDuplexAudioManager: TTS player prepared, rate=0.5, volume=1.0")
+                
+                if let duration = ttsPlayer?.duration {
+                    Logger.audio("TTS player prepared - rate=0.5, volume=1.0, duration=\(String(format: "%.2f", duration))s")
+                } else {
+                    Logger.audio("TTS player prepared - rate=0.5, volume=1.0")
+                }
                 
                 ttsTask = Task { @MainActor in
+                    Logger.audio("Calling ttsPlayer.play()")
                     ttsPlayer?.play()
                     
                     // Wait for playback to complete or be interrupted
                     while ttsPlayer?.isPlaying == true {
                         // Check for interruption
                         if canBeInterrupted && voiceDetector.speechDetected {
-                            print("🛑 FullDuplexAudioManager: User interrupted TTS!")
+                            Logger.audio("User interrupted TTS!")
                             stopPlayback()
                             onTTSCancelled?()
                             audioState = .listening
@@ -220,6 +238,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     }
     
     func stopPlayback() {
+        Logger.audio("stopPlayback() called")
         ttsTask?.cancel()
         ttsTask = nil
         
@@ -228,8 +247,6 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         
         isSpeaking = false
         isTTSPrepared = false
-        
-        print("🛑 FullDuplexAudioManager: Playback stopped")
     }
     
     private func stopTTSPreparation() {
@@ -241,11 +258,11 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     private func handleVoiceEvent(_ event: VoiceEvent) {
         switch event {
         case .speechStarted:
-            print("🗣️ FullDuplexAudioManager: User started speaking")
+            Logger.audio("User started speaking")
             
             // Interrupt TTS if speaking
             if isSpeaking {
-                print("🛑 FullDuplexAudioManager: Interrupting TTS due to user speech")
+                Logger.audio("Interrupting TTS due to user speech")
                 stopPlayback()
                 onTTSCancelled?()
                 audioState = .listening
@@ -254,7 +271,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
             onUserSpeechStarted?()
             
         case .speechEnded(let data):
-            print("🤫 FullDuplexAudioManager: User finished speaking")
+            Logger.audio("User finished speaking, audio data: \(data.count) bytes")
             audioState = .processing
             onUserSpeechEnded?(data)
             
@@ -284,7 +301,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
 
 extension FullDuplexAudioManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        print("✅ FullDuplexAudioManager: TTS playback finished (success: \(flag))")
+        Logger.audio("TTS playback finished - success: \(flag)")
         isSpeaking = false
         isTTSPrepared = false
         
@@ -298,7 +315,7 @@ extension FullDuplexAudioManager: AVAudioPlayerDelegate {
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print("❌ FullDuplexAudioManager: TTS playback error - \(error?.localizedDescription ?? "unknown")")
+        Logger.error("TTS playback error", error: error)
         isSpeaking = false
         isTTSPrepared = false
         
