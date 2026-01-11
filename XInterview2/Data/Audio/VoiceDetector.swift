@@ -36,7 +36,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private let silenceThreshold: Float = 0.05
     private var speechStartThreshold: Float // Configurable via settings
     private var silenceTimeout: TimeInterval // Configurable via settings
-    private let minSpeechDuration: TimeInterval = 0.5
+    private let minSpeechDuration: TimeInterval = 0.2  // Lowered from 0.5 for faster testing
     private let maxRecordingDuration: TimeInterval = 30.0
     private let calibrationDelay: TimeInterval = 1.0 // Ignore first 1s for mic calibration
     
@@ -262,6 +262,11 @@ class VoiceDetector: NSObject, ObservableObject {
         let level = max(0.0, min(1.0, (averagePower + 60) / 60))
         audioLevel = level
         
+        // Log raw averagePower for diagnosis (macOS might have issues)
+        if lastLevelLogTime == nil || Date().timeIntervalSince(lastLevelLogTime!) >= 1.0 {
+            Logger.voice("📊 Raw: averagePower=\(String(format: "%.2f", averagePower)), level=\(String(format: "%.2f", level)), metering=\(recorder.isMeteringEnabled)")
+        }
+        
         let isAboveThreshold = level > speechStartThreshold
         
         // Log level every 1 second regardless of state
@@ -389,7 +394,7 @@ class VoiceDetector: NSObject, ObservableObject {
         
         // Only process if speech lasted long enough
         if duration >= minSpeechDuration {
-            Logger.voice("✅ Speech ended (duration: \(String(format: "%.2f", duration))s) - sending to transcription")
+            Logger.voice("✅ Speech ended (duration: \(String(format: "%.2f", duration))s >= \(minSpeechDuration)s) - sending to transcription")
             
             // Save current recording
             stopRecording()
@@ -402,6 +407,7 @@ class VoiceDetector: NSObject, ObservableObject {
         } else {
             // Too short - treat as noise
             Logger.warning("⚠️ Speech too short (\(String(format: "%.2f", duration))s < \(minSpeechDuration)s), ignoring as noise")
+            Logger.voice("💡 Tip: Lower minSpeechDuration to accept shorter speech, or speak longer")
             isSpeechActive = false
             speechStartTime = nil
         }
