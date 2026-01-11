@@ -18,6 +18,7 @@ class InterviewViewModel: ObservableObject {
     @Published var selectedTopic: InterviewTopic
     @Published var conversationState: ConversationState = .idle
     @Published var audioLevel: Float = 0.0
+    @Published var audioLogs: [String] = []
     
     enum ConversationState {
         case idle
@@ -92,6 +93,14 @@ class InterviewViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] level in
                 self?.audioLevel = level
+            }
+            .store(in: &cancellables)
+        
+        // Observe audio logs
+        audioEngineWithCallback.$audioLogs
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] logs in
+                self?.audioLogs = logs
             }
             .store(in: &cancellables)
     }
@@ -307,5 +316,29 @@ class InterviewViewModel: ObservableObject {
         case .speaking:
             return "AI Speaking..."
         }
+    }
+    
+    // MARK: - Audio Testing
+    
+    func startAudioTest() async throws -> AsyncStream<String> {
+        guard let audioEngineWithCallback = audioEngine as? AudioEngine else {
+            throw AudioEngineError.recordingInProgress
+        }
+        return try audioEngineWithCallback.startTestRecording(duration: 5.0)
+    }
+    
+    func stopAudioTest() throws {
+        guard let audioEngineWithCallback = audioEngine as? AudioEngine else {
+            return
+        }
+        try audioEngineWithCallback.stopTestRecording()
+    }
+    
+    func clearAudioLogs() {
+        guard let audioEngineWithCallback = audioEngine as? AudioEngine else {
+            return
+        }
+        audioEngineWithCallback.clearLogs()
+        audioLogs.removeAll()
     }
 }
