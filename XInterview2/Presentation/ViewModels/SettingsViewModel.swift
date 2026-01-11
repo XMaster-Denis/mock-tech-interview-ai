@@ -15,6 +15,7 @@ class SettingsViewModel: ObservableObject {
     @Published var apiKey: String = ""
     @Published var selectedLanguage: Language = .english
     @Published var selectedVoice: String = APIConstants.Voice.alloy
+    @Published var voiceThreshold: Float = 0.25
     
     // MARK: - Dependencies
     
@@ -34,13 +35,15 @@ class SettingsViewModel: ObservableObject {
         apiKey = settings.apiKey
         selectedLanguage = settings.selectedLanguage
         selectedVoice = settings.selectedVoice
+        voiceThreshold = settings.voiceThreshold
     }
     
     func saveSettings() {
         let settings = Settings(
             apiKey: apiKey,
             selectedLanguage: selectedLanguage,
-            selectedVoice: selectedVoice
+            selectedVoice: selectedVoice,
+            voiceThreshold: voiceThreshold
         )
         settingsRepository.saveSettings(settings)
     }

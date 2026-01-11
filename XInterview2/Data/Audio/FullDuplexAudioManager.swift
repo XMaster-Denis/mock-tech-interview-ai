@@ -54,6 +54,13 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         setupAudioSession()
     }
     
+    // MARK: - Public Methods
+    
+    func updateVoiceThreshold(_ threshold: Float) {
+        Logger.audio("Updating voice threshold to: \(threshold)")
+        voiceDetector.updateThreshold(threshold)
+    }
+    
     private func setupAudioSession() {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()

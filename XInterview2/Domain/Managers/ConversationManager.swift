@@ -29,7 +29,7 @@ class ConversationManager: ObservableObject {
     
     // MARK: - Components
     
-    private let audioManager = FullDuplexAudioManager()
+    private let audioManager: FullDuplexAudioManager
     private let whisperService: OpenAIWhisperServiceProtocol
     private let chatService: OpenAIChatServiceProtocol
     private let ttsService: OpenAITTSServiceProtocol
@@ -60,6 +60,9 @@ class ConversationManager: ObservableObject {
         self.chatService = chatService
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
+        
+        let audioManager = FullDuplexAudioManager()
+        self.audioManager = audioManager
         
         setupAudioManager()
     }
@@ -98,6 +101,11 @@ class ConversationManager: ObservableObject {
         Logger.state("Starting conversation - topic: \(topic.title), language: \(language)")
         conversationState = .listening
         currentTopic = topic
+        
+        // Load settings and update voice threshold
+        let settings = settingsRepository.loadSettings()
+        audioManager.updateVoiceThreshold(settings.voiceThreshold)
+        Logger.state("Voice threshold set to: \(settings.voiceThreshold)")
         
         // Start continuous listening
         Logger.state("Starting audio listening")

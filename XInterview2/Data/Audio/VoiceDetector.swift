@@ -30,10 +30,11 @@ class VoiceDetector: NSObject, ObservableObject {
     // MARK: - Configuration
     
     private let silenceThreshold: Float = 0.05
-    private let speechStartThreshold: Float = 0.15 // Increased from 0.08 to reduce false positives
+    private var speechStartThreshold: Float // Configurable via settings
     private let silenceTimeout: TimeInterval = 1.5
     private let minSpeechDuration: TimeInterval = 0.5
     private let maxRecordingDuration: TimeInterval = 30.0
+    private let calibrationDelay: TimeInterval = 1.0 // Ignore first 1s for mic calibration
     
     // MARK: - Properties
     
@@ -48,6 +49,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var isRecording: Bool = false
     private var isSpeechActive: Bool = false
     private var isPaused: Bool = false
+    private var isCalibrated: Bool = false // True after calibration delay
     
     // MARK: - Callbacks
     
@@ -56,6 +58,13 @@ class VoiceDetector: NSObject, ObservableObject {
     // MARK: - Initialization
     
     override init() {
+        self.speechStartThreshold = 0.25 // Default threshold (can be updated)
+        super.init()
+        setupAudioSession()
+    }
+    
+    init(speechThreshold: Float) {
+        self.speechStartThreshold = speechThreshold
         super.init()
         setupAudioSession()
     }
@@ -80,10 +89,15 @@ class VoiceDetector: NSObject, ObservableObject {
     
     // MARK: - Public Methods
     
+    func updateThreshold(_ threshold: Float) {
+        Logger.voice("Updating speech threshold to: \(threshold)")
+        speechStartThreshold = threshold
+    }
+    
     func startListening() {
         guard !isListening else { return }
         
-        Logger.voice("Starting to listen...")
+        Logger.voice("Starting to listen... threshold: \(speechStartThreshold)")
         isListening = true
         isPaused = false
         
@@ -115,6 +129,8 @@ class VoiceDetector: NSObject, ObservableObject {
     // MARK: - Recording
     
     private func startRecording() {
+        Logger.voice("startRecording() - resetting calibration state")
+        
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let fileName = "speech_\(UUID().uuidString).wav"
         let audioURL = documentsDirectory.appendingPathComponent(fileName)
@@ -136,7 +152,19 @@ class VoiceDetector: NSObject, ObservableObject {
             isRecording = true
             recordingStartTime = Date()
             audioBuffer = Data()
-            Logger.success("Recording started")
+            
+            // Reset calibration - wait before detecting speech
+            isCalibrated = false
+            isSpeechActive = false
+            speechDetected = false
+            
+            // Start calibration timer
+            Timer.scheduledTimer(withTimeInterval: calibrationDelay, repeats: false) { [weak self] _ in
+                self?.isCalibrated = true
+                Logger.voice("Calibration complete, speech detection enabled")
+            }
+            
+            Logger.success("Recording started (calibrating for \(calibrationDelay)s)")
         } catch {
             Logger.error("Failed to start recording", error: error)
             onVoiceEvent?(.error(error))
@@ -204,6 +232,11 @@ class VoiceDetector: NSObject, ObservableObject {
         audioLevel = level
         
         let isAboveThreshold = level > speechStartThreshold
+        
+        // Skip speech detection during calibration
+        if !isCalibrated {
+            return
+        }
         
         // Speech started
         if isAboveThreshold && !isSpeechActive {

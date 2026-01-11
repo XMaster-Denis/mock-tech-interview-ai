@@ -141,6 +141,61 @@ struct SettingsView: View {
                     .frame(minWidth: 400)
                 }
                 
+                Divider()
+                
+                // Voice Threshold (Microphone Sensitivity)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Voice Threshold")
+                        .font(.headline)
+                    
+                    Text("Microphone sensitivity for voice detection")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        Text("Less Sensitive")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Slider(value: $viewModel.voiceThreshold, in: 0.05...0.5, step: 0.01)
+                            .frame(minWidth: 200)
+                        
+                        Text("More Sensitive")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Current threshold:")
+                            .font(.caption)
+                        Text(String(format: "%.2f", viewModel.voiceThreshold))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .monospacedDigit()
+                        
+                        Spacer()
+                        
+                        // Show sensitivity level indicator
+                        if viewModel.voiceThreshold < 0.15 {
+                            Label("Very Sensitive", systemImage: "speaker.wave.3.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        } else if viewModel.voiceThreshold < 0.25 {
+                            Label("Sensitive", systemImage: "speaker.wave.2.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        } else if viewModel.voiceThreshold < 0.35 {
+                            Label("Normal", systemImage: "speaker.wave.1.fill")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        } else {
+                            Label("Less Sensitive", systemImage: "speaker.slash.fill")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                }
+                
                 Spacer()
                 
                 HStack {
@@ -159,7 +214,7 @@ struct SettingsView: View {
             }
             .padding(30)
         }
-        .frame(width: 600, height: 700)
+        .frame(width: 600, height: 850)
     }
     
     private func logColor(for log: String) -> Color {
