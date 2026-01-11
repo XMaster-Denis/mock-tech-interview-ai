@@ -10,24 +10,24 @@ import Foundation
 struct InterviewSession: Identifiable, Codable {
     let id: UUID
     var topic: InterviewTopic
-    var language: Language
     var isActive: Bool
-    var messages: [TranscriptMessage]
-    var createdAt: Date
+    var transcript: [TranscriptMessage]
+    var startTime: Date?
+    var endTime: Date?
     
     init(
         id: UUID = UUID(),
-        topic: InterviewTopic,
-        language: Language = .english,
+        topic: InterviewTopic = InterviewTopic.defaultTopics[0],
         isActive: Bool = false,
-        messages: [TranscriptMessage] = [],
-        createdAt: Date = Date()
+        transcript: [TranscriptMessage] = [],
+        startTime: Date? = nil,
+        endTime: Date? = nil
     ) {
         self.id = id
         self.topic = topic
-        self.language = language
         self.isActive = isActive
-        self.messages = messages
-        self.createdAt = createdAt
+        self.transcript = transcript
+        self.startTime = startTime
+        self.endTime = endTime
     }
 }

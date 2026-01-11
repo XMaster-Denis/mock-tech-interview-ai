@@ -100,22 +100,12 @@ struct MainView: View {
             
             // Action buttons
             HStack(spacing: 12) {
-                if !viewModel.session.isActive {
-                    Button(action: { viewModel.startInterview() }) {
-                        Label("Start Interview", systemImage: "play.fill")
-                    }
-                    .disabled(viewModel.session.isActive)
-                } else {
-                    Button(action: { viewModel.stopInterview() }) {
-                        Label("Stop Interview", systemImage: "stop.fill")
-                    }
-                    .buttonStyle(.bordered)
-                }
-                
                 Button(action: { viewModel.toggleRecording() }) {
-                    Label(viewModel.recordingButtonText, systemImage: viewModel.isRecording ? "stop.circle.fill" : "mic.fill")
+                    Label(
+                        viewModel.session.isActive ? "Stop Interview" : "Start Interview",
+                        systemImage: viewModel.session.isActive ? "stop.circle.fill" : "play.circle.fill"
+                    )
                 }
-                .disabled(!viewModel.canRecord)
                 .buttonStyle(.borderedProminent)
             }
         }

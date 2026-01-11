@@ -24,21 +24,21 @@ struct TranscriptView: View {
             ScrollView {
                 ScrollViewReader { proxy in
                     VStack(alignment: .leading, spacing: 12) {
-                        if viewModel.session.messages.isEmpty {
+                        if viewModel.session.transcript.isEmpty {
                             Text("No messages yet")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .padding(.vertical, 40)
                         } else {
-                            ForEach(viewModel.session.messages) { message in
+                            ForEach(viewModel.session.transcript) { message in
                                 MessageRowView(message: message)
                             }
                         }
                     }
                     .padding(12)
-                    .onChange(of: viewModel.session.messages.count) { oldValue, newValue in
-                        if let lastMessage = viewModel.session.messages.last {
+                    .onChange(of: viewModel.session.transcript.count) { oldValue, newValue in
+                        if let lastMessage = viewModel.session.transcript.last {
                             withAnimation {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }

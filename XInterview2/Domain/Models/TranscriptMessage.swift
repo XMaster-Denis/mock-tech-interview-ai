@@ -14,6 +14,7 @@ struct TranscriptMessage: Identifiable, Codable, Equatable {
     let timestamp: Date
     
     enum MessageRole: String, Codable {
+        case system
         case user
         case assistant
     }

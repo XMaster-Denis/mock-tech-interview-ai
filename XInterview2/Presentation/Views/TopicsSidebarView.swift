@@ -41,7 +41,7 @@ struct TopicsSidebarView: View {
                             topic: topic,
                             isSelected: viewModel.selectedTopic.id == topic.id
                         ) {
-                            viewModel.selectedTopic = topic
+                            viewModel.selectTopic(topic)
                         }
                     }
                 }
