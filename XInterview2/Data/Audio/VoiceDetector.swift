@@ -63,7 +63,7 @@ class VoiceDetector: NSObject, ObservableObject {
     // MARK: - Initialization
     
     override init() {
-        self.speechStartThreshold = 0.25 // Default threshold (can be updated)
+        self.speechStartThreshold = 0.15 // Lower default threshold for better sensitivity
         self.silenceTimeout = 1.5  // Default silence timeout
         super.init()
         setupAudioSession()
@@ -238,7 +238,15 @@ class VoiceDetector: NSObject, ObservableObject {
     }
     
     private func checkAudioLevel() {
-        guard isListening, !isPaused else { return }
+        guard isListening, !isPaused else {
+            // Log why we're not processing
+            if !isListening {
+                Logger.voice("⏸️ Not listening, skipping audio level check")
+            } else if isPaused {
+                Logger.voice("⏸️ Paused, skipping audio level check")
+            }
+            return
+        }
         
         guard let recorder = audioRecorder, isRecording else {
             audioLevel = 0.0
@@ -254,6 +262,9 @@ class VoiceDetector: NSObject, ObservableObject {
         
         // Skip speech detection during calibration
         if !isCalibrated {
+            if isAboveThreshold {
+                Logger.voice("⏳ Calibration in progress (level: \(String(format: "%.2f", level)) > threshold: \(speechStartThreshold)) - ignoring")
+            }
             return
         }
         
@@ -264,7 +275,7 @@ class VoiceDetector: NSObject, ObservableObject {
             speechDetected = true
             silenceTimer?.invalidate()
             
-            Logger.voice("Speech started (level: \(String(format: "%.2f", level)), threshold: \(speechStartThreshold))")
+            Logger.voice("🎤 SPEECH STARTED! Level: \(String(format: "%.2f", level)) > Threshold: \(speechStartThreshold)")
             onVoiceEvent?(.speechStarted)
         }
         // Speech in progress
@@ -281,18 +292,27 @@ class VoiceDetector: NSObject, ObservableObject {
             isSilenceTimerActive = true
             silenceTimerProgress = 0.0
             
-            Logger.voice("Silence started, waiting \(silenceTimeout)s to confirm speech ended...")
+            Logger.voice("🔇 SILENCE DETECTED! Level: \(String(format: "%.2f", level)) < Threshold: \(speechStartThreshold)")
+            Logger.voice("⏳ Waiting \(String(format: "%.1f", silenceTimeout))s to confirm speech ended...")
             
             // Start progress animation timer
             silenceProgressTimer?.invalidate()
             silenceProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
                 guard let self = self, let start = self.silenceStartTime else { return }
                 let elapsed = Date().timeIntervalSince(start)
-                self.silenceTimerProgress = min(1.0, elapsed / self.silenceTimeout)
+                let progress = min(1.0, elapsed / self.silenceTimeout)
+                self.silenceTimerProgress = progress
+                
+                // Publish to UI every update
+                NotificationCenter.default.post(
+                    name: .silenceTimerUpdated,
+                    object: self,
+                    userInfo: ["progress": progress]
+                )
                 
                 // Log progress every 0.5 seconds
                 if Int(elapsed * 10) % 5 == 0 {
-                    Logger.voice("Silence timer: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s")
+                    Logger.voice("⏳ Silence timer: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s (\(Int(progress * 100))%)")
                 }
             }
             
@@ -309,7 +329,8 @@ class VoiceDetector: NSObject, ObservableObject {
         if let startTime = recordingStartTime {
             let duration = Date().timeIntervalSince(startTime)
             if duration >= maxRecordingDuration {
-                Logger.warning("Max duration reached (\(String(format: "%.1f", duration))s)")
+                Logger.warning("⚠️ MAX DURATION REACHED (\(String(format: "%.1f", duration))s) - No speech detected!")
+                Logger.warning("💡 Try lowering the Voice Threshold in settings or speak louder/closer to microphone")
                 stopRecording()
                 // Restart immediately for continuous listening
                 startRecording()

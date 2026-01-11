@@ -15,6 +15,7 @@ class InterviewViewModel: ObservableObject {
     @Published var session = InterviewSession()
     @Published var conversationState: ConversationState = .idle
     @Published var audioLevel: Float = 0.0
+    @Published var voiceThreshold: Float = 0.15  // From settings for UI display
     @Published var errorMessage: String?
     
     // MARK: - Components
@@ -60,6 +61,9 @@ class InterviewViewModel: ObservableObject {
         // Bind audio level
         conversationManager.$audioLevel
             .assign(to: &$audioLevel)
+        
+        // Bind voice threshold from settings
+        voiceThreshold = settingsRepository.loadSettings().voiceThreshold
         
         // Setup message callbacks
         conversationManager.onUserMessage = { [weak self] text in

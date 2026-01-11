@@ -22,6 +22,7 @@ struct MainView: View {
     @State private var code: String = ""
     @State private var silenceTimerProgress: Double = 0.0
     @State private var isSilenceTimerActive: Bool = false
+    @State private var showAudioDebug: Bool = false  // Toggle for audio debug info
     
     var body: some View {
         VStack(spacing: 0) {
@@ -109,6 +110,34 @@ struct MainView: View {
                     isRecording: viewModel.isRecording
                 )
                 
+                // Audio debug info (toggleable)
+                if showAudioDebug {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text("Lvl:")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(String(format: "%.2f", viewModel.audioLevel))
+                                .font(.caption2)
+                                .monospacedDigit()
+                                .foregroundColor(audioLevelColor)
+                        }
+                        HStack(spacing: 4) {
+                            Text("Thr:")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(String(format: "%.2f", viewModel.voiceThreshold))
+                                .font(.caption2)
+                                .monospacedDigit()
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .font(.caption)
+                    .padding(4)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(4)
+                }
+                
                 // Silence detection indicator
                 if isSilenceTimerActive {
                     HStack(spacing: 8) {
@@ -149,7 +178,13 @@ struct MainView: View {
             Spacer()
             
             // Action buttons
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                // Debug toggle button
+                Button(action: { showAudioDebug.toggle() }) {
+                    Image(systemName: showAudioDebug ? "waveform.circle.fill" : "waveform.circle")
+                }
+                .help("Toggle audio level debug info")
+                
                 Button(action: { viewModel.toggleRecording() }) {
                     Label(
                         viewModel.session.isActive ? "Stop Interview" : "Start Interview",
@@ -173,6 +208,16 @@ struct MainView: View {
             return .orange
         case .speaking:
             return .green
+        }
+    }
+    
+    private var audioLevelColor: Color {
+        if viewModel.audioLevel >= viewModel.voiceThreshold {
+            return .green  // Above threshold - speech detected
+        } else if viewModel.audioLevel >= viewModel.voiceThreshold * 0.5 {
+            return .orange  // Close to threshold
+        } else {
+            return .red  // Below threshold
         }
     }
     
