@@ -6,11 +6,22 @@
 //
 
 import SwiftUI
+import Foundation
+import Combine
+
+// MARK: - Notification Extensions
+
+extension Notification.Name {
+    static let silenceTimerUpdated = Notification.Name("silenceTimerUpdated")
+    static let silenceTimerReset = Notification.Name("silenceTimerReset")
+}
 
 struct MainView: View {
     @StateObject private var viewModel = InterviewViewModel()
     @State private var isSettingsPresented = false
     @State private var code: String = ""
+    @State private var silenceTimerProgress: Double = 0.0
+    @State private var isSilenceTimerActive: Bool = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -47,8 +58,18 @@ struct MainView: View {
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in
+        .onNotification(.openSettings) { _ in
             isSettingsPresented = true
+        }
+        .onNotification(.silenceTimerUpdated) { notification in
+            if let progress = notification.userInfo?["progress"] as? Double {
+                silenceTimerProgress = progress
+                isSilenceTimerActive = true
+            }
+        }
+        .onNotification(.silenceTimerReset) { _ in
+            silenceTimerProgress = 0.0
+            isSilenceTimerActive = false
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
@@ -81,10 +102,39 @@ struct MainView: View {
             Spacer()
             
             // Audio level visualizer
-            AudioLevelView(
-                audioLevel: viewModel.audioLevel,
-                isRecording: viewModel.isRecording
-            )
+            HStack(spacing: 12) {
+                // Audio level indicator
+                AudioLevelView(
+                    audioLevel: viewModel.audioLevel,
+                    isRecording: viewModel.isRecording
+                )
+                
+                // Silence detection indicator
+                if isSilenceTimerActive {
+                    HStack(spacing: 8) {
+                        // Progress ring
+                        ZStack {
+                            Circle()
+                                .stroke(Color.orange, lineWidth: 2)
+                                .frame(width: 24, height: 24)
+                            
+                            Circle()
+                                .trim(from: 0, to: CGFloat(silenceTimerProgress))
+                                .stroke(Color.orange, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                .rotationEffect(Angle(degrees: -90))
+                                .frame(width: 20, height: 20)
+                                .animation(.easeInOut(duration: 0.1), value: silenceTimerProgress)
+                        }
+                        
+                        Text("\(Int(silenceTimerProgress * 100))%")
+                            .font(.caption2)
+                            .monospacedDigit()
+                            .foregroundColor(.orange)
+                            .frame(minWidth: 30)
+                    }
+                    .transition(.opacity.combined(with: .scale))
+                }
+            }
             
             // Conversation status
             HStack(spacing: 8) {
@@ -133,5 +183,13 @@ struct MainView: View {
         // Microphone permission is automatically requested on first use in macOS
         // But we can show a setup prompt here if needed
         #endif
+    }
+}
+
+// MARK: - View Extension for Notifications
+
+extension View {
+    func onNotification(_ name: Notification.Name, perform action: @escaping (Notification) -> Void) -> some View {
+        self.onReceive(NotificationCenter.default.publisher(for: name), perform: action)
     }
 }

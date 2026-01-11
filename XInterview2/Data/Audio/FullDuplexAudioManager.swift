@@ -28,6 +28,8 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     @Published var audioLevel: Float = 0.0
     @Published var isListening: Bool = false
     @Published var isSpeaking: Bool = false
+    @Published var isSilenceTimerActive: Bool = false  // Forward from VoiceDetector
+    @Published var silenceTimerProgress: Double = 0.0  // Forward from VoiceDetector
     
     // MARK: - Components
     
@@ -38,6 +40,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     
     private var isTTSPrepared: Bool = false
     private var ttsTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Callbacks
     
@@ -59,6 +62,11 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     func updateVoiceThreshold(_ threshold: Float) {
         Logger.audio("Updating voice threshold to: \(threshold)")
         voiceDetector.updateThreshold(threshold)
+    }
+    
+    func updateSilenceTimeout(_ timeout: Double) {
+        Logger.audio("Updating silence timeout to: \(timeout)s")
+        voiceDetector.updateSilenceTimeout(timeout)
     }
     
     private func setupAudioSession() {
@@ -113,6 +121,22 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         // Observe audio level
         voiceDetector.$audioLevel
             .assign(to: &$audioLevel)
+        
+        // Observe silence timer state
+        voiceDetector.$isSilenceTimerActive
+            .assign(to: &$isSilenceTimerActive)
+        
+        // Observe silence timer progress and post notifications for UI
+        voiceDetector.$silenceTimerProgress
+            .sink { [weak self] progress in
+                // Post notification for MainView to observe
+                NotificationCenter.default.post(
+                    name: .silenceTimerUpdated,
+                    object: self,
+                    userInfo: ["progress": progress]
+                )
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods

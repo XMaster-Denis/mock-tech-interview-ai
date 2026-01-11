@@ -16,6 +16,7 @@ class SettingsViewModel: ObservableObject {
     @Published var selectedLanguage: Language = .english
     @Published var selectedVoice: String = APIConstants.Voice.alloy
     @Published var voiceThreshold: Float = 0.2
+    @Published var silenceTimeout: Double = 1.5
     
     // MARK: - Dependencies
     
@@ -36,6 +37,7 @@ class SettingsViewModel: ObservableObject {
         selectedLanguage = settings.selectedLanguage
         selectedVoice = settings.selectedVoice
         voiceThreshold = settings.voiceThreshold
+        silenceTimeout = settings.silenceTimeout
     }
     
     func saveSettings() {
@@ -43,7 +45,8 @@ class SettingsViewModel: ObservableObject {
             apiKey: apiKey,
             selectedLanguage: selectedLanguage,
             selectedVoice: selectedVoice,
-            voiceThreshold: voiceThreshold
+            voiceThreshold: voiceThreshold,
+            silenceTimeout: silenceTimeout
         )
         settingsRepository.saveSettings(settings)
     }

@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Combine
+import Foundation
 
 // MARK: - Voice Events
 
@@ -26,12 +27,14 @@ class VoiceDetector: NSObject, ObservableObject {
     @Published var isListening: Bool = false
     @Published var audioLevel: Float = 0.0
     @Published var speechDetected: Bool = false
+    @Published var isSilenceTimerActive: Bool = false  // New: shows when waiting for silence
+    @Published var silenceTimerProgress: Double = 0.0  // New: 0.0 to 1.0 progress
     
     // MARK: - Configuration
     
     private let silenceThreshold: Float = 0.05
     private var speechStartThreshold: Float // Configurable via settings
-    private let silenceTimeout: TimeInterval = 1.5
+    private var silenceTimeout: TimeInterval // Configurable via settings
     private let minSpeechDuration: TimeInterval = 0.5
     private let maxRecordingDuration: TimeInterval = 30.0
     private let calibrationDelay: TimeInterval = 1.0 // Ignore first 1s for mic calibration
@@ -42,9 +45,11 @@ class VoiceDetector: NSObject, ObservableObject {
     private var recordingFileURL: URL?
     private var recordingStartTime: Date?
     private var speechStartTime: Date?
+    private var silenceStartTime: Date?  // New: tracks when silence started
     private var audioBuffer: Data?
     private var levelMonitorTimer: Timer?
     private var silenceTimer: Timer?
+    private var silenceProgressTimer: Timer?  // New: animates progress
     
     private var isRecording: Bool = false
     private var isSpeechActive: Bool = false
@@ -59,12 +64,14 @@ class VoiceDetector: NSObject, ObservableObject {
     
     override init() {
         self.speechStartThreshold = 0.25 // Default threshold (can be updated)
+        self.silenceTimeout = 1.5  // Default silence timeout
         super.init()
         setupAudioSession()
     }
     
-    init(speechThreshold: Float) {
+    init(speechThreshold: Float, silenceTimeout: Double = 1.5) {
         self.speechStartThreshold = speechThreshold
+        self.silenceTimeout = silenceTimeout
         super.init()
         setupAudioSession()
     }
@@ -92,6 +99,11 @@ class VoiceDetector: NSObject, ObservableObject {
     func updateThreshold(_ threshold: Float) {
         Logger.voice("Updating speech threshold to: \(threshold)")
         speechStartThreshold = threshold
+    }
+    
+    func updateSilenceTimeout(_ timeout: Double) {
+        Logger.voice("Updating silence timeout to: \(timeout)s")
+        self.silenceTimeout = timeout
     }
     
     func startListening() {
@@ -197,8 +209,15 @@ class VoiceDetector: NSObject, ObservableObject {
         audioBuffer = nil
         recordingStartTime = nil
         speechStartTime = nil
+        silenceStartTime = nil
         isSpeechActive = false
         speechDetected = false
+        isSilenceTimerActive = false
+        silenceTimerProgress = 0.0
+        silenceProgressTimer?.invalidate()
+        silenceProgressTimer = nil
+        silenceTimer?.invalidate()
+        silenceTimer = nil
     }
     
     // MARK: - Level Monitoring
@@ -256,6 +275,28 @@ class VoiceDetector: NSObject, ObservableObject {
         else if !isAboveThreshold && isSpeechActive {
             // Start silence timer to confirm speech ended
             silenceTimer?.invalidate()
+            silenceTimer = nil
+            
+            silenceStartTime = Date()
+            isSilenceTimerActive = true
+            silenceTimerProgress = 0.0
+            
+            Logger.voice("Silence started, waiting \(silenceTimeout)s to confirm speech ended...")
+            
+            // Start progress animation timer
+            silenceProgressTimer?.invalidate()
+            silenceProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+                guard let self = self, let start = self.silenceStartTime else { return }
+                let elapsed = Date().timeIntervalSince(start)
+                self.silenceTimerProgress = min(1.0, elapsed / self.silenceTimeout)
+                
+                // Log progress every 0.5 seconds
+                if Int(elapsed * 10) % 5 == 0 {
+                    Logger.voice("Silence timer: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s")
+                }
+            }
+            
+            // Main silence timer
             silenceTimer = Timer.scheduledTimer(
                 withTimeInterval: silenceTimeout,
                 repeats: false
@@ -282,9 +323,20 @@ class VoiceDetector: NSObject, ObservableObject {
         
         let duration = Date().timeIntervalSince(startTime)
         
+        // Stop silence indicators
+        isSilenceTimerActive = false
+        silenceTimerProgress = 0.0
+        silenceProgressTimer?.invalidate()
+        silenceProgressTimer = nil
+        silenceTimer?.invalidate()
+        silenceTimer = nil
+        
+        // Post notification to reset UI indicator
+        NotificationCenter.default.post(name: .silenceTimerReset, object: self)
+        
         // Only process if speech lasted long enough
         if duration >= minSpeechDuration {
-            Logger.voice("Speech ended (duration: \(String(format: "%.2f", duration))s)")
+            Logger.voice("✅ Speech ended (duration: \(String(format: "%.2f", duration))s) - sending to transcription")
             
             // Save current recording
             stopRecording()
@@ -296,10 +348,9 @@ class VoiceDetector: NSObject, ObservableObject {
             }
         } else {
             // Too short - treat as noise
-            Logger.warning("Speech too short (\(String(format: "%.2f", duration))s), ignoring as noise")
+            Logger.warning("⚠️ Speech too short (\(String(format: "%.2f", duration))s < \(minSpeechDuration)s), ignoring as noise")
             isSpeechActive = false
             speechStartTime = nil
-            silenceTimer?.invalidate()
         }
     }
 }

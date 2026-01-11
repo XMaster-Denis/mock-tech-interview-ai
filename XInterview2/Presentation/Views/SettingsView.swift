@@ -196,6 +196,65 @@ struct SettingsView: View {
                     }
                 }
                 
+                Divider()
+                
+                // Silence Timeout
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Silence Timeout")
+                        .font(.headline)
+                    
+                    Text("How long to wait for silence after speech ends before processing")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        Text("0.5s")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Slider(value: $viewModel.silenceTimeout, in: 0.5...5.0, step: 0.5)
+                            .frame(minWidth: 200)
+                        
+                        Text("5.0s")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Current timeout:")
+                            .font(.caption)
+                        Text("\(String(format: "%.1f", viewModel.silenceTimeout)) seconds")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .monospacedDigit()
+                        
+                        Spacer()
+                        
+                        // Show timeout indicator
+                        if viewModel.silenceTimeout <= 1.0 {
+                            Label("Quick", systemImage: "bolt.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        } else if viewModel.silenceTimeout <= 2.0 {
+                            Label("Normal", systemImage: "clock")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        } else if viewModel.silenceTimeout <= 3.0 {
+                            Label("Slow", systemImage: "clock.fill")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        } else {
+                            Label("Very Slow", systemImage: "hourglass")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    
+                    Text("⚠️ Shorter timeout = faster but may cut off early speech")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                }
+                
                 Spacer()
                 
                 HStack {
