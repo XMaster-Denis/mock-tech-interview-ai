@@ -59,6 +59,41 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
         try? session.setActive(true)
+        #elseif os(macOS)
+        // On macOS, AVAudioSession is limited - audio output is handled differently
+        print("✅ FullDuplexAudioManager: macOS audio setup complete")
+        #endif
+    }
+    
+    private func configureAudioSessionForPlayback() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback, mode: .default, options: [.duckOthers])
+            try session.setActive(true)
+            print("✅ FullDuplexAudioManager: Audio session configured for playback")
+        } catch {
+            print("❌ FullDuplexAudioManager: Failed to configure playback session - \(error)")
+        }
+        #elseif os(macOS)
+        // On macOS, AVAudioPlayer handles output automatically
+        print("✅ FullDuplexAudioManager: macOS playback ready")
+        #endif
+    }
+    
+    private func configureAudioSessionForRecording() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true)
+            print("✅ FullDuplexAudioManager: Audio session configured for recording")
+        } catch {
+            print("❌ FullDuplexAudioManager: Failed to configure recording session - \(error)")
+        }
+        #elseif os(macOS)
+        // On macOS, recording is handled by AVAudioRecorder
+        print("✅ FullDuplexAudioManager: macOS recording ready")
         #endif
     }
     
@@ -78,6 +113,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         guard audioState == .idle || audioState == .listening else { return }
         
         print("🎤 FullDuplexAudioManager: Starting continuous listening")
+        configureAudioSessionForRecording()
         audioState = .listening
         isListening = true
         voiceDetector.startListening()
@@ -114,6 +150,9 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
             return
         }
         
+        // Configure audio session for playback (important for macOS)
+        configureAudioSessionForPlayback()
+        
         print("🔊 FullDuplexAudioManager: Starting TTS playback (\(audioData.count) bytes)")
         audioState = .speaking
         isSpeaking = true
@@ -135,8 +174,10 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
             do {
                 ttsPlayer = try AVAudioPlayer(data: data)
                 ttsPlayer?.delegate = self
-                ttsPlayer?.rate = 0.8 // Slightly slower for clarity
+                ttsPlayer?.rate = 0.5 // Slower for clarity (like working example)
+                ttsPlayer?.volume = 1.0 // Ensure full volume
                 ttsPlayer?.prepareToPlay()
+                print("🎵 FullDuplexAudioManager: TTS player prepared, rate=0.5, volume=1.0")
                 
                 ttsTask = Task { @MainActor in
                     ttsPlayer?.play()
