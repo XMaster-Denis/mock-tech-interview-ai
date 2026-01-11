@@ -23,13 +23,18 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         let apiKey = userDefaults.string(forKey: UserDefaultsKeys.apiKey) ?? ""
         let languageRaw = userDefaults.string(forKey: UserDefaultsKeys.selectedLanguage) ?? Language.english.rawValue
         let voice = userDefaults.string(forKey: UserDefaultsKeys.selectedVoice) ?? APIConstants.Voice.alloy
+        let voiceThreshold = userDefaults.float(forKey: UserDefaultsKeys.voiceThreshold)
         
         let language = Language(rawValue: languageRaw) ?? .english
+        
+        // Use saved threshold if valid, otherwise use default (0.2)
+        let threshold = voiceThreshold > 0 ? voiceThreshold : 0.2
         
         return Settings(
             apiKey: apiKey,
             selectedLanguage: language,
-            selectedVoice: voice
+            selectedVoice: voice,
+            voiceThreshold: threshold
         )
     }
     
@@ -37,5 +42,6 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         userDefaults.set(settings.apiKey, forKey: UserDefaultsKeys.apiKey)
         userDefaults.set(settings.selectedLanguage.rawValue, forKey: UserDefaultsKeys.selectedLanguage)
         userDefaults.set(settings.selectedVoice, forKey: UserDefaultsKeys.selectedVoice)
+        userDefaults.set(settings.voiceThreshold, forKey: UserDefaultsKeys.voiceThreshold)
     }
 }

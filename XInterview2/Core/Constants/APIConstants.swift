@@ -33,4 +33,5 @@ enum UserDefaultsKeys {
     static let apiKey = "openai_api_key"
     static let selectedLanguage = "selected_language"
     static let selectedVoice = "selected_voice"
+    static let voiceThreshold = "voice_threshold"
 }

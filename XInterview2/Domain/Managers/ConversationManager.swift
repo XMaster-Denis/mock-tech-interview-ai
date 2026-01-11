@@ -105,7 +105,7 @@ class ConversationManager: ObservableObject {
         // Load settings and update voice threshold
         let settings = settingsRepository.loadSettings()
         audioManager.updateVoiceThreshold(settings.voiceThreshold)
-        Logger.state("Voice threshold set to: \(settings.voiceThreshold)")
+        Logger.info("Voice threshold: \(settings.voiceThreshold)")
         
         // Start continuous listening
         Logger.state("Starting audio listening")
