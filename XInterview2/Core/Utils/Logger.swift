@@ -15,7 +15,7 @@ enum LogLevel: Int, Comparable {
     case warning = 2
     case error = 3
     
-    static let current: LogLevel = .info // Set to .debug for verbose logging
+    static let current: LogLevel = .debug // Set to .debug for verbose logging
     
     static func < (lhs: LogLevel, rhs: LogLevel) -> Bool {
         return lhs.rawValue < rhs.rawValue

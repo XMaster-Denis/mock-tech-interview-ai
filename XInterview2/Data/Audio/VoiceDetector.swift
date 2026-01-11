@@ -191,7 +191,7 @@ class VoiceDetector: NSObject, ObservableObject {
         Logger.voice("🛑 Stopping recording...")
         audioRecorder?.stop()
         isRecording = false
-        lastLevelLogTime = nil
+        // Don't reset lastLevelLogTime to maintain periodic logging across recording restarts
         
         if let url = recordingFileURL {
             do {
