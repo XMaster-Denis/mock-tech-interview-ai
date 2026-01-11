@@ -150,8 +150,8 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     
     // MARK: - TTS Playback
     
-    func speak(_ audioData: Data, canBeInterrupted: Bool = true) async throws {
-        Logger.audio("speak() called - data size: \(audioData.count) bytes, canBeInterrupted: \(canBeInterrupted)")
+    func speak(_ audioData: Data, canBeInterrupted: Bool = true, skipSpeechCheck: Bool = false) async throws {
+        Logger.audio("speak() called - data size: \(audioData.count) bytes, canBeInterrupted: \(canBeInterrupted), skipSpeechCheck: \(skipSpeechCheck)")
         
         // Validate audio data
         guard !audioData.isEmpty else {
@@ -162,8 +162,8 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         // Stop any current playback
         stopPlayback()
         
-        // If user is speaking, cancel TTS
-        if voiceDetector.speechDetected {
+        // If user is speaking and we're not skipping speech check, cancel TTS
+        if !skipSpeechCheck && voiceDetector.speechDetected {
             Logger.warning("User is speaking, cancelling TTS")
             audioState = .listening
             return

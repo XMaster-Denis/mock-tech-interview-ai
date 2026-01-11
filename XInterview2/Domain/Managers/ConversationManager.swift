@@ -231,9 +231,9 @@ class ConversationManager: ObservableObject {
             Logger.state("Notifying UI of AI message")
             onAIMessage?(response)
             
-            // Convert to speech
+            // Convert to speech (opening message - skip speech check to allow playback)
             Logger.state("Converting AI response to speech")
-            await speakResponse(response, language: language, apiKey: apiKey)
+            await speakResponse(response, language: language, apiKey: apiKey, skipSpeechCheck: true)
             
         } catch {
             // Only handle error if not stopping
@@ -344,7 +344,7 @@ class ConversationManager: ObservableObject {
         }
     }
     
-    private func speakResponse(_ text: String, language: Language, apiKey: String) async {
+    private func speakResponse(_ text: String, language: Language, apiKey: String, skipSpeechCheck: Bool = false) async {
         Logger.state("speakResponse() START - text length: \(text.count)")
         
         // Check if stopping before TTS
@@ -374,7 +374,7 @@ class ConversationManager: ObservableObject {
             // Play (interruptible)
             Logger.state("Calling audioManager.speak()")
             conversationState = .speaking
-            try await audioManager.speak(audioData, canBeInterrupted: true)
+            try await audioManager.speak(audioData, canBeInterrupted: true, skipSpeechCheck: skipSpeechCheck)
             
         } catch {
             // Only handle error if not stopping
