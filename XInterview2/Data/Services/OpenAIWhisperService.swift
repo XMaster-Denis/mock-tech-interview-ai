@@ -12,7 +12,7 @@ struct WhisperResponse: Codable {
 }
 
 protocol OpenAIWhisperServiceProtocol {
-    func transcribe(audioData: Data, apiKey: String) async throws -> String
+    func transcribe(audioData: Data, apiKey: String, language: String) async throws -> String
 }
 
 class OpenAIWhisperService: OpenAIWhisperServiceProtocol {
@@ -22,15 +22,15 @@ class OpenAIWhisperService: OpenAIWhisperServiceProtocol {
         self.httpClient = httpClient
     }
     
-    func transcribe(audioData: Data, apiKey: String) async throws -> String {
+    func transcribe(audioData: Data, apiKey: String, language: String) async throws -> String {
         let boundary = "Boundary-\(UUID().uuidString)"
         
         var body = Data()
         
-        // Add file
+        // Add file (WAV format)
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"audio.m4a\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
         body.append(audioData)
         body.append("\r\n".data(using: .utf8)!)
         
@@ -38,6 +38,12 @@ class OpenAIWhisperService: OpenAIWhisperServiceProtocol {
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
         body.append(APIConstants.Model.whisper.data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+        
+        // Add language parameter
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
+        body.append(language.data(using: .utf8)!)
         body.append("\r\n".data(using: .utf8)!)
         
         // Close boundary

@@ -16,6 +16,15 @@ class InterviewViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var selectedTopic: InterviewTopic
+    @Published var conversationState: ConversationState = .idle
+    @Published var audioLevel: Float = 0.0
+    
+    enum ConversationState {
+        case idle
+        case listening
+        case processing
+        case speaking
+    }
     
     // MARK: - State
     
@@ -31,24 +40,60 @@ class InterviewViewModel: ObservableObject {
     
     // MARK: - Dependencies
     
-    private let settingsRepository: SettingsRepositoryProtocol
     private let audioEngine: AudioEngineProtocol
     private let whisperService: OpenAIWhisperServiceProtocol
     private let chatService: OpenAIChatServiceProtocol
     private let ttsService: OpenAITTSServiceProtocol
+    private let settingsRepository: SettingsRepositoryProtocol
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
     
     init() {
         let initialTopic = InterviewTopic.defaultTopics[0]
-        self.settingsRepository = SettingsRepository()
         self.audioEngine = AudioEngine()
         self.whisperService = OpenAIWhisperService()
         self.chatService = OpenAIChatService()
         self.ttsService = OpenAITTSService()
+        self.settingsRepository = SettingsRepository()
         
         self.selectedTopic = initialTopic
         self.session = InterviewSession(topic: initialTopic)
+        
+        // Setup automatic recording callback
+        setupAutoRecording()
+        setupAudioLevelObservation()
+    }
+    
+    // MARK: - Auto Recording Setup
+    
+    private func setupAutoRecording() {
+        guard let audioEngineWithCallback = audioEngine as? AudioEngine else { return }
+        
+        // Start auto-recording when AI finishes speaking
+        audioEngineWithCallback.onRecordingStopped = { [weak self] in
+            guard let self = self else { return }
+            
+            // Only auto-start if session is active
+            if self.session.isActive && self.conversationState != .processing {
+                print("🎤 Auto-starting recording after AI response")
+                Task {
+                    await self.startRecording()
+                }
+            }
+        }
+    }
+    
+    private func setupAudioLevelObservation() {
+        guard let audioEngineWithCallback = audioEngine as? AudioEngine else { return }
+        
+        // Observe audio level changes
+        audioEngineWithCallback.$audioLevel
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] level in
+                self?.audioLevel = level
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods
@@ -70,6 +115,8 @@ class InterviewViewModel: ObservableObject {
             messages: []
         )
         
+        conversationState = .processing
+        
         // Generate initial greeting
         Task {
             await generateAIResponse(isInitial: true)
@@ -79,6 +126,8 @@ class InterviewViewModel: ObservableObject {
     func stopInterview() {
         session.isActive = false
         state = .idle
+        conversationState = .idle
+        errorMessage = nil
     }
     
     func toggleRecording() {
@@ -102,10 +151,13 @@ class InterviewViewModel: ObservableObject {
         do {
             try audioEngine.startRecording()
             state = .recording
+            conversationState = .listening
             errorMessage = nil
             print("🎙️ InterviewViewModel: Recording state changed to .recording")
         } catch {
             errorMessage = "Failed to start recording: \(error.localizedDescription)"
+            state = .idle
+            conversationState = .idle
             print("❌ InterviewViewModel: Start recording failed - \(error.localizedDescription)")
         }
     }
@@ -114,11 +166,13 @@ class InterviewViewModel: ObservableObject {
         do {
             try audioEngine.stopRecording()
             state = .transcribing
+            conversationState = .processing
             print("📝 InterviewViewModel: Recording stopped, transcribing...")
             
             guard let audioData = audioEngine.audioData else {
                 errorMessage = "No audio data recorded"
                 state = .idle
+                conversationState = .idle
                 print("❌ InterviewViewModel: No audio data available")
                 return
             }
@@ -128,13 +182,18 @@ class InterviewViewModel: ObservableObject {
             // Transcribe audio
             let settings = settingsRepository.loadSettings()
             print("📡 InterviewViewModel: Sending audio to Whisper API...")
-            let userText = try await whisperService.transcribe(audioData: audioData, apiKey: settings.apiKey)
+            let userText = try await whisperService.transcribe(
+                audioData: audioData, 
+                apiKey: settings.apiKey,
+                language: settings.selectedLanguage.rawValue
+            )
             
             print("📝 InterviewViewModel: Transcribed text: \"\(userText)\"")
             
             guard !userText.isEmpty else {
                 errorMessage = "No speech detected"
                 state = .idle
+                conversationState = .listening
                 print("⚠️ InterviewViewModel: Empty transcription")
                 return
             }
@@ -150,18 +209,30 @@ class InterviewViewModel: ObservableObject {
         } catch {
             errorMessage = "Error: \(error.localizedDescription)"
             state = .idle
+            conversationState = .listening
             print("❌ InterviewViewModel: Processing failed - \(error.localizedDescription)")
+            
+            // Auto-restart recording on error
+            if session.isActive {
+                print("🔄 InterviewViewModel: Auto-restarting recording after error")
+                Task {
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
+                    await startRecording()
+                }
+            }
         }
     }
     
     private func generateAIResponse(isInitial: Bool) async {
         guard session.isActive else {
             state = .idle
+            conversationState = .idle
             print("⚠️ InterviewViewModel: Session not active")
             return
         }
         
         state = .generatingResponse
+        conversationState = .processing
         print("🤖 InterviewViewModel: Generating AI response...")
         
         do {
@@ -183,6 +254,7 @@ class InterviewViewModel: ObservableObject {
             
             // Generate and play speech
             state = .playingResponse
+            conversationState = .speaking
             print("🔊 InterviewViewModel: Generating TTS audio...")
             let audioData = try await ttsService.generateSpeech(
                 text: responseText,
@@ -196,6 +268,7 @@ class InterviewViewModel: ObservableObject {
         } catch {
             errorMessage = "Error: \(error.localizedDescription)"
             state = .idle
+            conversationState = .listening
             print("❌ InterviewViewModel: AI response failed - \(error.localizedDescription)")
         }
     }
@@ -220,6 +293,19 @@ class InterviewViewModel: ObservableObject {
             return "Transcribing..."
         case .generatingResponse:
             return "Thinking..."
+        }
+    }
+    
+    var statusText: String {
+        switch conversationState {
+        case .idle:
+            return "Ready"
+        case .listening:
+            return "Listening..."
+        case .processing:
+            return "Processing..."
+        case .speaking:
+            return "AI Speaking..."
         }
     }
 }

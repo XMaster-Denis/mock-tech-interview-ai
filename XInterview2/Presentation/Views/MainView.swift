@@ -80,12 +80,18 @@ struct MainView: View {
             
             Spacer()
             
-            // Recording status indicator
+            // Audio level visualizer
+            AudioLevelView(
+                audioLevel: viewModel.audioLevel,
+                isRecording: viewModel.isRecording
+            )
+            
+            // Conversation status
             HStack(spacing: 8) {
                 Circle()
-                    .fill(viewModel.isRecording ? Color.red : Color.gray)
-                    .frame(width: 8, height: 8)
-                Text(viewModel.recordingButtonText)
+                    .fill(statusColor)
+                    .frame(width: 10, height: 10)
+                Text(viewModel.statusText)
                     .font(.subheadline)
                     .monospacedDigit()
             }
@@ -103,10 +109,11 @@ struct MainView: View {
                     Button(action: { viewModel.stopInterview() }) {
                         Label("Stop Interview", systemImage: "stop.fill")
                     }
+                    .buttonStyle(.bordered)
                 }
                 
                 Button(action: { viewModel.toggleRecording() }) {
-                    Label(viewModel.isRecording ? "Stop" : "Record", systemImage: viewModel.isRecording ? "stop.circle.fill" : "mic.fill")
+                    Label(viewModel.recordingButtonText, systemImage: viewModel.isRecording ? "stop.circle.fill" : "mic.fill")
                 }
                 .disabled(!viewModel.canRecord)
                 .buttonStyle(.borderedProminent)
@@ -116,6 +123,19 @@ struct MainView: View {
         .background(Color(nsColor: .controlBackgroundColor))
     }
     
+    private var statusColor: Color {
+        switch viewModel.conversationState {
+        case .idle:
+            return .gray
+        case .listening:
+            return .blue
+        case .processing:
+            return .orange
+        case .speaking:
+            return .green
+        }
+    }
+    
     // MARK: - Permissions
     
     private func requestMicrophonePermission() {
@@ -123,6 +143,54 @@ struct MainView: View {
         // Microphone permission is automatically requested on first use in macOS
         // But we can show a setup prompt here if needed
         #endif
+    }
+}
+
+// MARK: - Audio Level View
+
+struct AudioLevelView: View {
+    let audioLevel: Float
+    let isRecording: Bool
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<20, id: \.self) { index in
+                Rectangle()
+                    .fill(barColor(for: index))
+                    .frame(width: 4, height: barHeight(for: index))
+                    .cornerRadius(2)
+                    .animation(.easeInOut(duration: 0.1), value: audioLevel)
+            }
+        }
+        .frame(height: 20)
+        .padding(.horizontal, 8)
+    }
+    
+    private func barHeight(for index: Int) -> CGFloat {
+        let normalizedLevel = audioLevel * 20
+        let barIndex = Float(index)
+        return barIndex < normalizedLevel ? CGFloat(20) : CGFloat(4)
+    }
+    
+    private func barColor(for index: Int) -> Color {
+        let normalizedLevel = audioLevel * 20
+        let barIndex = Float(index)
+        
+        if !isRecording {
+            return Color.gray.opacity(0.3)
+        } else if barIndex >= normalizedLevel {
+            return Color.gray.opacity(0.5)
+        } else {
+            // Color gradient based on intensity
+            let intensity = Float(index) / 20.0
+            if intensity < 0.5 {
+                return Color.green
+            } else if intensity < 0.8 {
+                return Color.orange
+            } else {
+                return Color.red
+            }
+        }
     }
 }
 
