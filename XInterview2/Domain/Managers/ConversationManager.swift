@@ -296,10 +296,15 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.state("User message: '\(userText)'")
+            
+            // Add user message to history BEFORE calling API
+            // This ensures AI has context of what user just said
+            Logger.state("Adding user message to history")
+            addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+            
             onUserMessage?(userText)
             
             // Get AI response
-            Logger.state("Calling chatService.sendMessage() for user message")
             guard let topic = currentTopic else {
                 Logger.error("No current topic available")
                 return
@@ -311,17 +316,11 @@ class ConversationManager: ObservableObject {
                 apiKey: apiKey
             )
             
-            Logger.state("Received AI response: \(String(response.prefix(100)))...")
-            
             // Check if stopping after getting AI response
             guard !isStopping else {
                 Logger.warning("processUserSpeech() cancelled after AI response - isStopping=true")
                 return
             }
-            
-            // Add user message to history
-            Logger.state("Adding user message to history")
-            addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
             
             Logger.state("AI message: '\(response)'")
             onAIMessage?(response)

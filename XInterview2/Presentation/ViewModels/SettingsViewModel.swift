@@ -15,7 +15,7 @@ class SettingsViewModel: ObservableObject {
     @Published var apiKey: String = ""
     @Published var selectedLanguage: Language = .english
     @Published var selectedVoice: String = APIConstants.Voice.alloy
-    @Published var voiceThreshold: Float = 0.5
+    @Published var voiceThreshold: Float = 0.2
     
     // MARK: - Dependencies
     
