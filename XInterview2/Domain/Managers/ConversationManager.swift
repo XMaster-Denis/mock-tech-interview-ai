@@ -243,7 +243,11 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.error("Failed to send opening message", error: error)
-            onError?(error.localizedDescription)
+            
+            // Use error description if available, otherwise localized description
+            let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            onError?(errorMessage)
+            
             conversationState = .listening
             isProcessing = false
         }
@@ -344,7 +348,11 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.error("Processing failed", error: error)
-            onError?(error.localizedDescription)
+            
+            // Use error description if available, otherwise localized description
+            let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            onError?(errorMessage)
+            
             conversationState = .listening
             isProcessing = false
         }
@@ -390,6 +398,11 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.error("TTS failed", error: error)
+            
+            // Use error description if available, otherwise localized description
+            let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            onError?(errorMessage)
+            
             conversationState = .listening
             isProcessing = false
         }
