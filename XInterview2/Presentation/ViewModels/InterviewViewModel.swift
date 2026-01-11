@@ -103,8 +103,10 @@ class InterviewViewModel: ObservableObject {
             try audioEngine.startRecording()
             state = .recording
             errorMessage = nil
+            print("🎙️ InterviewViewModel: Recording state changed to .recording")
         } catch {
             errorMessage = "Failed to start recording: \(error.localizedDescription)"
+            print("❌ InterviewViewModel: Start recording failed - \(error.localizedDescription)")
         }
     }
     
@@ -112,25 +114,35 @@ class InterviewViewModel: ObservableObject {
         do {
             try audioEngine.stopRecording()
             state = .transcribing
+            print("📝 InterviewViewModel: Recording stopped, transcribing...")
             
             guard let audioData = audioEngine.audioData else {
                 errorMessage = "No audio data recorded"
                 state = .idle
+                print("❌ InterviewViewModel: No audio data available")
                 return
             }
             
+            print("📊 InterviewViewModel: Audio data size: \(audioData.count) bytes")
+            
             // Transcribe audio
             let settings = settingsRepository.loadSettings()
+            print("📡 InterviewViewModel: Sending audio to Whisper API...")
             let userText = try await whisperService.transcribe(audioData: audioData, apiKey: settings.apiKey)
             
+            print("📝 InterviewViewModel: Transcribed text: \"\(userText)\"")
+            
             guard !userText.isEmpty else {
+                errorMessage = "No speech detected"
                 state = .idle
+                print("⚠️ InterviewViewModel: Empty transcription")
                 return
             }
             
             // Add user message to session
             let userMessage = TranscriptMessage(role: .user, text: userText)
             session.messages.append(userMessage)
+            print("✅ InterviewViewModel: User message added")
             
             // Generate AI response
             await generateAIResponse(isInitial: false)
@@ -138,16 +150,19 @@ class InterviewViewModel: ObservableObject {
         } catch {
             errorMessage = "Error: \(error.localizedDescription)"
             state = .idle
+            print("❌ InterviewViewModel: Processing failed - \(error.localizedDescription)")
         }
     }
     
     private func generateAIResponse(isInitial: Bool) async {
         guard session.isActive else {
             state = .idle
+            print("⚠️ InterviewViewModel: Session not active")
             return
         }
         
         state = .generatingResponse
+        print("🤖 InterviewViewModel: Generating AI response...")
         
         do {
             let settings = settingsRepository.loadSettings()
@@ -159,23 +174,29 @@ class InterviewViewModel: ObservableObject {
                 apiKey: settings.apiKey
             )
             
+            print("🤖 InterviewViewModel: AI response: \"\(responseText)\"")
+            
             // Add AI message to session
             let aiMessage = TranscriptMessage(role: .assistant, text: responseText)
             session.messages.append(aiMessage)
+            print("✅ InterviewViewModel: AI message added")
             
             // Generate and play speech
             state = .playingResponse
+            print("🔊 InterviewViewModel: Generating TTS audio...")
             let audioData = try await ttsService.generateSpeech(
                 text: responseText,
                 voice: settings.selectedVoice,
                 apiKey: settings.apiKey
             )
             
+            print("🔊 InterviewViewModel: Playing TTS audio (\(audioData.count) bytes)")
             try audioEngine.playAudio(audioData)
             
         } catch {
             errorMessage = "Error: \(error.localizedDescription)"
             state = .idle
+            print("❌ InterviewViewModel: AI response failed - \(error.localizedDescription)")
         }
     }
     
