@@ -12,12 +12,13 @@ XInterview2 is a macOS application that enables voice-based interview practice w
 
 - 🎤 **Full Duplex Audio** - Continuous voice input and interruptible AI responses
 - 🎯 **Voice Activity Detection** - Automatic speech detection with configurable threshold
-- 🗣️ **Speech-to-Text** - OpenAI Whisper API for accurate transcription
+- ✂️ **Smart Audio Trimming** - Automatically removes silence before and after speech for faster API processing
+- 🗣️ **Speech-to-Text** - OpenAI Whisper API with technical terminology prompts
 - 🔊 **Text-to-Speech** - 6 OpenAI TTS voices (alloy, echo, fable, onyx, nova, shimmer)
 - 💬 **AI Conversation** - GPT-4 powered interview conversations
-- 🌍 **Multi-Language Support** - English, German, Russian
+- 🌍 **Multi-Language Support** - English, German, Russian with tech term preservation
 - 📝 **Transcript History** - Real-time chat history display
-- 🎛️ **Configurable Settings** - API key, language, voice, voice threshold
+- 🎛️ **Configurable Settings** - API key, language, voice, voice threshold, silence timeout
 
 ### Technology Stack
 
@@ -63,21 +64,25 @@ The application is now in a stable baseline state with all core features working
 
 #### Working Features
 - ✅ Full duplex audio conversation
-- ✅ Voice activity detection with configurable threshold (default 0.5)
-- ✅ Speech-to-text via OpenAI Whisper API
+- ✅ Voice activity detection with configurable threshold (default 0.15)
+- ✅ Smart audio trimming with AVFoundation - removes leading/trailing silence
+- ✅ Speech-to-text via OpenAI Whisper API with technical term preservation
+- ✅ Technical prompts for EN/DE/RU languages - preserves English tech terms in non-English speech
+- ✅ Temperature optimization (0.0) for more accurate transcriptions
 - ✅ Text-to-speech via OpenAI TTS API
 - ✅ Interruptible AI responses during conversation
 - ✅ Non-interruptible opening AI greeting
 - ✅ Transcript view with real-time chat history
-- ✅ Audio level visualization
-- ✅ Settings with API key, language, voice, and voice threshold
+- ✅ Audio level visualization with silence timer
+- ✅ Settings with API key, language, voice, voice threshold, silence timeout
 - ✅ Multi-language support (English, German, Russian)
 - ✅ Multiple interview topics
-- ✅ Proper error handling for cancellations
+- ✅ Proper error handling with audio trimming fallback
 
 #### Known Issues
 - ⚠️ Swift 6 Sendable warnings in DefaultHTTPClient (non-blocking)
 - ⚠️ Voice detection may need adjustment in noisy environments
+- ⚠️ AVAssetExportPassthrough may not work on all macOS versions (fallback to original audio if trim fails)
 
 #### Architecture
 The project follows Clean Architecture principles:
@@ -118,6 +123,20 @@ The project follows strict engineering guidelines documented in:
 - If speech is detected too often (background noise): **Increase voice threshold** (move slider right)
 - If speech is not detected when speaking: **Decrease voice threshold** (move slider left)
 - Threshold range: 0.05 (very sensitive) to 0.5 (least sensitive)
+
+### Silence Detection Issues
+
+- If speech is cut off too quickly: **Increase silence timeout** (move slider right)
+- If silence takes too long to trigger: **Decrease silence timeout** (move slider left)
+- Silence timeout range: 0.5s (fast) to 3.0s (slow)
+
+### Audio Trimming Benefits
+
+The smart audio trimming feature provides significant benefits:
+- **Faster API response** - 30-50% smaller files upload faster to Whisper API
+- **Cost savings** - Reduced file size proportionally reduces Whisper API costs
+- **Better accuracy** - Only speech data is transcribed, no silence interference
+- **Technical term preservation** - English tech terms kept intact in DE/RU transcriptions
 
 ### API Connection Issues
 
@@ -193,6 +212,7 @@ Follow engineering principles outlined in the documentation:
 - Enhanced voice detection (streaming VAD)
 - UI/UX improvements
 - Fix Swift 6 Sendable warnings
+- Custom technical term lists per interview topic
 
 ---
 
@@ -220,6 +240,6 @@ For issues, questions, or feature requests, please open an issue in the reposito
 
 ---
 
-**Version:** 0.1.0-baseline  
-**Last Updated:** 2026-01-11
-**Git Tag:** v0.1.0-baseline
+**Version:** 0.2.0-audio-optimization  
+**Last Updated:** 2026-01-12
+**Git Tags:** v0.1.0-baseline, v0.2.0-audio-optimization
