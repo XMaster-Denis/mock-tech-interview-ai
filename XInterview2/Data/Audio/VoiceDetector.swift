@@ -59,6 +59,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var isPaused: Bool = false
     private var isCalibrated: Bool = false // True after calibration delay
     private var silenceTimerRunning: Bool = false // Prevent duplicate timers
+    private var fallbackTimer: Timer? // Force handleSpeechEnd() if main timer fails
     
     // MARK: - Callbacks
     
@@ -81,11 +82,12 @@ class VoiceDetector: NSObject, ObservableObject {
     }
     
     deinit {
-        // Clean up without calling main actor methods
         levelMonitorTimer?.invalidate()
         levelMonitorTimer = nil
         silenceTimer?.invalidate()
         silenceTimer = nil
+        fallbackTimer?.invalidate()
+        fallbackTimer = nil
         audioRecorder?.stop()
         audioRecorder = nil
     }
@@ -125,6 +127,14 @@ class VoiceDetector: NSObject, ObservableObject {
         Logger.voice("Stopping...")
         isListening = false
         isPaused = true
+        
+        silenceTimer?.invalidate()
+        silenceTimer = nil
+        if let ft = fallbackTimer {
+            ft.invalidate()
+            fallbackTimer = nil
+        }
+        silenceTimerRunning = false
         
         stopRecording()
         stopLevelMonitoring()
@@ -265,31 +275,10 @@ class VoiceDetector: NSObject, ObservableObject {
         let level = max(0.0, min(1.0, (averagePower + 60) / 60))
         audioLevel = level
         
-        // Log raw averagePower for diagnosis (macOS might have issues)
-        if lastLevelLogTime == nil || Date().timeIntervalSince(lastLevelLogTime!) >= 1.0 {
-            Logger.voice("📊 Raw: averagePower=\(String(format: "%.2f", averagePower)), level=\(String(format: "%.2f", level)), metering=\(recorder.isMeteringEnabled)")
-        }
-        
         let isAboveThreshold = level > speechStartThreshold
-        
-        // Log level every 1 second regardless of state
-        let now = Date()
-        if lastLevelLogTime == nil || now.timeIntervalSince(lastLevelLogTime!) >= 1.0 {
-            if isCalibrated {
-                if isAboveThreshold {
-                    Logger.voice("🎤 Level: \(String(format: "%.2f", level)) / Threshold: \(speechStartThreshold) - SPEECH DETECTED")
-                } else {
-                    Logger.voice("🔇 Level: \(String(format: "%.2f", level)) / Threshold: \(speechStartThreshold) - below")
-                }
-            }
-            lastLevelLogTime = now
-        }
         
         // Skip speech detection during calibration
         if !isCalibrated {
-            if isAboveThreshold {
-                Logger.voice("⏳ Calibration in progress (level: \(String(format: "%.2f", level)) > threshold: \(speechStartThreshold)) - ignoring")
-            }
             return
         }
         
@@ -310,6 +299,10 @@ class VoiceDetector: NSObject, ObservableObject {
                 Logger.voice("🗣️ Speech continues - silence timer cancelled")
             }
             silenceTimer?.invalidate()
+            silenceTimer = nil
+            silenceTimerRunning = false  // Reset flag to allow new silence timer creation
+            fallbackTimer?.invalidate()  // Cancel fallback timer
+            fallbackTimer = nil
             silenceStartTime = nil
             isSilenceTimerActive = false
             silenceTimerProgress = 0.0
@@ -360,8 +353,8 @@ class VoiceDetector: NSObject, ObservableObject {
                     ]
                 )
                 
-                // Log progress every 0.5 seconds
-                if Int(elapsed * 10) % 5 == 0 {
+                // Log progress every 1.0 seconds
+                if Int(elapsed) % 1 == 0 && Int(elapsed * 10) % 10 == 0 {
                     Logger.voice("⏳ Silence: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s")
                 }
             }
@@ -372,7 +365,21 @@ class VoiceDetector: NSObject, ObservableObject {
                 repeats: false
             ) { [weak self] _ in
                 self?.silenceTimerRunning = false // Reset flag when timer fires
+                self?.fallbackTimer?.invalidate() // Cancel fallback timer
+                self?.fallbackTimer = nil
                 self?.handleSpeechEnd()
+            }
+            
+            // Fallback timer to ensure handleSpeechEnd() is called
+            fallbackTimer = Timer.scheduledTimer(
+                withTimeInterval: self.silenceTimeout + 0.1,
+                repeats: false
+            ) { [weak self] _ in
+                if self?.silenceTimerRunning ?? false {
+                    Logger.warning("⚠️ Fallback timer triggered - main silence timer didn't fire")
+                    self?.silenceTimerRunning = false
+                    self?.handleSpeechEnd()
+                }
             }
         }
         
