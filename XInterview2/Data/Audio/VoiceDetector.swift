@@ -52,6 +52,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var silenceTimer: Timer?
     private var silenceProgressTimer: Timer?  // New: animates progress
     private var lastLevelLogTime: Date?  // Track when we last logged level
+    private var lastDuplicateLogTime: Date?  // Track when duplicate log was shown
     
     private var isRecording: Bool = false
     private var isSpeechActive: Bool = false
@@ -318,7 +319,11 @@ class VoiceDetector: NSObject, ObservableObject {
         else if !isAboveThreshold && isSpeechActive {
             // Prevent creating duplicate silence timers
             guard !silenceTimerRunning else {
-                Logger.voice("⏸️ Silence timer already running, skipping duplicate creation")
+                // Only log if not shown in last 0.5s to reduce log spam
+                if lastDuplicateLogTime == nil || Date().timeIntervalSince(lastDuplicateLogTime!) >= 0.5 {
+                    Logger.voice("⏸️ Silence timer already running, skipping duplicate creation")
+                    lastDuplicateLogTime = Date()
+                }
                 return
             }
             
