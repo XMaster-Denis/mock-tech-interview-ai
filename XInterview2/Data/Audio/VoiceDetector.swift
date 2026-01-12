@@ -184,11 +184,14 @@ class VoiceDetector: NSObject, ObservableObject {
             isSpeechActive = false
             speechDetected = false
             
-            // Start calibration timer
-            Timer.scheduledTimer(withTimeInterval: calibrationDelay, repeats: false) { [weak self] _ in
+        // Start calibration timer - capture threshold to avoid main actor warning
+        let currentThreshold = self.speechStartThreshold
+        Timer.scheduledTimer(withTimeInterval: calibrationDelay, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
                 self?.isCalibrated = true
-                Logger.voice("✅ Calibration complete, speech detection enabled (threshold: \(self?.speechStartThreshold ?? 0.15))")
+                Logger.voice("✅ Calibration complete, speech detection enabled (threshold: \(currentThreshold))")
             }
+        }
             
             Logger.success("Recording started (calibrating for \(calibrationDelay)s)")
         } catch {
@@ -331,14 +334,18 @@ class VoiceDetector: NSObject, ObservableObject {
             Logger.voice("🔇 SILENCE DETECTED! Level: \(String(format: "%.2f", level)) < Threshold: \(speechStartThreshold)")
             Logger.voice("⏳ Waiting \(String(format: "%.1f", silenceTimeout))s to confirm speech ended...")
             
-            // Start progress animation timer
+            // Start progress animation timer - capture values to avoid main actor warnings
+            let timeoutValue = self.silenceTimeout
             silenceProgressTimer?.invalidate()
             silenceProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
                 guard let self = self, let start = self.silenceStartTime else { return }
                 let elapsed = Date().timeIntervalSince(start)
-                let progress = min(1.0, elapsed / self.silenceTimeout)
-                self.silenceTimerProgress = progress
-                self.silenceTimerElapsed = elapsed
+                let progress = min(1.0, elapsed / timeoutValue)
+                
+                MainActor.assumeIsolated {
+                    self.silenceTimerProgress = progress
+                    self.silenceTimerElapsed = elapsed
+                }
                 
                 // Publish to UI every update
                 NotificationCenter.default.post(
@@ -347,36 +354,42 @@ class VoiceDetector: NSObject, ObservableObject {
                     userInfo: [
                         "progress": progress,
                         "elapsed": elapsed,
-                        "timeout": self.silenceTimeout
+                        "timeout": timeoutValue
                     ]
                 )
                 
                 // Log progress every 1.0 seconds
                 if Int(elapsed) % 1 == 0 && Int(elapsed * 10) % 10 == 0 {
-                    Logger.voice("⏳ Silence: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", self.silenceTimeout))s")
+                    Logger.voice("⏳ Silence: \(String(format: "%.1f", elapsed))s / \(String(format: "%.1f", timeoutValue))s")
                 }
             }
             
-            // Main silence timer
+            // Main silence timer - capture timeout to avoid main actor warning
+            let mainTimeout = self.silenceTimeout
             silenceTimer = Timer.scheduledTimer(
-                withTimeInterval: silenceTimeout,
+                withTimeInterval: mainTimeout,
                 repeats: false
             ) { [weak self] _ in
-                self?.silenceTimerRunning = false // Reset flag when timer fires
-                self?.fallbackTimer?.invalidate() // Cancel fallback timer
-                self?.fallbackTimer = nil
-                self?.handleSpeechEnd()
+                MainActor.assumeIsolated {
+                    self?.silenceTimerRunning = false // Reset flag when timer fires
+                    self?.fallbackTimer?.invalidate() // Cancel fallback timer
+                    self?.fallbackTimer = nil
+                    self?.handleSpeechEnd()
+                }
             }
             
             // Fallback timer to ensure handleSpeechEnd() is called
+            let fallbackTimeout = self.silenceTimeout + 0.1
             fallbackTimer = Timer.scheduledTimer(
-                withTimeInterval: self.silenceTimeout + 0.1,
+                withTimeInterval: fallbackTimeout,
                 repeats: false
             ) { [weak self] _ in
-                if self?.silenceTimerRunning ?? false {
-                    Logger.warning("⚠️ Fallback timer triggered - main silence timer didn't fire")
-                    self?.silenceTimerRunning = false
-                    self?.handleSpeechEnd()
+                MainActor.assumeIsolated {
+                    if self?.silenceTimerRunning ?? false {
+                        Logger.warning("⚠️ Fallback timer triggered - main silence timer didn't fire")
+                        self?.silenceTimerRunning = false
+                        self?.handleSpeechEnd()
+                    }
                 }
             }
         }

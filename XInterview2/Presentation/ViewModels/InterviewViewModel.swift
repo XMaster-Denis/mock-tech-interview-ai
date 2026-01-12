@@ -43,6 +43,7 @@ class InterviewViewModel: ObservableObject {
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
         
+        // Initialize ConversationManager on MainActor
         self.conversationManager = ConversationManager(
             whisperService: whisperService,
             chatService: chatService,

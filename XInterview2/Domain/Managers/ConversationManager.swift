@@ -205,7 +205,7 @@ class ConversationManager: ObservableObject {
         do {
             // Generate opening prompt
             Logger.state("Generating opening prompt")
-            let openingPrompt = generateOpeningPrompt(topic: topic, language: language)
+            _ = generateOpeningPrompt(topic: topic, language: language)
             
             // Get AI response (empty messages for opening)
             Logger.state("Calling chatService.sendMessage() for opening message")
