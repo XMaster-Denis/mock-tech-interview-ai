@@ -397,75 +397,71 @@ class VoiceDetector: NSObject, ObservableObject {
     
     private func trimWAVData(_ data: Data, 
                             startOffset: TimeInterval, 
-                            duration: TimeInterval) -> Data? {
-        let sampleRate = 16000.0
-        let bytesPerSample = 2  // 16-bit PCM
-        let channels = 1
-        let bytesPerSecond = sampleRate * Double(bytesPerSample * channels)
+                            duration: TimeInterval) async throws -> Data {
+        let tempDir = FileManager.default.temporaryDirectory
+        let inputFileURL = tempDir.appendingPathComponent("input_\(UUID().uuidString).wav")
+        let outputFileURL = tempDir.appendingPathComponent("output_\(UUID().uuidString).wav")
         
-        // Calculate byte offsets
-        let startByteOffset = Int(startOffset * bytesPerSecond)
-        let audioDataSize = Int(duration * bytesPerSecond)
-        
-        // Original file duration
-        let originalDuration = Double(data.count - 44) / bytesPerSecond
-        
-        // WAV header is 44 bytes
-        let headerSize = 44
-        let totalDataSize = headerSize + audioDataSize
-        
-        guard startByteOffset >= 0, audioDataSize > 0 else {
-            Logger.error("Invalid trim parameters: start=\(startOffset)s, duration=\(duration)s")
-            return nil
+        defer {
+            // Clean up temp files
+            try? FileManager.default.removeItem(at: inputFileURL)
+            try? FileManager.default.removeItem(at: outputFileURL)
         }
         
-        // Extract original header
-        let header = data.prefix(headerSize)
+        // Write original data to temp file
+        try data.write(to: inputFileURL)
         
-        // Calculate offset in audio data portion (skip header)
-        let audioDataStartOffset = headerSize + startByteOffset
+        // Create asset and export session
+        let asset = AVAsset(url: inputFileURL)
         
-        guard audioDataStartOffset + audioDataSize <= data.count else {
-            Logger.error("Trim exceeds file size")
-            return nil
+        guard let exportSession = AVAssetExportSession(
+            asset: asset,
+            presetName: AVAssetExportPresetPassthrough  // Use passthrough to avoid re-encoding
+        ) else {
+            throw NSError(domain: "AudioTrim", code: -1, 
+                       userInfo: [NSLocalizedDescriptionKey: "Failed to create export session"])
         }
         
-        // Extract audio data segment
-        let trimmedAudioData = data.subdata(in: audioDataStartOffset..<(audioDataStartOffset + audioDataSize))
+        exportSession.outputURL = outputFileURL
+        exportSession.outputFileType = .wav
         
-        // Build new WAV file with updated header
-        var newData = Data(capacity: totalDataSize)
-        newData.append(header)
-        newData.append(trimmedAudioData)
+        // Set time range for trimming
+        exportSession.timeRange = CMTimeRange(
+            start: CMTime(seconds: startOffset, preferredTimescale: 16000),
+            duration: CMTime(seconds: duration, preferredTimescale: 16000)
+        )
         
-        // Update WAV header fields
-        newData.withUnsafeMutableBytes { ptr in
-            // Offset 4: File size (excluding first 8 bytes of RIFF header)
-            let fileSize = UInt32(totalDataSize - 8)
-            ptr.baseAddress?.advanced(by: 4).assumingMemoryBound(to: UInt32.self).pointee = fileSize.littleEndian
-            
-            // Offset 40: Data chunk size
-            let dataSize = UInt32(audioDataSize)
-            ptr.baseAddress?.advanced(by: 40).assumingMemoryBound(to: UInt32.self).pointee = dataSize.littleEndian
+        // Export
+        await exportSession.export()
+        
+        if let error = exportSession.error {
+            Logger.error("Export failed", error: error)
+            throw error
         }
         
-        // Detailed logging
+        // Read trimmed data
+        let trimmedData = try Data(contentsOf: outputFileURL)
+        
+        // Logging
         let originalSizeKB = Double(data.count) / 1024
-        let trimmedSizeKB = Double(newData.count) / 1024
+        let trimmedSizeKB = Double(trimmedData.count) / 1024
         let savedKB = originalSizeKB - trimmedSizeKB
         let savedPercent = (savedKB / originalSizeKB) * 100
         
+        let sampleRate = 16000.0
+        let bytesPerSecond = 32000.0  // 16kHz * 2 bytes * 1 channel
+        let originalDuration = Double(data.count - 44) / bytesPerSecond
         let endTrimDuration = originalDuration - (startOffset + duration)
         
         Logger.voice("📊 AUDIO TRIMMING REPORT:")
         Logger.voice("   Original: \(String(format: "%.2f", originalDuration))s (\(Int(originalSizeKB)) KB)")
         Logger.voice("   Trimmed start: \(String(format: "%.2f", startOffset))s (\(Int(startOffset * bytesPerSecond / 1024)) KB)")
-        Logger.voice("   Kept speech: \(String(format: "%.2f", duration))s (\(Int(audioDataSize / 1024)) KB)")
+        Logger.voice("   Kept speech: \(String(format: "%.2f", duration))s (\(Int(duration * bytesPerSecond / 1024)) KB)")
         Logger.voice("   Trimmed end: \(String(format: "%.2f", endTrimDuration))s (\(Int(endTrimDuration * bytesPerSecond / 1024)) KB)")
         Logger.voice("   Final: \(String(format: "%.2f", duration))s (\(Int(trimmedSizeKB)) KB)")
         Logger.voice("   💾 Saved: \(String(format: "%.1f", savedKB)) KB (\(String(format: "%.1f", savedPercent))%)")
         
-        return newData
+        return trimmedData
     }
     
     private func handleSpeechEnd() {
@@ -473,7 +469,9 @@ class VoiceDetector: NSObject, ObservableObject {
               let startTime = speechStartTime,
               let recordingStart = recordingStartTime else { return }
         
-        let duration = Date().timeIntervalSince(startTime)
+        // Use silenceStartTime for accurate speech duration (excludes silence timeout)
+        let silenceStart = silenceStartTime ?? Date()
+        let duration = silenceStart.timeIntervalSince(startTime)
         
         // Stop silence indicators
         isSilenceTimerActive = false
@@ -511,17 +509,21 @@ class VoiceDetector: NSObject, ObservableObject {
         if let originalData = audioBuffer {
             Logger.voice("📁 Original audio: \(originalData.count) bytes")
             
-            if let trimmedData = trimWAVData(originalData, 
-                                          startOffset: startOffset, 
-                                          duration: speechDuration) {
-                Logger.voice("📤 Sending trimmed audio to Whisper API")
-                onVoiceEvent?(.speechEnded(trimmedData))
-            } else {
-                // Fallback to original data if trim fails
-                Logger.warning("⚠️ Trim failed, using original audio")
-                let originalSizeKB = Double(originalData.count) / 1024
-                Logger.voice("📤 Sending original audio: \(String(format: "%.1f", originalSizeKB)) KB")
-                onVoiceEvent?(.speechEnded(originalData))
+            // Handle async trimming in a Task
+            Task {
+                do {
+                    let trimmedData = try await trimWAVData(originalData, 
+                                                      startOffset: startOffset, 
+                                                      duration: speechDuration)
+                    Logger.voice("📤 Sending trimmed audio to Whisper API")
+                    onVoiceEvent?(.speechEnded(trimmedData))
+                } catch {
+                    // Fallback to original data if trim fails
+                    Logger.error("Trim failed, using original audio", error: error)
+                    let originalSizeKB = Double(originalData.count) / 1024
+                    Logger.voice("📤 Sending original audio: \(String(format: "%.1f", originalSizeKB)) KB")
+                    onVoiceEvent?(.speechEnded(originalData))
+                }
             }
         }
         
