@@ -24,7 +24,11 @@ class SettingsViewModel: ObservableObject {
     
     // MARK: - Initialization
     
-    init(settingsRepository: SettingsRepositoryProtocol = SettingsRepository()) {
+    convenience init() {
+        self.init(settingsRepository: SettingsRepository())
+    }
+    
+    init(settingsRepository: SettingsRepositoryProtocol) {
         self.settingsRepository = settingsRepository
         // Initialize on MainActor
         loadSettings()

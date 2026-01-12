@@ -244,7 +244,9 @@ class VoiceDetector: NSObject, ObservableObject {
         stopLevelMonitoring()
         
         levelMonitorTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            self?.checkAudioLevel()
+            MainActor.assumeIsolated {
+                self?.checkAudioLevel()
+            }
         }
         Logger.voice("Level monitoring started")
     }
@@ -336,9 +338,10 @@ class VoiceDetector: NSObject, ObservableObject {
             
             // Start progress animation timer - capture values to avoid main actor warnings
             let timeoutValue = self.silenceTimeout
+            let silenceStartValue = self.silenceStartTime  // Capture before closure
             silenceProgressTimer?.invalidate()
             silenceProgressTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-                guard let self = self, let start = self.silenceStartTime else { return }
+                guard let self = self, let start = silenceStartValue else { return }
                 let elapsed = Date().timeIntervalSince(start)
                 let progress = min(1.0, elapsed / timeoutValue)
                 
@@ -461,7 +464,6 @@ class VoiceDetector: NSObject, ObservableObject {
         let savedKB = originalSizeKB - trimmedSizeKB
         let savedPercent = (savedKB / originalSizeKB) * 100
         
-        let sampleRate = 16000.0
         let bytesPerSecond = 32000.0  // 16kHz * 2 bytes * 1 channel
         let originalDuration = Double(data.count - 44) / bytesPerSecond
         let endTrimDuration = originalDuration - (startOffset + duration)

@@ -9,12 +9,14 @@ import SwiftUI
 import Combine
 
 struct SettingsView: View {
-    @ObservedObject var viewModel: SettingsViewModel
+    @StateObject private var viewModel: SettingsViewModel
     @StateObject private var audioTestViewModel = AudioTestViewModel()
     @Environment(\.dismiss) private var dismiss
     
     init() {
-        viewModel = SettingsViewModel()
+        // Initialize on MainActor
+        _viewModel = StateObject(wrappedValue: SettingsViewModel())
+        _audioTestViewModel = StateObject(wrappedValue: AudioTestViewModel())
     }
     
     var body: some View {
@@ -96,7 +98,7 @@ struct SettingsView: View {
                     if !audioTestViewModel.logs.isEmpty {
                         ScrollView {
                             LazyVStack(alignment: .leading, spacing: 4) {
-                                ForEach(Array(audioTestViewModel.logs.enumerated()), id: \.offset) { _, log in
+                                ForEach(audioTestViewModel.logs, id: \.self) { log in
                                     Text(log)
                                         .font(.system(.caption, design: .monospaced))
                                         .foregroundColor(logColor(for: log))
@@ -337,7 +339,7 @@ class AudioTestViewModel: ObservableObject {
         do {
             let stream = try audioEngine.startTestRecording(duration: 5.0)
             
-            for await log in stream {
+            for await _ in stream {
                 // Logs are automatically observed via $audioLogs
             }
             

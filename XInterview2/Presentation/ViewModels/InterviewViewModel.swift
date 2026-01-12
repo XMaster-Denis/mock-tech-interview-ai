@@ -32,11 +32,20 @@ class InterviewViewModel: ObservableObject {
     
     // MARK: - Initialization
     
+    convenience init() {
+        self.init(
+            whisperService: OpenAIWhisperService(),
+            chatService: OpenAIChatService(),
+            ttsService: OpenAITTSService(),
+            settingsRepository: SettingsRepository()
+        )
+    }
+    
     init(
-        whisperService: OpenAIWhisperServiceProtocol = OpenAIWhisperService(),
-        chatService: OpenAIChatServiceProtocol = OpenAIChatService(),
-        ttsService: OpenAITTSServiceProtocol = OpenAITTSService(),
-        settingsRepository: SettingsRepositoryProtocol = SettingsRepository()
+        whisperService: OpenAIWhisperServiceProtocol,
+        chatService: OpenAIChatServiceProtocol,
+        ttsService: OpenAITTSServiceProtocol,
+        settingsRepository: SettingsRepositoryProtocol
     ) {
         self.whisperService = whisperService
         self.chatService = chatService
