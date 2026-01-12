@@ -20,6 +20,11 @@ struct ChatRequest: Codable {
     let responseFormat: ChatResponseFormat?
     let temperature: Double
     
+    enum CodingKeys: String, CodingKey {
+        case model, messages, temperature
+        case responseFormat = "response_format"
+    }
+    
     init(model: String, messages: [ChatMessage], responseFormat: ChatResponseFormat? = nil, temperature: Double = 0.7) {
         self.model = model
         self.messages = messages
