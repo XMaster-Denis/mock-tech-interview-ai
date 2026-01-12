@@ -391,6 +391,12 @@ class ConversationManager: ObservableObject {
             conversationState = .speaking
             try await audioManager.speak(audioData, canBeInterrupted: true, skipSpeechCheck: skipSpeechCheck)
             
+        } catch let error as NSError where error.code == NSURLErrorCancelled || (error.domain == "AudioManager" && error.code == -1) {
+            // TTS was cancelled due to user speech - this is expected
+            Logger.warning("speakResponse() - TTS cancelled (expected on user speech interruption)")
+            // Reset state without showing error
+            conversationState = .listening
+            isProcessing = false
         } catch {
             // Only handle error if not stopping
             guard !isStopping else {
