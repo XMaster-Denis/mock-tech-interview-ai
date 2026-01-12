@@ -84,21 +84,15 @@ struct CodeEditorView: NSViewRepresentable {
 // MARK: - Highlighting TextView
 
 class HighlightingTextView: NSTextView {
-    weak var viewModel: CodeEditorViewModel?
+    var viewModel: CodeEditorViewModel?
     
     init(viewModel: CodeEditorViewModel) {
         self.viewModel = viewModel
         super.init(frame: .zero)
-        setupTextStorage()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-    }
-    
-    private func setupTextStorage() {
-        // Use default text storage for simplicity
-        // We'll update highlighting through the view model
     }
 }
 
