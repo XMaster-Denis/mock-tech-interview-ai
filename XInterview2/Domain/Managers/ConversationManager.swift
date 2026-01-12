@@ -35,6 +35,11 @@ class ConversationManager: ObservableObject {
     private let ttsService: OpenAITTSServiceProtocol
     private let settingsRepository: SettingsRepositoryProtocol
     
+    // Code Editor Integration
+    private(set) var codeEditorViewModel: CodeEditorViewModel?
+    private var currentCodeContext: CodeContext = CodeContext(currentCode: "", language: .swift, recentChanges: [])
+    private var currentLevel: DeveloperLevel = .junior
+    
     // MARK: - Properties
     
     private var currentTopic: InterviewTopic?
@@ -54,12 +59,16 @@ class ConversationManager: ObservableObject {
         whisperService: OpenAIWhisperServiceProtocol,
         chatService: OpenAIChatServiceProtocol,
         ttsService: OpenAITTSServiceProtocol,
-        settingsRepository: SettingsRepositoryProtocol
+        settingsRepository: SettingsRepositoryProtocol,
+        codeEditorViewModel: CodeEditorViewModel? = nil,
+        developerLevel: DeveloperLevel = .junior
     ) {
         self.whisperService = whisperService
         self.chatService = chatService
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
+        self.codeEditorViewModel = codeEditorViewModel
+        self.currentLevel = developerLevel
         
         let audioManager = FullDuplexAudioManager()
         self.audioManager = audioManager
@@ -111,6 +120,11 @@ class ConversationManager: ObservableObject {
         // Start continuous listening
         Logger.state("Starting audio listening")
         audioManager.startListening()
+        
+        // Initialize code context if editor is available
+        if let editor = codeEditorViewModel {
+            updateCodeContext(from: editor)
+        }
         
         // Generate opening message
         Logger.state("Sending opening message task")
@@ -208,15 +222,23 @@ class ConversationManager: ObservableObject {
             _ = generateOpeningPrompt(topic: topic, language: language)
             
             // Get AI response (empty messages for opening)
-            Logger.state("Calling chatService.sendMessage() for opening message")
-            let response = try await chatService.sendMessage(
+            Logger.state("Calling chatService.sendMessageWithCode() for opening message")
+            let aiResponse = try await chatService.sendMessageWithCode(
                 messages: [],
+                codeContext: currentCodeContext,
                 topic: topic,
+                level: currentLevel,
                 language: language,
                 apiKey: apiKey
             )
             
+            let response = aiResponse.spokenText
             Logger.state("Received AI opening response: \(String(response.prefix(100)))...")
+            
+            // Apply editor action if present
+            if let action = aiResponse.editorAction {
+                applyEditorAction(action)
+            }
             
             // Check if stopping before proceeding
             guard !isStopping else {
@@ -317,12 +339,30 @@ class ConversationManager: ObservableObject {
                 Logger.error("No current topic available")
                 return
             }
-            let response = try await chatService.sendMessage(
+            
+            // Update code context before sending
+            updateCodeContextFromEditor()
+            
+            let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
+                codeContext: currentCodeContext,
                 topic: topic,
+                level: currentLevel,
                 language: settings.selectedLanguage,
                 apiKey: apiKey
             )
+            
+            let response = aiResponse.spokenText
+            
+            // Apply editor action if present
+            if let action = aiResponse.editorAction {
+                applyEditorAction(action)
+            }
+            
+            // Handle evaluation if present
+            if let evaluation = aiResponse.evaluation {
+                handleEvaluation(evaluation)
+            }
             
             // Check if stopping after getting AI response
             guard !isStopping else {
@@ -415,6 +455,84 @@ class ConversationManager: ObservableObject {
             
             conversationState = .listening
             isProcessing = false
+        }
+    }
+    
+    // MARK: - Code Editor Integration
+    
+    private func updateCodeContext(from viewModel: CodeEditorViewModel) {
+        currentCodeContext = CodeContext(
+            currentCode: viewModel.code,
+            language: viewModel.language,
+            recentChanges: []
+        )
+    }
+    
+    private func updateCodeContextFromEditor() {
+        guard let editor = codeEditorViewModel else { return }
+        updateCodeContext(from: editor)
+    }
+    
+    func setCodeEditorViewModel(_ viewModel: CodeEditorViewModel, level: DeveloperLevel = .junior) {
+        self.codeEditorViewModel = viewModel
+        self.currentLevel = level
+        updateCodeContext(from: viewModel)
+        Logger.info("Code editor attached - level: \(level.displayName)")
+    }
+    
+    func updateDeveloperLevel(_ level: DeveloperLevel) {
+        self.currentLevel = level
+        Logger.info("Developer level updated: \(level.displayName)")
+    }
+    
+    private func applyEditorAction(_ action: EditorAction) {
+        guard let editor = codeEditorViewModel else {
+            Logger.warning("Cannot apply editor action - no editor attached")
+            return
+        }
+        
+        Logger.info("Applying editor action")
+        
+        switch action {
+        case .insert(let text, let location):
+            // Insert at specific location
+            editor.insertCodeAtCursor(text)
+            // Optionally move cursor to location
+        case .replace(let rangeCodable, let text):
+            editor.replaceCodeInRange(rangeCodable.range, with: text)
+        case .clear:
+            editor.replaceAllCode("")
+        case .highlight(let rangesCodable):
+            let ranges = rangesCodable.map { $0.range }
+            editor.highlightHints(ranges)
+        case .none:
+            break
+        }
+        
+        // Update code context after applying action
+        updateCodeContext(from: editor)
+    }
+    
+    private func handleEvaluation(_ evaluation: CodeEvaluation) {
+        Logger.info("Code evaluation - isCorrect: \(evaluation.isCorrect)")
+        
+        guard let editor = codeEditorViewModel else { return }
+        
+        if evaluation.isCorrect {
+            // Show success feedback - can add UI notification later
+            Logger.success("Code is correct: \(evaluation.feedback)")
+        } else {
+            // Highlight error lines
+            let errorRanges = evaluation.issueLines.compactMap { editor.rangeForLine($0) }
+            let errors = errorRanges.enumerated().map { index, range in
+                CodeError(
+                    range: range,
+                    message: evaluation.feedback,
+                    severity: evaluation.severity ?? .error,
+                    line: evaluation.issueLines[index]
+                )
+            }
+            editor.highlightErrors(errors)
         }
     }
     

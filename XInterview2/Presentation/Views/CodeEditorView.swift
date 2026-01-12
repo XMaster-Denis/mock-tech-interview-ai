@@ -9,7 +9,6 @@ import SwiftUI
 import AppKit
 
 struct CodeEditorView: NSViewRepresentable {
-    @Binding var code: String
     @ObservedObject var viewModel: CodeEditorViewModel
     
     func makeNSView(context: Context) -> NSScrollView {
@@ -30,7 +29,7 @@ struct CodeEditorView: NSViewRepresentable {
         textView.insertionPointColor = NSColor.white
         textView.selectedTextAttributes = [.backgroundColor: NSColor(hex: "#264F78")]
         
-        textView.string = code
+        textView.string = viewModel.code
         textView.delegate = context.coordinator
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainerInset = NSSize(width: 8, height: 8)
@@ -48,8 +47,8 @@ struct CodeEditorView: NSViewRepresentable {
         guard let textView = nsView.documentView as? HighlightingTextView else { return }
         
         // Update code if it changed externally (e.g., AI edit)
-        if textView.string != code {
-            textView.string = code
+        if textView.string != viewModel.code && viewModel.isAIEditing {
+            textView.string = viewModel.code
         }
         
         // Update editable state
@@ -70,7 +69,6 @@ struct CodeEditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             
-            parent.code = textView.string
             parent.viewModel.userDidChange(textView.string)
             
             // Update selected range
@@ -95,8 +93,3 @@ class HighlightingTextView: NSTextView {
         super.init(coder: coder)
     }
 }
-
-// MARK: - Simplified CodeTextStorage
-
-// Note: For simplicity, we'll use the default NSTextStorage
-// and apply highlighting through the view model's attributedCode property.

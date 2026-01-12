@@ -17,6 +17,7 @@ class InterviewViewModel: ObservableObject {
     @Published var audioLevel: Float = 0.0
     @Published var voiceThreshold: Float = 0.15  // From settings for UI display
     @Published var errorMessage: String?
+    @Published var codeEditorViewModel = CodeEditorViewModel()
     
     // MARK: - Components
     
@@ -37,7 +38,9 @@ class InterviewViewModel: ObservableObject {
             whisperService: OpenAIWhisperService(),
             chatService: OpenAIChatService(),
             ttsService: OpenAITTSService(),
-            settingsRepository: SettingsRepository()
+            settingsRepository: SettingsRepository(),
+            codeEditorViewModel: CodeEditorViewModel(),
+            developerLevel: .junior
         )
     }
     
@@ -45,19 +48,24 @@ class InterviewViewModel: ObservableObject {
         whisperService: OpenAIWhisperServiceProtocol,
         chatService: OpenAIChatServiceProtocol,
         ttsService: OpenAITTSServiceProtocol,
-        settingsRepository: SettingsRepositoryProtocol
+        settingsRepository: SettingsRepositoryProtocol,
+        codeEditorViewModel: CodeEditorViewModel,
+        developerLevel: DeveloperLevel = .junior
     ) {
         self.whisperService = whisperService
         self.chatService = chatService
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
+        self.codeEditorViewModel = codeEditorViewModel
         
-        // Initialize ConversationManager on MainActor
+        // Initialize ConversationManager on MainActor with code editor
         self.conversationManager = ConversationManager(
             whisperService: whisperService,
             chatService: chatService,
             ttsService: ttsService,
-            settingsRepository: settingsRepository
+            settingsRepository: settingsRepository,
+            codeEditorViewModel: codeEditorViewModel,
+            developerLevel: developerLevel
         )
         
         setupBindings()

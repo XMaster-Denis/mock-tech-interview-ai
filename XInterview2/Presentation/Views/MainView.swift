@@ -18,9 +18,7 @@ extension Notification.Name {
 
 struct MainView: View {
     @StateObject private var viewModel = InterviewViewModel()
-    @StateObject private var codeEditorViewModel = CodeEditorViewModel()
     @State private var isSettingsPresented = false
-    @State private var code: String = ""
     @State private var silenceTimerProgress: Double = 0.0
     @State private var silenceTimerElapsed: Double = 0.0  // Elapsed seconds in silence
     @State private var silenceTimeout: Double = 1.5  // Timeout from settings
@@ -46,7 +44,7 @@ struct MainView: View {
                     
                     Divider()
                     
-                    CodeEditorView(code: $code, viewModel: codeEditorViewModel)
+                    CodeEditorView(viewModel: viewModel.codeEditorViewModel)
                 }
                 
                 // Right: Transcript
