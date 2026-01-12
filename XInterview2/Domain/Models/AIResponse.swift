@@ -28,6 +28,14 @@ struct AIResponse: Codable {
         self.editorAction = editorAction
         self.evaluation = evaluation
     }
+    
+    // MARK: - Coding Keys for snake_case JSON
+    
+    enum CodingKeys: String, CodingKey {
+        case spokenText = "spoken_text"
+        case editorAction = "editor_action"
+        case evaluation
+    }
 }
 
 /// Actions AI can perform on the code editor
@@ -184,6 +192,16 @@ struct CodeEvaluation: Codable {
         self.suggestions = suggestions
         self.severity = severity
         self.issueLines = issueLines
+    }
+    
+    // MARK: - Coding Keys for snake_case JSON
+    
+    enum CodingKeys: String, CodingKey {
+        case isCorrect = "is_correct"
+        case feedback
+        case suggestions
+        case severity
+        case issueLines = "issue_lines"
     }
     
     /// Create a success evaluation

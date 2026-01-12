@@ -137,11 +137,12 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         }
         
         Logger.success("Chat response received - length: \(assistantMessage.count) chars")
+        Logger.info("Raw JSON from OpenAI: \(assistantMessage)")
         
         // Parse JSON response
         guard let data = assistantMessage.data(using: .utf8),
               let aiResponse = try? JSONDecoder().decode(AIResponse.self, from: data) else {
-            Logger.error("Failed to parse AI response as JSON")
+            Logger.error("Failed to parse AI response as JSON - using fallback")
             // Fallback to plain text response
             return AIResponse(
                 spokenText: assistantMessage,

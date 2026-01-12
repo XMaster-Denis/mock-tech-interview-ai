@@ -217,10 +217,6 @@ class ConversationManager: ObservableObject {
         }
         
         do {
-            // Generate opening prompt
-            Logger.state("Generating opening prompt")
-            _ = generateOpeningPrompt(topic: topic, language: language)
-            
             // Get AI response (empty messages for opening)
             Logger.state("Calling chatService.sendMessageWithCode() for opening message")
             let aiResponse = try await chatService.sendMessageWithCode(
@@ -232,8 +228,11 @@ class ConversationManager: ObservableObject {
                 apiKey: apiKey
             )
             
+            Logger.info("AIResponse received - spokenText: \(aiResponse.spokenText.prefix(50))...")
+            Logger.info("AIResponse - hasEditorAction: \(aiResponse.editorAction != nil)")
+            Logger.info("AIResponse - hasEvaluation: \(aiResponse.evaluation != nil)")
+            
             let response = aiResponse.spokenText
-            Logger.state("Received AI opening response: \(String(response.prefix(100)))...")
             
             // Apply editor action if present
             if let action = aiResponse.editorAction {
