@@ -88,7 +88,7 @@ class HighlightingTextView: NSTextView {
     
     init(viewModel: CodeEditorViewModel) {
         self.viewModel = viewModel
-        super.init(frame: .zero)
+        super.init(frame: .zero, textContainer: nil)
     }
     
     required init?(coder: NSCoder) {
