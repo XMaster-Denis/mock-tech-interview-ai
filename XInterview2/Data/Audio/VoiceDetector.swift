@@ -57,6 +57,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var isSpeechActive: Bool = false
     private var isPaused: Bool = false
     private var isCalibrated: Bool = false // True after calibration delay
+    private var silenceTimerRunning: Bool = false // Prevent duplicate timers
     
     // MARK: - Callbacks
     
@@ -222,6 +223,7 @@ class VoiceDetector: NSObject, ObservableObject {
         silenceProgressTimer = nil
         silenceTimer?.invalidate()
         silenceTimer = nil
+        silenceTimerRunning = false // Reset flag when stopping recording
     }
     
     // MARK: - Level Monitoring
@@ -314,9 +316,16 @@ class VoiceDetector: NSObject, ObservableObject {
         }
         // Speech possibly ended
         else if !isAboveThreshold && isSpeechActive {
+            // Prevent creating duplicate silence timers
+            guard !silenceTimerRunning else {
+                Logger.voice("⏸️ Silence timer already running, skipping duplicate creation")
+                return
+            }
+            
             // Start silence timer to confirm speech ended
             silenceTimer?.invalidate()
             silenceTimer = nil
+            silenceTimerRunning = true // Mark timer as running
             
             silenceStartTime = Date()
             isSilenceTimerActive = true
@@ -357,6 +366,7 @@ class VoiceDetector: NSObject, ObservableObject {
                 withTimeInterval: silenceTimeout,
                 repeats: false
             ) { [weak self] _ in
+                self?.silenceTimerRunning = false // Reset flag when timer fires
                 self?.handleSpeechEnd()
             }
         }
