@@ -17,9 +17,6 @@ struct CodeEditorView: View {
     var language: CodeLanguageInterview
     var isEditable: Bool
     var onCodeChange: ((String) -> Void)?
-    
-    
-    @State var text = "let x = 1.0" //example
 
     @State var editorState = SourceEditorState()
 
@@ -47,7 +44,7 @@ struct CodeEditorView: View {
            
             // Code editor using CodeEditSourceEditor
             SourceEditor(
-                $text,
+                $code,
                 language: language.codeLanguageOfCodeEditSourceEditor,
                 
                 // Tons of customization options, with good defaults to get started quickly.
@@ -66,6 +63,10 @@ struct CodeEditorView: View {
                 state: $editorState,
                 coordinators: []
             )
+        }
+        .onChange(of: code) { oldValue, newValue in
+            // Notify parent view of code changes
+            onCodeChange?(newValue)
         }
     }
 }
@@ -112,5 +113,3 @@ extension EditorTheme {
         )
     }
 }
-
-
