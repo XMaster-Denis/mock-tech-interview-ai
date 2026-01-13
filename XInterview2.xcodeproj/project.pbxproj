@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E2A5AB2F2F169F5900BBB0A0 /* CodeEditSourceEditor in Frameworks */ = {isa = PBXBuildFile; productRef = E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		E2A5A99D2F13EDA700BBB0A0 /* XInterview2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = XInterview2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E2A5AB2F2F169F5900BBB0A0 /* CodeEditSourceEditor in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = XInterview2;
 			packageProductDependencies = (
+				E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */,
 			);
 			productName = XInterview2;
 			productReference = E2A5A99D2F13EDA700BBB0A0 /* XInterview2.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = E2A5A9942F13EDA700BBB0A0;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E2A5AB2D2F169F5900BBB0A0 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E2A5A99E2F13EDA700BBB0A0 /* Products */;
 			projectDirPath = "";
@@ -371,6 +380,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E2A5AB2D2F169F5900BBB0A0 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CodeEditApp/CodeEditSourceEditor";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.15.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E2A5AB2D2F169F5900BBB0A0 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */;
+			productName = CodeEditSourceEditor;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E2A5A9952F13EDA700BBB0A0 /* Project object */;
 }

@@ -2,13 +2,13 @@
 //  CodeEditorView.swift
 //  XInterview2
 //
-//  Code editor with syntax highlighting
+//  Code editor with simple text view
 //
 
 import SwiftUI
 import AppKit
 
-/// Code editor view with syntax highlighting
+/// Code editor view
 struct CodeEditorView: View {
     @Binding var code: String
     var language: CodeLanguage
@@ -52,9 +52,7 @@ struct CodeEditorView: View {
                 text: $code,
                 language: language,
                 isEditable: isEditable,
-                onTextChange: { newCode in
-                    onCodeChange?(newCode)
-                }
+                onTextChange: onCodeChange
             )
         }
     }
@@ -88,11 +86,7 @@ struct SimpleCodeEditor: NSViewRepresentable {
             .backgroundColor: NSColor(red: 0.15, green: 0.31, blue: 0.47, alpha: 1.0)
         ]
         
-        // Set delegate
         textView.delegate = context.coordinator
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
         
         return textView
     }
@@ -103,7 +97,6 @@ struct SimpleCodeEditor: NSViewRepresentable {
         let selectedRange = nsView.selectedRange()
         nsView.string = text
         
-        // Restore cursor position if within bounds
         if selectedRange.location <= text.count {
             nsView.setSelectedRange(selectedRange)
         }
@@ -142,16 +135,9 @@ struct SimpleCodeEditor: NSViewRepresentable {
 
 class CodeTextView: NSTextView {
     override func draw(_ dirtyRect: NSRect) {
-        // Draw background
         backgroundColor.setFill()
         dirtyRect.fill()
-        
-        // Draw text
         super.draw(dirtyRect)
-    }
-    
-    override func drawBackground(in rect: NSRect) {
-        // Let the draw method handle background
     }
 }
 
@@ -170,10 +156,29 @@ struct CodeEditorView_Previews: PreviewProvider {
                 func greet(_ name: String) -> String {
                     return "Hello, \\(name)!"
                 }
+                
+                class Calculator {
+                    func add(_ a: Int, _ b: Int) -> Int {
+                        return a + b
+                    }
+                }
                 """),
                 language: .swift
             )
             .frame(height: 300)
+            
+            // Python code
+            CodeEditorView(
+                code: .constant("""
+                def is_even(number):
+                    return number % 2 == 0
+                
+                def greet(name):
+                    return f"Hello, {name}!"
+                """),
+                language: .python
+            )
+            .frame(height: 250)
             
             // Empty state
             CodeEditorView(

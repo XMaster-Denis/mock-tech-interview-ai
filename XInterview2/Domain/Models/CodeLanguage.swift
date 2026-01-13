@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CodeEditLanguages
 
 /// Supported programming languages for syntax highlighting
 enum CodeLanguage: String, Codable, CaseIterable, Identifiable {
@@ -74,4 +75,33 @@ enum CodeLanguage: String, Codable, CaseIterable, Identifiable {
             return "#"
         }
     }
+    
+    /// Convert to CodeEditSourceEditor language
+    var sourceCodeLanguage: CodeLanguage.CodeEditLanguage {
+        switch self {
+        case .swift:
+            return .swift
+        case .python:
+            return .python
+        case .javascript:
+            return .javascript
+        case .kotlin:
+            return .kotlin
+        case .rust:
+            return .rust
+        case .go:
+            return .go
+        case .typescript:
+            return .typescript
+        case .java:
+            return .java
+        }
+    }
+}
+
+// MARK: - Type Alias for CodeEdit Language
+
+extension CodeLanguage {
+    /// CodeEditSourceEditor language type
+    typealias CodeEditLanguage = CodeEditLanguages.CodeLanguage
 }
