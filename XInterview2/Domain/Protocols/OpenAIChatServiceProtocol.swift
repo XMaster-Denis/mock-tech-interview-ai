@@ -24,6 +24,7 @@ protocol OpenAIChatServiceProtocol {
         topic: InterviewTopic,
         level: DeveloperLevel,
         language: Language,
+        mode: InterviewMode,
         apiKey: String
     ) async throws -> AIResponse
     
@@ -76,6 +77,7 @@ extension OpenAIChatServiceProtocol {
             topic: topic,
             level: .junior,
             language: language,
+            mode: .questionsOnly,
             apiKey: apiKey
         )
         

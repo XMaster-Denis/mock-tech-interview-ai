@@ -75,16 +75,18 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         topic: InterviewTopic,
         level: DeveloperLevel,
         language: Language,
+        mode: InterviewMode,
         apiKey: String
     ) async throws -> AIResponse {
-        Logger.network("Chat sendMessageWithCode() START - topic: \(topic.title), level: \(level.displayName)")
+        Logger.network("Chat sendMessageWithCode() START - topic: \(topic.title), level: \(level.displayName), mode: \(mode.displayName)")
         Logger.network("Code length: \(codeContext.currentCode.count) chars")
         Logger.network("Conversation history count: \(messages.count)")
         
         let systemPrompt = HybridInterviewPrompt.generate(
             for: topic,
             level: level,
-            language: language
+            language: language,
+            mode: mode
         )
         
         var chatMessages = [ChatMessage(role: "system", content: systemPrompt)]
@@ -269,6 +271,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             topic: topic,
             level: .junior,
             language: language,
+            mode: .questionsOnly,
             apiKey: apiKey
         )
         

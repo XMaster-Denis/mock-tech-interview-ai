@@ -36,53 +36,84 @@ Advanced code analysis features are planned for later phases.
 - Multi-agent behavior
 - Advanced UI customization
 
-## 3. Application Layout (UI Specification)
+## 3. Interview Modes
 
-### 3.1 Menu Bar
+### 3.1 Mode Selection
+Two interview modes are available (global setting):
+
+**Questions Only Mode:**
+- Standard interview dialogue without code tasks
+- AI asks theoretical questions
+- User responds verbally
+- Code editor remains available but not actively used by AI
+
+**Code Tasks Mode:**
+- AI presents coding challenges
+- User writes code in the editor
+- AI evaluates the code when user indicates completion (understands from context)
+- Tasks are extremely short - 1 line of code maximum
+
+### 3.2 Completion Detection (Code Tasks)
+AI understands from context when user indicates their code is ready for evaluation.
+Examples of completion phrases (not strict keyword matching):
+- Russian: "Я дописал код", "Готово", "Проверь код", "Я закончил"
+- English: "I'm done", "My code is ready", "Check my code", "Done"
+- German: "Ich bin fertig", "Der Code ist fertig", "Prüfe meinen Code", "Erledigt"
+
+## 4. Application Layout (UI Specification)
+
+### 4.1 Menu Bar
 Menu: File
 - Settings… (API keys, language, voice options)
 
-### 3.2 Left Panel — Interview Topics
+### 4.2 Left Panel — Interview Topics
 Editable list of prompt topics guiding the interview.
 
-### 3.3 Center Panel — Code Editor (Passive in MVP)
-Used as visual context only.
+### 4.3 Center Panel — Code Editor
+- User can write and edit code at any time
+- AI can insert code snippets and hints
+- Real-time syntax highlighting
+- Error highlighting from AI feedback
 
-### 3.4 Bottom Control
-Single Start / Stop Interview button.
+### 4.4 Bottom Control
+- Interview mode selector (Questions / Code Tasks)
+- Start / Stop Interview button
+- Audio level visualizer
+- Conversation status indicator
 
-### 3.5 Right Panel — Live Transcript
+### 4.5 Right Panel — Live Transcript
 Real-time read-only transcript of user and AI speech.
 
-## 4. Conversation Model
+## 5. Conversation Model
 
 - Short sentences
 - One question at a time
 - Natural interview tone
 - Gentle corrections
+- In Code Tasks mode: extremely short coding challenges (1 line)
 
-## 5. Audio Processing (v0.2.0)
+## 6. Audio Processing (v0.2.0)
 
-### 5.1 Voice Activity Detection (VAD)
+### 6.1 Voice Activity Detection (VAD)
 - Continuous audio monitoring at 16kHz sample rate
 - Configurable voice detection threshold (0.05 - 0.5, default 0.15)
 - Automatic calibration period (1 second) on recording start
 - Real-time audio level visualization
 
-### 5.2 Silence Detection
+### 6.2 Silence Detection
 - Configurable silence timeout (0.5s - 3.0s, default 1.5s)
 - Visual silence timer with progress indicator
 - Accurate speech duration calculation (excludes silence timeout)
 - Fallback timer ensures speech end event always triggers
 
-### 5.3 Smart Audio Trimming
+### 6.3 Smart Audio Trimming
 - Automatic removal of leading silence before speech
 - Automatic removal of trailing silence after speech ends
 - Uses AVAssetExportSession with passthrough preset (no re-encoding)
 - Reduces file size by 30-50% for faster API processing
 - Fallback to original audio if trimming fails
 
-### 5.4 Whisper API Optimization
+### 6.4 Whisper API Optimization
 - **Technical Terminology Prompts**: English tech terms preserved in DE/RU transcriptions
   - Programming languages: Swift, Python, JavaScript, Kotlin, Dart, Rust
   - Frameworks: SwiftUI, UIKit, React, SwiftUI, Django, Flask
@@ -92,13 +123,13 @@ Real-time read-only transcript of user and AI speech.
 - **Temperature Parameter**: Set to 0.0 for more deterministic transcriptions
 - **Audio Format**: 16kHz, mono, 16-bit PCM WAV
 
-## 6. Architecture Constraints
+## 7. Architecture Constraints
 
 - Simplicity over completeness
 - Voice-first interaction
 - Phased development
 
-## 7. Audio Processing Benefits
+## 8. Audio Processing Benefits
 
 The smart audio processing system provides:
 
@@ -108,16 +139,16 @@ The smart audio processing system provides:
 4. **Technical Accuracy**: English technical terms are preserved intact in German/Russian transcriptions
 5. **Natural Conversations**: Proper silence detection allows natural speech patterns with pauses
 
-## 8. Technical Specifications
+## 9. Technical Specifications
 
-### 8.1 Audio Settings
+### 9.1 Audio Settings
 - Sample Rate: 16,000 Hz
 - Channels: 1 (mono)
 - Bit Depth: 16-bit PCM
 - Audio Format: Linear PCM (WAV)
 - Buffer Duration: Continuous recording until speech end
 
-### 8.2 Whisper API Integration
+### 9.2 Whisper API Integration
 - Model: whisper-1
 - Endpoint: https://api.openai.com/v1/audio/transcriptions
 - Parameters:
@@ -127,7 +158,7 @@ The smart audio processing system provides:
   - `prompt`: Technical terminology prompt based on conversation language
   - `temperature`: 0.0 (deterministic)
 
-### 8.3 TTS API Integration
+### 9.3 TTS API Integration
 - Model: tts-1
 - Endpoint: https://api.openai.com/v1/audio/speech
 - Parameters:
@@ -137,7 +168,7 @@ The smart audio processing system provides:
   - `response_format`: "mp3"
   - `speed`: 1.0 (normal)
 
-### 8.4 Chat API Integration
+### 9.4 Chat API Integration
 - Model: gpt-4o
 - Endpoint: https://api.openai.com/v1/chat/completions
 - Parameters:
@@ -146,7 +177,7 @@ The smart audio processing system provides:
   - `temperature`: 0.7 (balanced creativity)
   - `max_tokens`: 300 (short interview responses)
 
-## 9. Success Criteria
+## 10. Success Criteria
 
 The MVP is successful if:
 - Conversation feels like a real interview

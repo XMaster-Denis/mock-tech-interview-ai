@@ -43,6 +43,7 @@ class ConversationManager: ObservableObject {
     // MARK: - Properties
     
     private var currentTopic: InterviewTopic?
+    private var currentMode: InterviewMode = .questionsOnly
     private var conversationHistory: [TranscriptMessage] = []
     private var processingTask: Task<Void, Never>?
     private var isStopping: Bool = false
@@ -225,6 +226,7 @@ class ConversationManager: ObservableObject {
                 topic: topic,
                 level: currentLevel,
                 language: language,
+                mode: currentMode,
                 apiKey: apiKey
             )
             
@@ -348,6 +350,7 @@ class ConversationManager: ObservableObject {
                 topic: topic,
                 level: currentLevel,
                 language: settings.selectedLanguage,
+                mode: currentMode,
                 apiKey: apiKey
             )
             
@@ -477,6 +480,11 @@ class ConversationManager: ObservableObject {
         self.currentLevel = level
         updateCodeContext(from: viewModel)
         Logger.info("Code editor attached - level: \(level.displayName)")
+    }
+    
+    func updateInterviewMode(_ mode: InterviewMode) {
+        self.currentMode = mode
+        Logger.info("Interview mode updated: \(mode.displayName)")
     }
     
     func updateDeveloperLevel(_ level: DeveloperLevel) {

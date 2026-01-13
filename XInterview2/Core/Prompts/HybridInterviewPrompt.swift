@@ -11,12 +11,17 @@ import Foundation
 enum HybridInterviewPrompt {
     
     /// Generate system prompt for given topic and level
-    static func generate(for topic: InterviewTopic, level: DeveloperLevel, language: Language) -> String {
+    static func generate(for topic: InterviewTopic, level: DeveloperLevel, language: Language, mode: InterviewMode) -> String {
         let languagePrompt = languagePrompt(for: language)
         let levelPrompt = levelInstructions(for: level)
+        let modeInstructions = interviewModeInstructions(for: mode, language: language)
+        let completionDetection = codeCompletionInstructions(for: language)
         
         return """
         \(languagePrompt)
+
+        INTERVIEW MODE: \(mode.displayName)
+        \(modeInstructions)
 
         TOPIC: \(topic.title)
         LEVEL: \(level.displayName)
@@ -24,12 +29,8 @@ enum HybridInterviewPrompt {
 
         \(levelPrompt)
 
-        DYNAMIC INTERACTION:
-        You can seamlessly switch between conversation modes:
-        1. VERBAL QUESTION ONLY - Ask a question without code
-        2. VERBAL QUESTION + CODE TASK - Ask a question and request code
-        3. CODE MODIFICATION - Ask user to modify existing code
-        4. CODE ANALYSIS - Ask user to explain existing code
+        CODE COMPLETION DETECTION:
+        \(completionDetection)
 
         RESPONSE FORMAT:
         Always respond with JSON in this exact format (JSON keys in English, values in \(language.displayName) language):
@@ -98,6 +99,118 @@ enum HybridInterviewPrompt {
             КРИТИЧЕСКИ: ВСЕ ОТВЕТЫ ДОЛЖНЫ БЫТЬ НА РУССКОМ ЯЗЫКЕ.
             Значение поля "spoken_text" ДОЛЖНО быть на русском.
             Ключи JSON остаются на английском (spoken_text, editor_action и т.д.), но содержание ДОЛЖНО быть на русском.
+            """
+        }
+    }
+    
+    /// Generate interview mode instructions
+    private static func interviewModeInstructions(for mode: InterviewMode, language: Language) -> String {
+        switch mode {
+        case .questionsOnly:
+            switch language {
+            case .english:
+                return """
+                QUESTIONS ONLY MODE:
+                - Ask verbal questions only
+                - Do not request code from user
+                - Do not use editor_action with insert/replace
+                - Do not include evaluation in responses
+                - Focus on theoretical concepts and explanations
+                """
+            case .german:
+                return """
+                NUR FRAGEN MODUS:
+                - Stelle nur mündliche Fragen
+                - Fordere keinen Code vom Benutzer
+                - Verwende keine editor_action mit insert/replace
+                - Füge keine evaluation in Antworten ein
+                - Konzentriere dich auf theoretische Konzepte
+                """
+            case .russian:
+                return """
+                РЕЖИМ ТОЛЬКО ВОПРОСЫ:
+                - Задавай только устные вопросы
+                - Не проси пользователя написать код
+                - Не используй editor_action с insert/replace
+                - Не включай evaluation в ответы
+                - Сосредоточься на теоретических концепциях
+                """
+            }
+        case .codeTasks:
+            switch language {
+            case .english:
+                return """
+                CODE TASKS MODE:
+                - Present coding challenges
+                - Keep tasks EXTREMELY SHORT - 1 line of code maximum
+                - Focus on specific concepts, not full implementations
+                - When user indicates completion, read code and evaluate it
+                - Use editor_action to insert code snippets or hints
+                - Include evaluation in responses when appropriate
+                """
+            case .german:
+                return """
+                CODE TASKS MODUS:
+                - Präsentiere Programmieraufgaben
+                - Halte Aufgaben EXTREM KURZ - max 1 Zeile Code
+                - Konzentriere dich auf spezifische Konzepte
+                - Wenn Benutzer den Abschluss signalisiert, liesse den Code und bewerte ihn
+                - Verwende editor_action für Code-Snippets oder Hinweise
+                - Füge evaluation in Antworten ein, wenn passend
+                """
+            case .russian:
+                return """
+                РЕЖИМ ЗАДАЧ С КОДОМ:
+                - Давай задачи по программированию
+                - Держи задачи ОЧЕНЬ КОРОТКИМИ - максимум 1 строка кода
+                - Сосредоточься на конкретных концепциях
+                - Когда пользователь сигнализирует о завершении, прочитай код и оцени его
+                - Используй editor_action для вставки фрагментов кода или подсказок
+                - Включай evaluation в ответы когда уместно
+                """
+            }
+        }
+    }
+    
+    /// Generate code completion detection instructions
+    private static func codeCompletionInstructions(for language: Language) -> String {
+        switch language {
+        case .english:
+            return """
+            When user indicates their code is ready for evaluation:
+            - Examples (not strict keywords - understand from context):
+              "I'm done", "My code is ready", "Check my code", "Done"
+              "I finished", "Can you take a look?", "Here's what I wrote"
+              "What do you think?"
+            - Read the current code from the editor
+            - Evaluate correctness
+            - Provide brief feedback
+            - If incorrect: give hints without revealing solution
+            - If correct: acknowledge success and optionally move to next task
+            """
+        case .german:
+            return """
+            Wenn Benutzer signalisiert, dass der Code fertig ist:
+            - Beispiele (keine strikten Keywords - verstehe aus Kontext):
+              "Ich bin fertig", "Der Code ist fertig", "Prüfe meinen Code", "Erledigt"
+              "Kannst du mal schauen?", "Das ist mein Code", "Was denkst du?"
+            - Liesse den aktuellen Code aus dem Editor
+            - Bewerte die Korrektheit
+            - Gib kurzes Feedback
+            - Bei Fehlern: gebe Hinweise ohne Lösung zu verraten
+            - Bei Erfolg: bestätige Erfolg und gehe eventuell zur nächsten Aufgabe
+            """
+        case .russian:
+            return """
+            Когда пользователь сигнализирует что код готов для оценки:
+            - Примеры (не строгие ключевые слова - понимай из контекста):
+              "Я дописал", "Готово", "Проверь код", "Я закончил"
+              "Можешь посмотреть?", "Вот что получилось", "Как тебе?"
+            - Прочитай текущий код из редактора
+            - Оцени правильность
+            - Дай краткую обратную связь
+            - Если неправильно: дай подсказки не раскрывая решение
+            - Если правильно: признай успех и перейди к следующей задаче
             """
         }
     }

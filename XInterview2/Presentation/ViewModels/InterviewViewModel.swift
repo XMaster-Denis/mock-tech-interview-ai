@@ -18,6 +18,7 @@ class InterviewViewModel: ObservableObject {
     @Published var voiceThreshold: Float = 0.15  // From settings for UI display
     @Published var errorMessage: String?
     @Published var codeEditorViewModel = CodeEditorViewModel()
+    @Published var interviewMode: InterviewMode = .questionsOnly
     
     // MARK: - Components
     
@@ -97,6 +98,18 @@ class InterviewViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Mode Management
+    
+    var interviewModeBinding: Binding<InterviewMode> {
+        Binding(
+            get: { [weak self] in self?.interviewMode ?? .questionsOnly },
+            set: { [weak self] newMode in
+                self?.interviewMode = newMode
+                self?.conversationManager.updateInterviewMode(newMode)
+            }
+        )
+    }
+    
     // MARK: - Public Methods
     
     func startInterview() {
@@ -108,6 +121,9 @@ class InterviewViewModel: ObservableObject {
             errorMessage = "Please configure your OpenAI API key in Settings first"
             return
         }
+        
+        // Update mode in conversation manager before starting
+        conversationManager.updateInterviewMode(interviewMode)
         
         session.isActive = true
         session.startTime = Date()

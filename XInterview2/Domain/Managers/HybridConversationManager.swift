@@ -31,6 +31,7 @@ class HybridConversationManager: ObservableObject {
     private var currentTopic: InterviewTopic
     private var currentLevel: DeveloperLevel
     private var currentLanguage: Language
+    private var currentMode: InterviewMode = .questionsOnly
     private var apiKey: String
     
     // MARK: - Initialization
@@ -166,6 +167,7 @@ class HybridConversationManager: ObservableObject {
                     topic: currentTopic,
                     level: currentLevel,
                     language: currentLanguage,
+                    mode: currentMode,
                     apiKey: apiKey
                 )
             } else {
@@ -176,6 +178,7 @@ class HybridConversationManager: ObservableObject {
                     topic: currentTopic,
                     level: currentLevel,
                     language: currentLanguage,
+                    mode: currentMode,
                     apiKey: apiKey
                 )
             }
