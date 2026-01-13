@@ -481,11 +481,7 @@ class VoiceDetector: NSObject, ObservableObject {
     }
     
     private func calculateAverageLevel(from data: Data) -> Float {
-        // WAV file has 44-byte header, then 16-bit PCM samples
-        let sampleRate: UInt32 = 16000
-        let bytesPerSample: UInt32 = 2 // 16-bit = 2 bytes
-        let channels: UInt32 = 1
-        
+
         guard data.count > 44 else { return 0.0 }
         
         let samplesData = data.dropFirst(44)

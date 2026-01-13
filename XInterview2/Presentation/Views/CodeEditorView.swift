@@ -2,190 +2,115 @@
 //  CodeEditorView.swift
 //  XInterview2
 //
-//  Code editor with simple text view
+//  Code editor with syntax highlighting using CodeEditSourceEditor
 //
 
 import SwiftUI
 import AppKit
+import CodeEditSourceEditor
+import CodeEditLanguages
+import CodeEditTextView
 
-/// Code editor view
+/// Code editor view with syntax highlighting
 struct CodeEditorView: View {
     @Binding var code: String
-    var language: CodeLanguage
+    var language: CodeLanguageInterview
     var isEditable: Bool
     var onCodeChange: ((String) -> Void)?
     
+    
+    @State var text = "let x = 1.0" //example
+
+    @State var editorState = SourceEditorState()
+
+    @State var theme: EditorTheme = .dark
+    @State var font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    @State var indentOption : IndentOption = .spaces(count: 4)
+    
+    
     init(
+        
         code: Binding<String>,
-        language: CodeLanguage = .swift,
+        language: CodeLanguageInterview,
         isEditable: Bool = true,
         onCodeChange: ((String) -> Void)? = nil
     ) {
         self._code = code
         self.language = language
+        
         self.isEditable = isEditable
         self.onCodeChange = onCodeChange
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header with language indicator
-            HStack {
-                Text(language.displayName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+           
+            // Code editor using CodeEditSourceEditor
+            SourceEditor(
+                $text,
+                language: language.codeLanguageOfCodeEditSourceEditor,
                 
-                Spacer()
-                
-                // Line count
-                let lineCount = code.components(separatedBy: "\n").count
-                Text("\(lineCount) \(lineCount == 1 ? "line" : "lines")")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color(red: 0.12, green: 0.12, blue: 0.12))
-            
-            // Code editor
-            SimpleCodeEditor(
-                text: $code,
-                language: language,
-                isEditable: isEditable,
-                onTextChange: onCodeChange
+                // Tons of customization options, with good defaults to get started quickly.
+                configuration: SourceEditorConfiguration(
+                    appearance: .init(theme: theme, font: font, wrapLines: true),
+                    behavior: .init(indentOption: indentOption),
+                    peripherals: .init(
+                        showGutter: true,
+                        showMinimap: false,
+                        showReformattingGuide: false,
+                        invisibleCharactersConfiguration: .empty,
+                        warningCharacters: []
+                    )
+                    
+                ),
+                state: $editorState,
+                coordinators: []
             )
         }
     }
 }
 
-// MARK: - Simple Code Editor
-
-struct SimpleCodeEditor: NSViewRepresentable {
-    @Binding var text: String
-    var language: CodeLanguage
-    var isEditable: Bool
-    var onTextChange: ((String) -> Void)?
-    
-    func makeNSView(context: Context) -> CodeTextView {
-        let textView = CodeTextView()
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticDataDetectionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.textContainerInset = NSSize(width: 10, height: 10)
-        textView.isEditable = isEditable
-        textView.isRichText = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.string = text
-        
-        // Set colors
-        textView.backgroundColor = NSColor(red: 0.12, green: 0.12, blue: 0.12, alpha: 1.0)
-        textView.textColor = NSColor(red: 0.83, green: 0.83, blue: 0.83, alpha: 1.0)
-        textView.insertionPointColor = NSColor(red: 0.68, green: 0.69, blue: 0.68, alpha: 1.0)
-        textView.selectedTextAttributes = [
-            .backgroundColor: NSColor(red: 0.15, green: 0.31, blue: 0.47, alpha: 1.0)
-        ]
-        
-        textView.delegate = context.coordinator
-        
-        return textView
+extension EditorTheme {
+    static var light: EditorTheme {
+        EditorTheme(
+            text: Attribute(color: NSColor(hex: "000000")),
+            insertionPoint: NSColor(hex: "000000"),
+            invisibles: Attribute(color: NSColor(hex: "D6D6D6")),
+            background: NSColor(hex: "FFFFFF"),
+            lineHighlight: NSColor(hex: "ECF5FF"),
+            selection: NSColor(hex: "B2D7FF"),
+            keywords: Attribute(color: NSColor(hex: "9B2393"), bold: true),
+            commands: Attribute(color: NSColor(hex: "326D74")),
+            types: Attribute(color: NSColor(hex: "0B4F79")),
+            attributes: Attribute(color: NSColor(hex: "815F03")),
+            variables: Attribute(color: NSColor(hex: "0F68A0")),
+            values: Attribute(color: NSColor(hex: "6C36A9")),
+            numbers: Attribute(color: NSColor(hex: "1C00CF")),
+            strings: Attribute(color: NSColor(hex: "C41A16")),
+            characters: Attribute(color: NSColor(hex: "1C00CF")),
+            comments: Attribute(color: NSColor(hex: "267507"))
+        )
     }
-    
-    func updateNSView(_ nsView: CodeTextView, context: Context) {
-        guard nsView.string != text else { return }
-        
-        let selectedRange = nsView.selectedRange()
-        nsView.string = text
-        
-        if selectedRange.location <= text.count {
-            nsView.setSelectedRange(selectedRange)
-        }
-        
-        nsView.isEditable = isEditable
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: SimpleCodeEditor
-        var debounceTimer: Timer?
-        
-        init(_ parent: SimpleCodeEditor) {
-            self.parent = parent
-        }
-        
-        func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            
-            debounceTimer?.invalidate()
-            debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    self.parent.text = textView.string
-                    self.parent.onTextChange?(textView.string)
-                }
-            }
-        }
+    static var dark: EditorTheme {
+        EditorTheme(
+            text: Attribute(color: NSColor(hex: "FFFFFF")),
+            insertionPoint: NSColor(hex: "007AFF"),
+            invisibles: Attribute(color: NSColor(hex: "53606E")),
+            background: NSColor(hex: "292A30"),
+            lineHighlight: NSColor(hex: "2F3239"),
+            selection: NSColor(hex: "646F83"),
+            keywords: Attribute(color: NSColor(hex: "FF7AB2"), bold: true),
+            commands: Attribute(color: NSColor(hex: "78C2B3")),
+            types: Attribute(color: NSColor(hex: "6BDFFF")),
+            attributes: Attribute(color: NSColor(hex: "CC9768")),
+            variables: Attribute(color: NSColor(hex: "4EB0CC")),
+            values: Attribute(color: NSColor(hex: "B281EB")),
+            numbers: Attribute(color: NSColor(hex: "D9C97C")),
+            strings: Attribute(color: NSColor(hex: "FF8170")),
+            characters: Attribute(color: NSColor(hex: "D9C97C")),
+            comments: Attribute(color: NSColor(hex: "7F8C98"))
+        )
     }
 }
 
-// MARK: - Code TextView
 
-class CodeTextView: NSTextView {
-    override func draw(_ dirtyRect: NSRect) {
-        backgroundColor.setFill()
-        dirtyRect.fill()
-        super.draw(dirtyRect)
-    }
-}
-
-// MARK: - Preview
-
-struct CodeEditorView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            // Swift code
-            CodeEditorView(
-                code: .constant("""
-                func isEven(_ number: Int) -> Bool {
-                    return number % 2 == 0
-                }
-                
-                func greet(_ name: String) -> String {
-                    return "Hello, \\(name)!"
-                }
-                
-                class Calculator {
-                    func add(_ a: Int, _ b: Int) -> Int {
-                        return a + b
-                    }
-                }
-                """),
-                language: .swift
-            )
-            .frame(height: 300)
-            
-            // Python code
-            CodeEditorView(
-                code: .constant("""
-                def is_even(number):
-                    return number % 2 == 0
-                
-                def greet(name):
-                    return f"Hello, {name}!"
-                """),
-                language: .python
-            )
-            .frame(height: 250)
-            
-            // Empty state
-            CodeEditorView(
-                code: .constant("// Write your code here"),
-                language: .swift
-            )
-            .frame(height: 150)
-        }
-    }
-}

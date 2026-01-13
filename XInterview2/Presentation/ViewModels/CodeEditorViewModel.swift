@@ -16,7 +16,7 @@ class CodeEditorViewModel: ObservableObject {
     
     @Published var code: String = ""
     @Published var attributedCode: NSAttributedString = NSAttributedString()
-    @Published var language: CodeLanguage = .swift
+    @Published var language: CodeLanguageInterview = .swift
     @Published var errorRanges: [NSRange] = []
     @Published var hintRanges: [NSRange] = []
     @Published var selectedRange: NSRange = NSRange(location: 0, length: 0)
@@ -31,7 +31,7 @@ class CodeEditorViewModel: ObservableObject {
     
     // MARK: - Components
     
-    private var syntaxHighlighter: SyntaxHighlighterProtocol
+
     private let theme: SyntaxTheme = .xcodeDark
     private let font: NSFont = .monospacedSystemFont(ofSize: 13, weight: .regular)
     
@@ -42,23 +42,19 @@ class CodeEditorViewModel: ObservableObject {
     
     // MARK: - Initialization
     
-    init(language: CodeLanguage = .swift) {
+    init(language: CodeLanguageInterview = .swift) {
         self.language = language
-        self.syntaxHighlighter = SyntaxHighlighterFactory.highlighter(for: language)
     }
     
     // MARK: - Code Management
     
     func setCode(_ newCode: String) {
         code = newCode
-        highlightCode()
         previousCode = newCode
     }
     
-    func updateLanguage(_ newLanguage: CodeLanguage) {
+    func updateLanguage(_ newLanguage: CodeLanguageInterview) {
         language = newLanguage
-        syntaxHighlighter = SyntaxHighlighterFactory.highlighter(for: newLanguage)
-        highlightCode()
     }
     
     // MARK: - User Actions
@@ -67,7 +63,6 @@ class CodeEditorViewModel: ObservableObject {
         guard isUserEditable && !isAIEditing else { return }
         
         code = newCode
-        scheduleHighlight()
         updateCursorPosition(in: newCode)
         
         // Notify of changes (callback will be set by parent)
@@ -81,7 +76,6 @@ class CodeEditorViewModel: ObservableObject {
         if newCode != previousCode {
             code = newCode
             previousCode = newCode
-            scheduleHighlight()
             updateCursorPosition(in: newCode)
             onCodeChanged?()
         }
@@ -94,7 +88,6 @@ class CodeEditorViewModel: ObservableObject {
         defer { isAIEditing = false }
         
         code = newCode
-        highlightCode()
     }
     
     func insertCodeAtCursor(_ text: String) {
@@ -103,7 +96,7 @@ class CodeEditorViewModel: ObservableObject {
         
         let insertLocation = selectedRange.location
         code.insert(contentsOf: text, at: code.index(code.startIndex, offsetBy: insertLocation))
-        highlightCode()
+
         
         // Move cursor to end of inserted text
         let newLocation = insertLocation + text.utf16.count
@@ -123,7 +116,6 @@ class CodeEditorViewModel: ObservableObject {
         
         let actualInsertionIndex = min(insertionIndex, code.utf16.count)
         code.insert(contentsOf: text, at: code.index(code.startIndex, offsetBy: actualInsertionIndex))
-        highlightCode()
     }
     
     func replaceCodeInRange(_ range: NSRange, with text: String) {
@@ -134,7 +126,7 @@ class CodeEditorViewModel: ObservableObject {
         
         code.removeSubrange(stringRange)
         code.insert(contentsOf: text, at: code.index(code.startIndex, offsetBy: range.location))
-        highlightCode()
+
     }
     
     func selectRange(_ range: NSRange) {
@@ -162,21 +154,7 @@ class CodeEditorViewModel: ObservableObject {
     }
     
     // MARK: - Helper Methods
-    
-    private func scheduleHighlight() {
-        debounceTask?.cancel()
-        debounceTask = Task {
-            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second debounce
-            if !Task.isCancelled {
-                highlightCode()
-            }
-        }
-    }
-    
-    private func highlightCode() {
-        let highlighted = syntaxHighlighter.highlight(code, font: font, theme: theme)
-        attributedCode = highlighted
-    }
+
     
     private func updateCursorPosition(in text: String) {
         let lines = text.prefix(code.utf16.count).components(separatedBy: .newlines)
@@ -243,9 +221,6 @@ class CodeEditorViewModel: ObservableObject {
             // No action
             break
         }
-        
-        // Update highlighting after action
-        scheduleHighlight()
         
         // Notify that code was modified by AI
         onCodeChanged?()

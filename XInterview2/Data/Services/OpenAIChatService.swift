@@ -150,7 +150,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 taskType: .question,
                 spokenText: assistantMessage,
                 codeTemplate: nil,
-                editorAction: .none,
+                editorAction: EditorAction.none,
                 evaluation: nil,
                 hintContext: nil
             )

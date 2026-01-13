@@ -61,10 +61,10 @@ protocol OpenAIChatServiceProtocol {
 
 struct CodeContext: Codable {
     let currentCode: String
-    let language: CodeLanguage
+    let language: CodeLanguageInterview
     let recentChanges: [CodeChange]
     
-    init(currentCode: String, language: CodeLanguage, recentChanges: [CodeChange]) {
+    init(currentCode: String, language: CodeLanguageInterview, recentChanges: [CodeChange]) {
         self.currentCode = currentCode
         self.language = language
         self.recentChanges = recentChanges
@@ -89,6 +89,8 @@ struct CodeContext: Codable {
         """
     }
 }
+
+
 
 /// Represents a change made to code
 struct CodeChange: Codable {
