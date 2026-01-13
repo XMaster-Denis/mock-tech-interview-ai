@@ -37,6 +37,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var speechStartThreshold: Float // Configurable via settings
     private var silenceTimeout: TimeInterval // Configurable via settings
     private let minSpeechDuration: TimeInterval = 0.2  // Lowered from 0.5 for faster testing
+    private let minSpeechLevel: Float = 0.04  // Minimum average audio level to consider as valid speech (not noise)
     private let maxRecordingDuration: TimeInterval = 30.0
     private let calibrationDelay: TimeInterval = 1.0 // Ignore first 1s for mic calibration
     
@@ -479,6 +480,32 @@ class VoiceDetector: NSObject, ObservableObject {
         return trimmedData
     }
     
+    private func calculateAverageLevel(from data: Data) -> Float {
+        // WAV file has 44-byte header, then 16-bit PCM samples
+        let sampleRate: UInt32 = 16000
+        let bytesPerSample: UInt32 = 2 // 16-bit = 2 bytes
+        let channels: UInt32 = 1
+        
+        guard data.count > 44 else { return 0.0 }
+        
+        let samplesData = data.dropFirst(44)
+        let sampleCount = samplesData.count / 2
+        guard sampleCount > 0 else { return 0.0 }
+        
+        var sum: Float = 0
+        samplesData.withUnsafeBytes { rawBuffer in
+            guard let buffer = rawBuffer.baseAddress?.assumingMemoryBound(to: Int16.self) else { return }
+            for i in 0..<sampleCount {
+                let sample = abs(Float(buffer[i]))
+                sum += sample
+            }
+        }
+        
+        let average = sum / Float(sampleCount)
+        // Normalize to 0.0-1.0 range (Int16 max is 32768)
+        return min(1.0, average / 32768.0)
+    }
+    
     private func handleSpeechEnd() {
         guard isSpeechActive, 
               let startTime = speechStartTime,
@@ -530,6 +557,17 @@ class VoiceDetector: NSObject, ObservableObject {
                     let trimmedData = try await trimWAVData(originalData, 
                                                       startOffset: startOffset, 
                                                       duration: speechDuration)
+                    
+                    // Check average audio level to filter out quiet noise
+                    let avgLevel = calculateAverageLevel(from: trimmedData)
+                    if avgLevel < minSpeechLevel {
+                        Logger.warning("⚠️ Audio too quiet (avg level: \(String(format: "%.3f", avgLevel)) < minSpeechLevel: \(minSpeechLevel)), ignoring as noise")
+                        Logger.voice("💡 The audio signal is too weak - likely background noise")
+                        // Don't send event, just restart listening
+                        return
+                    }
+                    
+                    Logger.voice("📊 Average audio level: \(String(format: "%.3f", avgLevel)) ✓")
                     Logger.voice("📤 Sending trimmed audio to Whisper API")
                     onVoiceEvent?(.speechEnded(trimmedData))
                 } catch {

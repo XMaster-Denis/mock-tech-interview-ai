@@ -305,7 +305,7 @@ class ConversationManager: ObservableObject {
                 apiKey: apiKey,
                 language: settings.selectedLanguage.rawValue,
                 prompt: prompt,
-                temperature: 0.0
+                temperature: 0.1
             )
             
             Logger.state("Received transcription: '\(userText)'")
