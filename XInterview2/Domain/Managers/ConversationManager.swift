@@ -241,6 +241,11 @@ class ConversationManager: ObservableObject {
                 applyEditorAction(action)
             }
             
+            // Apply code template if present
+            if let codeTemplate = aiResponse.codeTemplate {
+                codeEditorViewModel?.setCode(codeTemplate)
+            }
+            
             // Check if stopping before proceeding
             guard !isStopping else {
                 Logger.warning("sendOpeningMessage() cancelled after getting response - isStopping=true")
@@ -359,6 +364,11 @@ class ConversationManager: ObservableObject {
             // Apply editor action if present
             if let action = aiResponse.editorAction {
                 applyEditorAction(action)
+            }
+            
+            // Apply code template if present
+            if let codeTemplate = aiResponse.codeTemplate {
+                codeEditorViewModel?.setCode(codeTemplate)
             }
             
             // Handle hint context if present (AI providing assistance)
