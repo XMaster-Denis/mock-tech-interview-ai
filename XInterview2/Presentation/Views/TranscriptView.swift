@@ -73,6 +73,7 @@ struct MessageRowView: View {
             
             Text(message.text)
                 .font(.body)
+                .textSelection(.enabled)
                 .padding(10)
                 .background(message.role == .user ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor))
                 .cornerRadius(8)
