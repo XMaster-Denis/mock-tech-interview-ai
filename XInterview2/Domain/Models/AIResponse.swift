@@ -8,33 +8,51 @@
 import Foundation
 import AppKit
 
-/// Represents a complete response from the AI with potential editor actions
+/// Represents a complete response from AI with potential editor actions
 struct AIResponse: Codable {
+    /// Type of task
+    let taskType: TaskType
+    
     /// Text to be spoken by TTS
     let spokenText: String
     
-    /// Action to perform on the code editor (optional)
+    /// Code template for user to complete (optional, for code tasks)
+    let codeTemplate: String?
+    
+    /// Action to perform on code editor (optional)
     let editorAction: EditorAction?
     
     /// Code evaluation if applicable (optional)
     let evaluation: CodeEvaluation?
     
+    /// Hint context when AI provides assistance (optional)
+    let hintContext: HintContext?
+    
     init(
+        taskType: TaskType,
         spokenText: String,
+        codeTemplate: String? = nil,
         editorAction: EditorAction? = nil,
-        evaluation: CodeEvaluation? = nil
+        evaluation: CodeEvaluation? = nil,
+        hintContext: HintContext? = nil
     ) {
+        self.taskType = taskType
         self.spokenText = spokenText
+        self.codeTemplate = codeTemplate
         self.editorAction = editorAction
         self.evaluation = evaluation
+        self.hintContext = hintContext
     }
     
     // MARK: - Coding Keys for snake_case JSON
     
     enum CodingKeys: String, CodingKey {
+        case taskType = "task_type"
         case spokenText = "spoken_text"
+        case codeTemplate = "code_template"
         case editorAction = "editor_action"
         case evaluation
+        case hintContext = "hint_context"
     }
 }
 
@@ -134,176 +152,4 @@ enum EditorActionNSRange {
     case clear
     case highlight(ranges: [NSRange])
     case none
-}
-
-/// Codable wrapper for NSRange
-struct NSRangeCodable: Codable {
-    let range: NSRange
-    
-    init(_ range: NSRange) {
-        self.range = range
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let location = try container.decode(Int.self, forKey: .location)
-        let length = try container.decode(Int.self, forKey: .length)
-        self.range = NSRange(location: location, length: length)
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(range.location, forKey: .location)
-        try container.encode(range.length, forKey: .length)
-    }
-    
-    enum CodingKeys: String, CodingKey {
-        case location
-        case length
-    }
-}
-
-/// Evaluation of user's code submission
-struct CodeEvaluation: Codable {
-    /// Whether code is correct
-    let isCorrect: Bool
-    
-    /// Feedback message
-    let feedback: String
-    
-    /// Suggestions for improvement
-    let suggestions: [String]
-    
-    /// Severity of issues (if any)
-    let severity: IssueSeverity?
-    
-    /// Line numbers with issues
-    let issueLines: [Int]
-    
-    init(
-        isCorrect: Bool,
-        feedback: String,
-        suggestions: [String] = [],
-        severity: IssueSeverity? = nil,
-        issueLines: [Int] = []
-    ) {
-        self.isCorrect = isCorrect
-        self.feedback = feedback
-        self.suggestions = suggestions
-        self.severity = severity
-        self.issueLines = issueLines
-    }
-    
-    // MARK: - Coding Keys for snake_case JSON
-    
-    enum CodingKeys: String, CodingKey {
-        case isCorrect = "is_correct"
-        case feedback
-        case suggestions
-        case severity
-        case issueLines = "issue_lines"
-    }
-    
-    /// Create a success evaluation
-    static func success(feedback: String) -> CodeEvaluation {
-        return CodeEvaluation(
-            isCorrect: true,
-            feedback: feedback,
-            severity: .info,
-            issueLines: []
-        )
-    }
-    
-    /// Create an error evaluation
-    static func error(
-        feedback: String,
-        suggestions: [String] = [],
-        issueLines: [Int] = []
-    ) -> CodeEvaluation {
-        return CodeEvaluation(
-            isCorrect: false,
-            feedback: feedback,
-            suggestions: suggestions,
-            severity: .error,
-            issueLines: issueLines
-        )
-    }
-    
-    /// Create a warning evaluation
-    static func warning(
-        feedback: String,
-        suggestions: [String] = [],
-        issueLines: [Int] = []
-    ) -> CodeEvaluation {
-        return CodeEvaluation(
-            isCorrect: true,
-            feedback: feedback,
-            suggestions: suggestions,
-            severity: .warning,
-            issueLines: issueLines
-        )
-    }
-}
-
-/// Severity of code issues
-enum IssueSeverity: String, Codable {
-    case info
-    case warning
-    case error
-    
-    var displayName: String {
-        switch self {
-        case .info:
-            return "Info"
-        case .warning:
-            return "Warning"
-        case .error:
-            return "Error"
-        }
-    }
-    
-    var color: NSColor {
-        switch self {
-        case .info:
-            return NSColor(hex: "#4CA6FF")
-        case .warning:
-            return NSColor(hex: "#FFD93D")
-        case .error:
-            return NSColor(hex: "#FF6B6B")
-        }
-    }
-}
-
-/// Represents a change made to code
-struct CodeChange: Codable {
-    let range: NSRangeCodable
-    let oldText: String
-    let newText: String
-    let timestamp: Date
-    
-    init(range: NSRange, oldText: String, newText: String) {
-        self.range = NSRangeCodable(range)
-        self.oldText = oldText
-        self.newText = newText
-        self.timestamp = Date()
-    }
-}
-
-/// Error detected in code by real-time analysis
-struct CodeError: Codable {
-    let range: NSRangeCodable
-    let message: String
-    let severity: IssueSeverity
-    let line: Int
-    
-    init(range: NSRange, message: String, severity: IssueSeverity, line: Int) {
-        self.range = NSRangeCodable(range)
-        self.message = message
-        self.severity = severity
-        self.line = line
-    }
-    
-    var nsRange: NSRange {
-        return range.range
-    }
 }

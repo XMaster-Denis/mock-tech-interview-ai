@@ -2,311 +2,235 @@
 //  HybridInterviewPrompt.swift
 //  XInterview2
 //
-//  System prompts for hybrid interview mode (voice + code)
+//  System prompt for hybrid interview with code tasks
 //
 
 import Foundation
 
-/// Generates system prompts for hybrid interview mode
-enum HybridInterviewPrompt {
+/// Generates system prompt for hybrid interview mode
+struct HybridInterviewPrompt {
     
-    /// Generate system prompt for given topic and level
-    static func generate(for topic: InterviewTopic, level: DeveloperLevel, language: Language, mode: InterviewMode) -> String {
-        let languagePrompt = languagePrompt(for: language)
-        let levelPrompt = levelInstructions(for: level)
-        let modeInstructions = interviewModeInstructions(for: mode, language: language)
-        let completionDetection = codeCompletionInstructions(for: language)
+    /// Generate system prompt based on interview mode and language
+    static func generate(
+        for topic: InterviewTopic,
+        level: DeveloperLevel,
+        language: Language,
+        mode: InterviewMode
+    ) -> String {
+        let modeInstructions = instructionsFor(mode: mode, language: language)
+        let topicInstructions = topicInstructions(for: topic, language: language)
+        let hintInstructions = hintDetectionInstructions(language: language)
         
         return """
-        \(languagePrompt)
-
-        INTERVIEW MODE: \(mode.displayName)
+        # Role
+        You are an interview tutor for \(topic.title) at \(level.displayName) level.
+        Conduct a natural dialogue in \(language.displayName) as a real interviewer would.
+        
+        # Interview Mode
+        Current mode: \(mode.rawValue)
+        
         \(modeInstructions)
-
-        TOPIC: \(topic.title)
-        LEVEL: \(level.displayName)
-        TOPIC INSTRUCTIONS: \(topic.prompt)
-
-        \(levelPrompt)
-
-        CODE COMPLETION DETECTION:
-        \(completionDetection)
-
-        RESPONSE FORMAT:
-        Always respond with JSON in this exact format (JSON keys in English, values in \(language.displayName) language):
+        
+        # Task Instructions
+        \(topicInstructions)
+        
+        # Hint Detection
+        \(hintInstructions)
+        
+        # Response Format
+        Always respond with valid JSON:
+        ```json
         {
-            "spoken_text": "Text to be spoken (in \(language.displayName) language)",
-            "editor_action": {
-                "type": "insert|replace|clear|highlight|none",
-                "text": "code to insert" (for insert/replace),
-                "location": 0 (for insert),
-                "range": {"location": 0, "length": 0} (for replace),
-                "ranges": [{"location": 0, "length": 0}] (for highlight)
-            },
-            "evaluation": {
-                "is_correct": true|false,
-                "feedback": "Brief feedback",
-                "suggestions": ["hint 1", "hint 2"],
-                "severity": "info|warning|error",
-                "issue_lines": [1, 2, 3]
-            }
+            "task_type": "question|code_task",
+            "spoken_text": "text to speak",
+            "code_template": "code template (for code tasks)",
+            "editor_action": {...},
+            "evaluation": {...},
+            "hint_context": {...}
         }
-
-        EVALUATION GUIDELINES:
-        - All feedback and suggestions MUST be in \(language.displayName)
-        - Correct code: is_correct=true, brief positive feedback, severity="info"
-        - Incorrect code: is_correct=false, specific error message, severity="error", issue_lines
-        - Code works but could be better: is_correct=true, improvement suggestions, severity="warning"
-
-        CODE EDITOR CONTEXT:
-        The editor contains current code. When you ask for code modifications or provide feedback,
-        reference specific line numbers.
-
-        Keep everything extremely short and ALWAYS in \(language.displayName):
-        - Questions: 1 sentence max
-        - Answers: 1-2 sentences max
-        - Feedback: 1 sentence max
-        - Suggestions: 1-2 hints max
-
-        STARTING CONVERSATION:
-        Begin with a brief greeting in \(language.displayName) followed by your first question. Do not include code unless as first task requires it.
+        ```
         """
     }
     
-    /// Generate language-specific instructions
-    private static func languagePrompt(for language: Language) -> String {
-        switch language {
-        case .english:
-            return """
-            You are an interview tutor. Conduct a real-time technical interview with voice and code interaction.
-            
-            CRITICAL: ALL responses MUST be in English.
-            The "spoken_text" field value MUST be in English.
-            JSON keys remain in English (spoken_text, editor_action, etc.), but the content MUST be English.
-            """
-        case .german:
-            return """
-            Du bist ein Interview-Tutor. Führe ein technisches Interview mit Sprach- und Code-Interaktion.
-            
-            KRITISCH: ALLE Antworten MÜSSEN auf Deutsch sein.
-            Das Feld "spoken_text" MUSS auf Deutsch sein.
-            JSON-Schlüssel bleiben auf Englisch (spoken_text, editor_action, etc.), aber der Inhalt MUSS Deutsch sein.
-            """
-        case .russian:
-            return """
-            Ты — наставник для подготовки к собеседованию. Проводи интервью с голосовым и кодовым взаимодействием.
-            
-            КРИТИЧЕСКИ: ВСЕ ОТВЕТЫ ДОЛЖНЫ БЫТЬ НА РУССКОМ ЯЗЫКЕ.
-            Значение поля "spoken_text" ДОЛЖНО быть на русском.
-            Ключи JSON остаются на английском (spoken_text, editor_action и т.д.), но содержание ДОЛЖНО быть на русском.
-            """
-        }
-    }
+    // MARK: - Mode-Specific Instructions
     
-    /// Generate interview mode instructions
-    private static func interviewModeInstructions(for mode: InterviewMode, language: Language) -> String {
+    private static func instructionsFor(mode: InterviewMode, language: Language) -> String {
         switch mode {
         case .questionsOnly:
-            switch language {
-            case .english:
-                return """
-                QUESTIONS ONLY MODE:
-                - Ask verbal questions only
-                - Do not request code from user
-                - Do not use editor_action with insert/replace
-                - Do not include evaluation in responses
-                - Focus on theoretical concepts and explanations
-                """
-            case .german:
-                return """
-                NUR FRAGEN MODUS:
-                - Stelle nur mündliche Fragen
-                - Fordere keinen Code vom Benutzer
-                - Verwende keine editor_action mit insert/replace
-                - Füge keine evaluation in Antworten ein
-                - Konzentriere dich auf theoretische Konzepte
-                """
-            case .russian:
-                return """
-                РЕЖИМ ТОЛЬКО ВОПРОСЫ:
-                - Задавай только устные вопросы
-                - Не проси пользователя написать код
-                - Не используй editor_action с insert/replace
-                - Не включай evaluation в ответы
-                - Сосредоточься на теоретических концепциях
-                """
-            }
+            return """
+            ## Questions Only Mode
+            - Ask theoretical questions only
+            - Do not give code tasks
+            - Keep responses conversational
+            - User responds verbally
+            """
         case .codeTasks:
-            switch language {
-            case .english:
-                return """
-                CODE TASKS MODE:
-                - Present coding challenges
-                - Keep tasks EXTREMELY SHORT - 1 line of code maximum
-                - Focus on specific concepts, not full implementations
-                - When user indicates completion, read code and evaluate it
-                - Use editor_action to insert code snippets or hints
-                - Include evaluation in responses when appropriate
-                """
-            case .german:
-                return """
-                CODE TASKS MODUS:
-                - Präsentiere Programmieraufgaben
-                - Halte Aufgaben EXTREM KURZ - max 1 Zeile Code
-                - Konzentriere dich auf spezifische Konzepte
-                - Wenn Benutzer den Abschluss signalisiert, liesse den Code und bewerte ihn
-                - Verwende editor_action für Code-Snippets oder Hinweise
-                - Füge evaluation in Antworten ein, wenn passend
-                """
-            case .russian:
-                return """
-                РЕЖИМ ЗАДАЧ С КОДОМ:
-                - Давай задачи по программированию
-                - Держи задачи ОЧЕНЬ КОРОТКИМИ - максимум 1 строка кода
-                - Сосредоточься на конкретных концепциях
-                - Когда пользователь сигнализирует о завершении, прочитай код и оцени его
-                - Используй editor_action для вставки фрагментов кода или подсказок
-                - Включай evaluation в ответы когда уместно
-                """
+            return """
+            ## Code Tasks Mode
+            - Give short coding challenges (1 line max)
+            - When presenting a task:
+              1. Set task_type to "code_task"
+              2. Provide code_template with placeholders for user to complete
+              3. Use editor_action with type "replace" to insert template
+              4. Describe the task in spoken_text
+            
+            Example code_task:
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Write a function that returns true if a number is even",
+                "code_template": "func isEven(_ number: Int) -> Bool {
+                    // TODO: implement
+                }",
+                "editor_action": {
+                    "type": "replace",
+                    "range": {"location": 0, "length": 0},
+                    "text": "func isEven(_ number: Int) -> Bool {
+                        // TODO: implement
+                    }"
+                },
+                "evaluation": null,
+                "hint_context": null
             }
+            ```
+            """
         }
     }
     
-    /// Generate code completion detection instructions
-    private static func codeCompletionInstructions(for language: Language) -> String {
+    // MARK: - Topic-Specific Instructions
+    
+    private static func topicInstructions(for topic: InterviewTopic, language: Language) -> String {
+        return """
+        ## Topic Guidelines
+        \(topic.prompt)
+        
+        Keep responses extremely short:
+        - Questions: 1 sentence max
+        - Code task descriptions: 1-2 sentences max
+        - Answers/explanations: 1-2 sentences max
+        """
+    }
+    
+    // MARK: - Hint Detection Instructions
+    
+    private static func hintDetectionInstructions(language: Language) -> String {
         switch language {
         case .english:
             return """
-            When user indicates their code is ready for evaluation:
-            - Examples (not strict keywords - understand from context):
-              "I'm done", "My code is ready", "Check my code", "Done"
-              "I finished", "Can you take a look?", "Here's what I wrote"
-              "What do you think?"
-            - Read the current code from the editor
-            - Evaluate correctness
-            - Provide brief feedback
-            - If incorrect: give hints without revealing solution
-            - If correct: acknowledge success and optionally move to next task
+            ## Providing Hints
+            When user is stuck and says phrases like:
+            - "I don't know"
+            - "I don't get it"
+            - "I'm not sure"
+            - "Help me"
+            - "How do I do this?"
+            
+            Provide hints using hint_context:
+            
+            For code hints (insert actual code):
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Use the modulo operator % to check for even numbers",
+                "hint_context": {
+                    "type": "code_insertion",
+                    "code": " number % 2 == 0",
+                    "explanation": "The % operator returns the remainder of division",
+                    "highlight_range": {"location": 0, "length": 17}
+                }
+            }
+            ```
+            
+            For text hints (no code insertion):
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Think about what operator could help you check if a number is divisible by 2",
+                "hint_context": {
+                    "type": "text_hint",
+                    "explanation": "Suggest using modulo operator"
+                }
+            }
+            ```
             """
-        case .german:
-            return """
-            Wenn Benutzer signalisiert, dass der Code fertig ist:
-            - Beispiele (keine strikten Keywords - verstehe aus Kontext):
-              "Ich bin fertig", "Der Code ist fertig", "Prüfe meinen Code", "Erledigt"
-              "Kannst du mal schauen?", "Das ist mein Code", "Was denkst du?"
-            - Liesse den aktuellen Code aus dem Editor
-            - Bewerte die Korrektheit
-            - Gib kurzes Feedback
-            - Bei Fehlern: gebe Hinweise ohne Lösung zu verraten
-            - Bei Erfolg: bestätige Erfolg und gehe eventuell zur nächsten Aufgabe
-            """
+            
         case .russian:
             return """
-            Когда пользователь сигнализирует что код готов для оценки:
-            - Примеры (не строгие ключевые слова - понимай из контекста):
-              "Я дописал", "Готово", "Проверь код", "Я закончил"
-              "Можешь посмотреть?", "Вот что получилось", "Как тебе?"
-            - Прочитай текущий код из редактора
-            - Оцени правильность
-            - Дай краткую обратную связь
-            - Если неправильно: дай подсказки не раскрывая решение
-            - Если правильно: признай успех и перейди к следующей задаче
-            """
-        }
-    }
-    
-    /// Generate level-specific instructions
-    private static func levelInstructions(for level: DeveloperLevel) -> String {
-        switch level {
-        case .junior:
-            return """
-            JUNIOR LEVEL FOCUS:
-            - Basic language concepts (optionals, loops, functions)
-            - Simple data structures (arrays, dictionaries)
-            - Basic Swift types and syntax
-            - Common error patterns to look for:
-                * Missing unwrapping optionals
-                * Incorrect type annotations
-                * Missing return statements
-            """
-        case .middle:
-            return """
-            MIDDLE LEVEL FOCUS:
-            - Advanced concepts (generics, protocols, closures)
-            - Error handling patterns
-            - Memory management basics
-            - Concurrency fundamentals
-            - Common error patterns to look for:
-                * Retain cycles
-                * Incorrect error propagation
-                * Misuse of force unwrap
-            """
-        case .senior:
-            return """
-            SENIOR LEVEL FOCUS:
-            - Architecture patterns (MVVM, MVP, VIPER)
-            - Advanced concurrency (actors, async/await)
-            - Performance optimization
-            - Testing strategies
-            - Common error patterns to look for:
-                * Architectural inconsistencies
-                * Performance bottlenecks
-                * Thread safety issues
-            """
-        case .teamLead:
-            return """
-            TEAM LEAD LEVEL FOCUS:
-            - System design decisions
-            - Trade-off analysis
-            - Code review perspective
-            - Scalability considerations
-            - Common error patterns to look for:
-                * Scalability limitations
-                * Poor separation of concerns
-                * Lack of error handling strategies
-            """
-        }
-    }
-    
-    /// JSON Schema for editor actions
-    static var editorActionSchema: String {
-        return """
-        Editor Action Types:
-        - "insert": Insert code at specified location (0 = beginning)
-        - "replace": Replace code in specified range
-        - "clear": Clear all code from editor
-        - "highlight": Highlight specific ranges (yellow underline)
-        - "none": No action on editor
-        
-        Evaluation Severity:
-        - "info": General feedback, no issues
-        - "warning": Code works but could be improved
-        - "error": Code has errors or incorrect implementation
-        """
-    }
-}
-
-// MARK: - Code Context for API
-
-struct CodeContext {
-    let currentCode: String
-    let language: CodeLanguage
-    let recentChanges: [CodeChange]
-    
-    func toContextString() -> String {
-        var context = """
-        CURRENT CODE:
-        \(currentCode)
-        """
-        
-        if !recentChanges.isEmpty {
-            context += "\n\nRECENT CHANGES:"
-            for (index, change) in recentChanges.prefix(3).enumerated() {
-                let line = change.range.range.location
-                context += "\n  \(index + 1). Line \(line): \(change.newText)"
+            ## Предоставление подсказок
+            Когда пользователь застрял и говорит фразы:
+            - "Не знаю"
+            - "Не понимаю"
+            - "Не получается"
+            - "Помоги"
+            - "Как это сделать?"
+            
+            Предоставляйте подсказки через hint_context:
+            
+            Для подсказок с кодом (вставить код):
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Используй оператор остатка % для проверки четности",
+                "hint_context": {
+                    "type": "code_insertion",
+                    "code": " number % 2 == 0",
+                    "explanation": "Оператор % возвращает остаток от деления",
+                    "highlight_range": {"location": 0, "length": 17}
+                }
             }
+            ```
+            
+            Для текстовых подсказок (без вставки кода):
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Подумай какой оператор поможет проверить делимость числа на 2",
+                "hint_context": {
+                    "type": "text_hint",
+                    "explanation": "Порекомендовать оператор остатка"
+                }
+            }
+            ```
+            """
+            
+        case .german:
+            return """
+            ## Tipps geben
+            Wenn der Benutzer feststeckt und sagt:
+            - "Ich weiß nicht"
+            - "Ich verstehe nicht"
+            - "Ich bekomme es nicht hin"
+            - "Hilf mir"
+            - "Wie mache ich das?"
+            
+            Gib Hinweise mit hint_context:
+            
+            Für Code-Hinweise (Code einfügen):
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Benutze den Modulo-Operator % um gerade Zahlen zu prüfen",
+                "hint_context": {
+                    "type": "code_insertion",
+                    "code": " number % 2 == 0",
+                    "explanation": "Der %-Operator gibt den Rest einer Division zurück",
+                    "highlight_range": {"location": 0, "length": 17}
+                }
+            }
+            ```
+            
+            Für Text-Hinweise (kein Code):
+            ```json
+            {
+                "task_type": "code_task",
+                "spoken_text": "Überlege welcher Operator dir helfen könnte zu prüfen ob eine Zahl durch 2 teilbar ist",
+                "hint_context": {
+                    "type": "text_hint",
+                    "explanation": "Modulo-Operator vorschlagen"
+                }
+            }
+            ```
+            """
         }
-        
-        return context
     }
 }

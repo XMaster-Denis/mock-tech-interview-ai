@@ -145,11 +145,14 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         guard let data = assistantMessage.data(using: .utf8),
               let aiResponse = try? JSONDecoder().decode(AIResponse.self, from: data) else {
             Logger.error("Failed to parse AI response as JSON - using fallback")
-            // Fallback to plain text response
+            // Fallback to plain text response with default task type
             return AIResponse(
+                taskType: .question,
                 spokenText: assistantMessage,
+                codeTemplate: nil,
                 editorAction: .none,
-                evaluation: nil
+                evaluation: nil,
+                hintContext: nil
             )
         }
         

@@ -361,6 +361,11 @@ class ConversationManager: ObservableObject {
                 applyEditorAction(action)
             }
             
+            // Handle hint context if present (AI providing assistance)
+            if let hint = aiResponse.hintContext {
+                applyHint(hint)
+            }
+            
             // Handle evaluation if present
             if let evaluation = aiResponse.evaluation {
                 handleEvaluation(evaluation)
@@ -541,6 +546,35 @@ class ConversationManager: ObservableObject {
             }
             editor.highlightErrors(errors)
         }
+    }
+    
+    private func applyHint(_ hint: HintContext) {
+        Logger.info("Applying hint - type: \(hint.type)")
+        
+        guard let editor = codeEditorViewModel else {
+            Logger.warning("Cannot apply hint - no editor attached")
+            return
+        }
+        
+        switch hint.type {
+        case .codeInsertion:
+            // Insert code and highlight it
+            if let code = hint.code {
+                editor.insertCodeAtCursor(code)
+                if let range = hint.highlightRange {
+                    editor.highlightHints([range.range])
+                }
+                Logger.success("Inserted hint code: \(code.prefix(50))...")
+            }
+        case .textHint:
+            // Just explanation, no code insertion
+            if let explanation = hint.explanation {
+                Logger.info("Text hint: \(explanation)")
+            }
+        }
+        
+        // Update code context after hint
+        updateCodeContext(from: editor)
     }
     
     // MARK: - Helpers

@@ -47,13 +47,12 @@ struct CodeEditorView: NSViewRepresentable {
         guard let textView = nsView.documentView as? HighlightingTextView else { return }
         
         // Update code if it changed externally (e.g., AI edit)
-        // Only update if AI is actively editing AND the user is not currently editing
-        if textView.string != viewModel.code && viewModel.isAIEditing && viewModel.isUserEditable {
+        if textView.string != viewModel.code {
             textView.string = viewModel.code
         }
         
-        // Update editable state - always allow user editing when not AI editing
-        textView.isEditable = !viewModel.isAIEditing
+        // Always allow user editing
+        textView.isEditable = true
     }
     
     func makeCoordinator() -> Coordinator {
