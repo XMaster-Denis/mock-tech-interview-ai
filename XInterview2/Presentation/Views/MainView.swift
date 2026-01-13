@@ -44,7 +44,14 @@ struct MainView: View {
                     
                     Divider()
                     
-                    CodeEditorView(viewModel: viewModel.codeEditorViewModel)
+                    CodeEditorView(
+                        code: $viewModel.code,
+                        language: .swift,
+                        isEditable: true,
+                        onCodeChange: { newCode in
+                            // Notify viewModel of changes
+                        }
+                    )
                 }
                 
                 // Right: Transcript

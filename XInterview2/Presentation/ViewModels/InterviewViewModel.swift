@@ -17,6 +17,7 @@ class InterviewViewModel: ObservableObject {
     @Published var audioLevel: Float = 0.0
     @Published var voiceThreshold: Float = 0.15  // From settings for UI display
     @Published var errorMessage: String?
+    @Published var code: String = ""
     @Published var codeEditorViewModel = CodeEditorViewModel()
     @Published var interviewMode: InterviewMode = .questionsOnly
     

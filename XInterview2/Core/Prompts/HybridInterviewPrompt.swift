@@ -38,17 +38,24 @@ struct HybridInterviewPrompt {
         \(hintInstructions)
         
         # Response Format
-        Always respond with valid JSON:
-        ```json
-        {
-            "task_type": "question|code_task",
-            "spoken_text": "text to speak",
-            "code_template": "code template (for code tasks)",
-            "editor_action": {...},
-            "evaluation": {...},
-            "hint_context": {...}
-        }
-        ```
+        Always respond with valid JSON. Do not include any markdown formatting, code blocks, or explanatory text in your response.
+        Return ONLY the JSON object with these fields:
+        
+        Required fields:
+        - task_type: Either "question" or "code_task"
+        - spoken_text: Text to be spoken (keep concise, 1-2 sentences max)
+        
+        Optional fields (include null if not applicable):
+        - code_template: For code tasks, template with TODO comments
+        - editor_action: Action for editor (type, range, text for replace action)
+        - evaluation: For completed code (is_correct, feedback, suggestions, severity, issue_lines)
+        - hint_context: When providing hints (type, code, explanation, highlight_range)
+        
+        IMPORTANT: 
+        - Never use markdown code blocks (triple backticks) in your response
+        - Never include examples in your actual response
+        - Return only the raw JSON object
+        - Keep all text extremely short and conversational
         """
     }
     
@@ -57,58 +64,106 @@ struct HybridInterviewPrompt {
     private static func instructionsFor(mode: InterviewMode, language: Language) -> String {
         switch mode {
         case .questionsOnly:
-            return """
-            ## Questions Only Mode
-            - Ask theoretical questions only
-            - Do not give code tasks
-            - Keep responses conversational
-            - User responds verbally
-            """
-        case .codeTasks:
-            return """
-            ## Code Tasks Mode
-            - Give short coding challenges (1 line max)
-            - When presenting a task:
-              1. Set task_type to "code_task"
-              2. Provide code_template with placeholders for user to complete
-              3. Use editor_action with type "replace" to insert template
-              4. Describe the task in spoken_text
-            
-            Example code_task:
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Write a function that returns true if a number is even",
-                "code_template": "func isEven(_ number: Int) -> Bool {
-                    // TODO: implement
-                }",
-                "editor_action": {
-                    "type": "replace",
-                    "range": {"location": 0, "length": 0},
-                    "text": "func isEven(_ number: Int) -> Bool {
-                        // TODO: implement
-                    }"
-                },
-                "evaluation": null,
-                "hint_context": null
+            switch language {
+            case .english:
+                return """
+                ## Questions Only Mode
+                - Ask theoretical questions only
+                - Do not give code tasks
+                - Keep responses conversational
+                - User responds verbally
+                """
+            case .russian:
+                return """
+                ## Режим только вопросов
+                - Задавай только теоретические вопросы
+                - Не давай задачи по коду
+                - Держи ответы разговорными
+                - Пользователь отвечает голосом
+                """
+            case .german:
+                return """
+                ## Nur Fragen Modus
+                - Stelle nur theoretische Fragen
+                - Keine Code-Aufgaben
+                - Halte Antworten konversativ
+                - Benutzer antwortet mündlich
+                """
             }
-            ```
-            """
+            
+        case .codeTasks:
+            switch language {
+            case .english:
+                return """
+                ## Code Tasks Mode
+                - Give short coding challenges (1 line max)
+                - When presenting a task:
+                  1. Set task_type to "code_task"
+                  2. Provide code_template with placeholders for user to complete
+                  3. Use editor_action with type "replace" to insert template
+                  4. Describe task in spoken_text (1-2 sentences max)
+                """
+            case .russian:
+                return """
+                ## Режим задач по коду
+                - Давай короткие задачи по коду (максимум 1 строка)
+                - При представлении задачи:
+                  1. Установи task_type в "code_task"
+                  2. Предоставь code_template с заполнителями для пользователя
+                  3. Используй editor_action с type "replace" для вставки шаблона
+                  4. Опиши задачу в spoken_text (максимум 1-2 предложения)
+                """
+            case .german:
+                return """
+                ## Code-Aufgaben Modus
+                - Gib kurze Code-Herausforderungen (max 1 Zeile)
+                - Bei Präsentation einer Aufgabe:
+                  1. Setze task_type auf "code_task"
+                  2. Stelle code_template mit Platzhaltern bereit
+                  3. Verwende editor_action mit type "replace" zum Einfügen
+                  4. Beschreibe Aufgabe in spoken_text (max 1-2 Sätze)
+                """
+            }
         }
     }
     
     // MARK: - Topic-Specific Instructions
     
     private static func topicInstructions(for topic: InterviewTopic, language: Language) -> String {
-        return """
+        let baseInstructions = """
         ## Topic Guidelines
         \(topic.prompt)
-        
-        Keep responses extremely short:
-        - Questions: 1 sentence max
-        - Code task descriptions: 1-2 sentences max
-        - Answers/explanations: 1-2 sentences max
         """
+        
+        switch language {
+        case .english:
+            return """
+            \(baseInstructions)
+            
+            Keep responses extremely short:
+            - Questions: 1 sentence max
+            - Code task descriptions: 1-2 sentences max
+            - Answers/explanations: 1-2 sentences max
+            """
+        case .russian:
+            return """
+            \(baseInstructions)
+            
+            Держи ответы крайне короткими:
+            - Вопросы: максимум 1 предложение
+            - Описания задач: максимум 1-2 предложения
+            - Ответы и объяснения: максимум 1-2 предложения
+            """
+        case .german:
+            return """
+            \(baseInstructions)
+            
+            Halte Antworten extrem kurz:
+            - Fragen: Max 1 Satz
+            - Aufgabenbeschreibungen: Max 1-2 Sätze
+            - Antworten/Erklärungen: Max 1-2 Sätze
+            """
+        }
     }
     
     // MARK: - Hint Detection Instructions
@@ -118,118 +173,61 @@ struct HybridInterviewPrompt {
         case .english:
             return """
             ## Providing Hints
-            When user is stuck and says phrases like:
-            - "I don't know"
-            - "I don't get it"
-            - "I'm not sure"
-            - "Help me"
-            - "How do I do this?"
-            
-            Provide hints using hint_context:
+            When user is stuck and says phrases like "I don't know", "Not sure", "Help me", "How do I do this?":
             
             For code hints (insert actual code):
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Use the modulo operator % to check for even numbers",
-                "hint_context": {
-                    "type": "code_insertion",
-                    "code": " number % 2 == 0",
-                    "explanation": "The % operator returns the remainder of division",
-                    "highlight_range": {"location": 0, "length": 17}
-                }
-            }
-            ```
+            - Set task_type to "code_task"
+            - Provide hint_context with type "code_insertion"
+            - Include the exact code snippet to insert
+            - Add explanation of what the code does
+            - Optionally include highlight_range for the inserted code
+            - Keep spoken_text extremely short (direct hint)
             
             For text hints (no code insertion):
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Think about what operator could help you check if a number is divisible by 2",
-                "hint_context": {
-                    "type": "text_hint",
-                    "explanation": "Suggest using modulo operator"
-                }
-            }
-            ```
+            - Set task_type to "code_task"
+            - Provide hint_context with type "text_hint"
+            - Include explanation text only
+            - Keep spoken_text extremely short (guiding hint)
             """
             
         case .russian:
             return """
             ## Предоставление подсказок
-            Когда пользователь застрял и говорит фразы:
-            - "Не знаю"
-            - "Не понимаю"
-            - "Не получается"
-            - "Помоги"
-            - "Как это сделать?"
-            
-            Предоставляйте подсказки через hint_context:
+            Когда пользователь застрял и говорит "Не знаю", "Не уверен", "Помоги", "Как это сделать?":
             
             Для подсказок с кодом (вставить код):
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Используй оператор остатка % для проверки четности",
-                "hint_context": {
-                    "type": "code_insertion",
-                    "code": " number % 2 == 0",
-                    "explanation": "Оператор % возвращает остаток от деления",
-                    "highlight_range": {"location": 0, "length": 17}
-                }
-            }
-            ```
+            - Установи task_type в "code_task"
+            - Предоставь hint_context с type "code_insertion"
+            - Включи точный фрагмент кода для вставки
+            - Добавь объяснение что делает код
+            - Опционально включи highlight_range для вставленного кода
+            - Держи spoken_text максимально коротким (прямая подсказка)
             
             Для текстовых подсказок (без вставки кода):
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Подумай какой оператор поможет проверить делимость числа на 2",
-                "hint_context": {
-                    "type": "text_hint",
-                    "explanation": "Порекомендовать оператор остатка"
-                }
-            }
-            ```
+            - Установи task_type в "code_task"
+            - Предоставь hint_context с type "text_hint"
+            - Включи только текст объяснения
+            - Держи spoken_text максимально коротким (направляющая подсказка)
             """
             
         case .german:
             return """
             ## Tipps geben
-            Wenn der Benutzer feststeckt und sagt:
-            - "Ich weiß nicht"
-            - "Ich verstehe nicht"
-            - "Ich bekomme es nicht hin"
-            - "Hilf mir"
-            - "Wie mache ich das?"
-            
-            Gib Hinweise mit hint_context:
+            Wenn Benutzer feststeckt und sagt "Ich weiß nicht", "Nicht sicher", "Hilf mir", "Wie mache ich das?":
             
             Für Code-Hinweise (Code einfügen):
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Benutze den Modulo-Operator % um gerade Zahlen zu prüfen",
-                "hint_context": {
-                    "type": "code_insertion",
-                    "code": " number % 2 == 0",
-                    "explanation": "Der %-Operator gibt den Rest einer Division zurück",
-                    "highlight_range": {"location": 0, "length": 17}
-                }
-            }
-            ```
+            - Setze task_type auf "code_task"
+            - Stelle hint_context mit type "code_insertion" bereit
+            - Inkludiere exakten Code-Schnipsel zum Einfügen
+            - Füge Erklärung hinzu was der Code tut
+            - Optional highlight_range für eingefügten Code
+            - Halte spoken_text extrem kurz (direkter Hinweis)
             
             Für Text-Hinweise (kein Code):
-            ```json
-            {
-                "task_type": "code_task",
-                "spoken_text": "Überlege welcher Operator dir helfen könnte zu prüfen ob eine Zahl durch 2 teilbar ist",
-                "hint_context": {
-                    "type": "text_hint",
-                    "explanation": "Modulo-Operator vorschlagen"
-                }
-            }
-            ```
+            - Setze task_type auf "code_task"
+            - Stelle hint_context mit type "text_hint" bereit
+            - Inkludiere nur Erklärungstext
+            - Halte spoken_text extrem kurz (leitender Hinweis)
             """
         }
     }

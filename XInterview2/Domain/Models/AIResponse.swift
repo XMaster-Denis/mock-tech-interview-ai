@@ -146,7 +146,7 @@ enum EditorAction: Codable {
 }
 
 /// EditorAction using NSRange directly (for internal use)
-enum EditorActionNSRange {
+enum EditorActionNSRange: Equatable {
     case insert(text: String, location: Int)
     case replace(range: NSRange, text: String)
     case clear
