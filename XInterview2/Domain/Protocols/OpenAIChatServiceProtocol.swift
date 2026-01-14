@@ -19,6 +19,7 @@ protocol OpenAIChatServiceProtocol {
     ///   - language: Programming language
     ///   - mode: Interview mode
     ///   - apiKey: OpenAI API key
+    ///   - context: Interview context with progress summary
     /// - Returns: Structured AI response with potential editor actions
     func sendMessageWithCode(
         messages: [TranscriptMessage],
@@ -27,7 +28,8 @@ protocol OpenAIChatServiceProtocol {
         level: DeveloperLevel,
         language: Language,
         mode: InterviewMode,
-        apiKey: String
+        apiKey: String,
+        context: String
     ) async throws -> AIResponse
     
     /// Analyze code errors in real-time (debounced)
@@ -296,7 +298,8 @@ extension OpenAIChatServiceProtocol {
             level: .junior,
             language: language,
             mode: .questionsOnly,
-            apiKey: apiKey
+            apiKey: apiKey,
+            context: ""
         )
         
         return response.spokenText

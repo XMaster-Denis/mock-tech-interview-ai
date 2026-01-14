@@ -15,11 +15,23 @@ struct HybridInterviewPrompt {
         for topic: InterviewTopic,
         level: DeveloperLevel,
         language: Language,
-        mode: InterviewMode
+        mode: InterviewMode,
+        context: String = ""
     ) -> String {
         let modeInstructions = instructionsFor(mode: mode, language: language)
         let topicInstructions = topicInstructions(for: topic, language: language)
         let hintInstructions = hintDetectionInstructions(language: language)
+        let contextInstructions = context.isEmpty ? "" : """
+        
+        # Interview Progress Context
+        \(context)
+        
+        Use this context to:
+        - Avoid repeating topics` user has already mastered
+        - Focus follow-up questions on areas where user made mistakes
+        - Build upon` user's demonstrated strengths
+        - Adapt difficulty based on their performance
+        """
         
         return """
         # Role
@@ -33,6 +45,8 @@ struct HybridInterviewPrompt {
         
         # Task Instructions
         \(topicInstructions)
+        
+        \(contextInstructions)
         
         # Hint Detection
         \(hintInstructions)
@@ -121,6 +135,46 @@ struct HybridInterviewPrompt {
                   1. Setze task_type auf "code_task"
                   2. Stelle code_template mit Platzhaltern bereit
                   3. Verwende editor_action mit type "replace" zum Einfügen
+                  4. Beschreibe Aufgabe in spoken_text (max 1-2 Sätze)
+                """
+            }
+            
+        case .hybrid:
+            switch language {
+            case .english:
+                return """
+                ## Hybrid Mode
+                - Alternate between questions and code tasks
+                - Start with a question to gauge understanding
+                - Give code tasks (1-2 lines) when appropriate
+                - When presenting a task:
+                  1. Set task_type to "code_task"
+                  2. Provide code_template with placeholders
+                  3. Use editor_action with type "replace"
+                  4. Describe task in spoken_text (1-2 sentences max)
+                """
+            case .russian:
+                return """
+                ## Гибридный режим
+                - Чередуй вопросы и задачи по коду
+                - Начни с вопроса для оценки понимания
+                - Давай задачи по коду (1-2 строки) когда уместно
+                - При представлении задачи:
+                  1. Установи task_type в "code_task"
+                  2. Предоставь code_template с заполнителями
+                  3. Используй editor_action с type "replace"
+                  4. Опиши задачу в spoken_text (максимум 1-2 предложения)
+                """
+            case .german:
+                return """
+                ## Hybrid Modus
+                - Wechsle zwischen Fragen und Code-Aufgaben
+                - Beginne mit einer Frage zum Verständnis
+                - Gib Code-Aufgaben (1-2 Zeilen) wenn angemessen
+                - Bei Präsentation einer Aufgabe:
+                  1. Setze task_type auf "code_task"
+                  2. Stelle code_template mit Platzhaltern bereit
+                  3. Verwende editor_action mit type "replace"
                   4. Beschreibe Aufgabe in spoken_text (max 1-2 Sätze)
                 """
             }

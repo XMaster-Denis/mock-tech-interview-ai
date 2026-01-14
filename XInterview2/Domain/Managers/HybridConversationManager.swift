@@ -168,7 +168,8 @@ class HybridConversationManager: ObservableObject {
                     level: currentLevel,
                     language: currentLanguage,
                     mode: currentMode,
-                    apiKey: apiKey
+                    apiKey: apiKey,
+                    context: ""
                 )
             } else {
                 // Initial message
@@ -179,7 +180,8 @@ class HybridConversationManager: ObservableObject {
                     level: currentLevel,
                     language: currentLanguage,
                     mode: currentMode,
-                    apiKey: apiKey
+                    apiKey: apiKey,
+                    context: ""
                 )
             }
             

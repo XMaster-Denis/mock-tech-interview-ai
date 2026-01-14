@@ -12,7 +12,7 @@ import Combine
 class InterviewViewModel: ObservableObject {
     // MARK: - Published Properties
     
-    @Published var session = InterviewSession()
+    @Published var session = InterviewSession.empty
     @Published var conversationState: ConversationState = .idle
     @Published var audioLevel: Float = 0.0
     @Published var voiceThreshold: Float = 0.15  // From settings for UI display
@@ -20,6 +20,9 @@ class InterviewViewModel: ObservableObject {
     @Published var code: String = ""
     @Published var codeEditorViewModel = CodeEditorViewModel()
     @Published var interviewMode: InterviewMode = .questionsOnly
+    @Published var topics: [InterviewTopic] = []
+    @Published var isEditingTopic = false
+    @Published var topicToEdit: InterviewTopic?
     
     // MARK: - Components
     
@@ -28,6 +31,7 @@ class InterviewViewModel: ObservableObject {
     private let chatService: OpenAIChatServiceProtocol
     private let ttsService: OpenAITTSServiceProtocol
     private let settingsRepository: SettingsRepositoryProtocol
+    private let topicsRepository: TopicsRepository
     
     // MARK: - Properties
     
@@ -41,6 +45,7 @@ class InterviewViewModel: ObservableObject {
             chatService: OpenAIChatService(),
             ttsService: OpenAITTSService(),
             settingsRepository: SettingsRepository(),
+            topicsRepository: TopicsRepository(),
             codeEditorViewModel: CodeEditorViewModel(),
             developerLevel: .junior
         )
@@ -51,6 +56,7 @@ class InterviewViewModel: ObservableObject {
         chatService: OpenAIChatServiceProtocol,
         ttsService: OpenAITTSServiceProtocol,
         settingsRepository: SettingsRepositoryProtocol,
+        topicsRepository: TopicsRepository,
         codeEditorViewModel: CodeEditorViewModel,
         developerLevel: DeveloperLevel = .junior
     ) {
@@ -58,6 +64,7 @@ class InterviewViewModel: ObservableObject {
         self.chatService = chatService
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
+        self.topicsRepository = topicsRepository
         self.codeEditorViewModel = codeEditorViewModel
         
         // Initialize ConversationManager on MainActor with code editor
@@ -71,6 +78,7 @@ class InterviewViewModel: ObservableObject {
         )
         
         setupBindings()
+        loadTopics()
     }
     
     private func setupBindings() {
@@ -113,6 +121,68 @@ class InterviewViewModel: ObservableObject {
     
     // MARK: - Public Methods
     
+    func loadTopics() {
+        switch topicsRepository.loadTopics() {
+        case .success(let loadedTopics):
+            self.topics = loadedTopics
+            // Set default topic if session has no topic
+            if session.topic.title.isEmpty, let firstTopic = loadedTopics.first {
+                session.topic = firstTopic
+            }
+        case .failure(let error):
+            errorMessage = "Failed to load topics: \(error.localizedDescription)"
+            Logger.error("Failed to load topics: \(error.localizedDescription)")
+        }
+    }
+    
+    func addTopic(_ topic: InterviewTopic) {
+        switch topicsRepository.addTopic(topic) {
+        case .success:
+            loadTopics()
+        case .failure(let error):
+            errorMessage = "Failed to add topic: \(error.localizedDescription)"
+            Logger.error("Failed to add topic: \(error.localizedDescription)")
+        }
+    }
+    
+    func updateTopic(_ topic: InterviewTopic) {
+        switch topicsRepository.updateTopic(topic) {
+        case .success:
+            loadTopics()
+            // Update session topic if the updated topic is the selected one
+            if session.topic.id == topic.id {
+                session.topic = topic
+            }
+        case .failure(let error):
+            errorMessage = "Failed to update topic: \(error.localizedDescription)"
+            Logger.error("Failed to update topic: \(error.localizedDescription)")
+        }
+    }
+    
+    func deleteTopic(id: UUID) {
+        switch topicsRepository.deleteTopic(id: id) {
+        case .success:
+            loadTopics()
+            // Select a different topic if we deleted the selected one
+            if session.topic.id == id, let firstTopic = topics.first {
+                session.topic = firstTopic
+            }
+        case .failure(let error):
+            errorMessage = "Failed to delete topic: \(error.localizedDescription)"
+            Logger.error("Failed to delete topic: \(error.localizedDescription)")
+        }
+    }
+    
+    func startEditingTopic(_ topic: InterviewTopic) {
+        topicToEdit = topic
+        isEditingTopic = true
+    }
+    
+    func cancelEditing() {
+        topicToEdit = nil
+        isEditingTopic = false
+    }
+    
     func startInterview() {
         guard !session.isActive else { return }
         
@@ -124,7 +194,12 @@ class InterviewViewModel: ObservableObject {
         }
         
         // Update mode in conversation manager before starting
-        conversationManager.updateInterviewMode(interviewMode)
+        conversationManager.updateInterviewMode(session.topic.interviewMode)
+        
+        // Initialize context if not present
+        if session.context == nil {
+            session.context = InterviewContext(sessionId: session.id)
+        }
         
         session.isActive = true
         session.startTime = Date()

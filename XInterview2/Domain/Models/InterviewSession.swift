@@ -2,7 +2,7 @@
 //  InterviewSession.swift
 //  XInterview2
 //
-//  Represents the current interview session state
+//  Represents current interview session state
 //
 
 import Foundation
@@ -14,14 +14,16 @@ struct InterviewSession: Identifiable, Codable {
     var transcript: [TranscriptMessage]
     var startTime: Date?
     var endTime: Date?
+    var context: InterviewContext?
     
     init(
         id: UUID = UUID(),
-        topic: InterviewTopic = InterviewTopic.defaultTopics[0],
+        topic: InterviewTopic,
         isActive: Bool = false,
         transcript: [TranscriptMessage] = [],
         startTime: Date? = nil,
-        endTime: Date? = nil
+        endTime: Date? = nil,
+        context: InterviewContext? = nil
     ) {
         self.id = id
         self.topic = topic
@@ -29,5 +31,18 @@ struct InterviewSession: Identifiable, Codable {
         self.transcript = transcript
         self.startTime = startTime
         self.endTime = endTime
+        self.context = context
     }
+    
+    /// Creates a default empty session
+    static let empty = InterviewSession(
+        topic: InterviewTopic(
+            id: UUID(),
+            title: "",
+            prompt: "",
+            level: .junior,
+            codeLanguage: .swift,
+            interviewMode: .questionsOnly
+        )
+    )
 }

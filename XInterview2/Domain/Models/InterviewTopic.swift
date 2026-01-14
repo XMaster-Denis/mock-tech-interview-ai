@@ -12,44 +12,22 @@ struct InterviewTopic: Identifiable, Codable, Equatable {
     var title: String
     var prompt: String
     var level: DeveloperLevel
+    var codeLanguage: CodeLanguageInterview
+    var interviewMode: InterviewMode
     
-    init(id: UUID = UUID(), title: String, prompt: String, level: DeveloperLevel = .junior) {
+    init(
+        id: UUID = UUID(),
+        title: String,
+        prompt: String,
+        level: DeveloperLevel = .junior,
+        codeLanguage: CodeLanguageInterview = .swift,
+        interviewMode: InterviewMode = .hybrid
+    ) {
         self.id = id
         self.title = title
         self.prompt = prompt
         self.level = level
+        self.codeLanguage = codeLanguage
+        self.interviewMode = interviewMode
     }
-    
-    static let defaultTopics: [InterviewTopic] = [
-        InterviewTopic(
-            title: "Swift Basics",
-            prompt: "Interview the user about Swift fundamentals including optionals, closures, and basic data structures.",
-            level: .junior
-        ),
-        InterviewTopic(
-            title: "UI Development",
-            prompt: "Focus interview on SwiftUI and UIKit concepts, views, state management, and layout systems.",
-            level: .middle
-        ),
-        InterviewTopic(
-            title: "Concurrency",
-            prompt: "Discuss async/await, actors, GCD, and thread safety in Swift applications.",
-            level: .middle
-        ),
-        InterviewTopic(
-            title: "Architecture Patterns",
-            prompt: "Cover MVVM, MVC, VIPER, and other architectural patterns used in iOS development.",
-            level: .senior
-        ),
-        InterviewTopic(
-            title: "Data Persistence",
-            prompt: "Explore Core Data, UserDefaults, file I/O, and iCloud synchronization.",
-            level: .middle
-        ),
-        InterviewTopic(
-            title: "Networking",
-            prompt: "Discuss URLSession, Codable, API design, error handling, and caching strategies.",
-            level: .middle
-        )
-    ]
 }

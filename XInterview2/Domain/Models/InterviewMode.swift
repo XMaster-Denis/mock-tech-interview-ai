@@ -7,9 +7,10 @@
 
 import Foundation
 
-enum InterviewMode: String, CaseIterable, Identifiable {
+enum InterviewMode: String, Codable, CaseIterable, Identifiable {
     case questionsOnly = "Questions"
     case codeTasks = "Code Tasks"
+    case hybrid = "Hybrid"
     
     var id: String { rawValue }
     
@@ -23,6 +24,8 @@ enum InterviewMode: String, CaseIterable, Identifiable {
             return "Standard interview with verbal questions and answers"
         case .codeTasks:
             return "Coding challenges with AI evaluation"
+        case .hybrid:
+            return "Mixed mode with both questions and coding tasks"
         }
     }
 }

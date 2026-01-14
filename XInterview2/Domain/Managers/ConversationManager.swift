@@ -45,6 +45,7 @@ class ConversationManager: ObservableObject {
     private var currentTopic: InterviewTopic?
     private var currentMode: InterviewMode = .questionsOnly
     private var conversationHistory: [TranscriptMessage] = []
+    private var currentContext: InterviewContext?
     private var processingTask: Task<Void, Never>?
     private var isStopping: Bool = false
     
@@ -102,7 +103,7 @@ class ConversationManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    func startConversation(topic: InterviewTopic, language: Language) {
+    func startConversation(topic: InterviewTopic, language: Language, context: InterviewContext? = nil) {
         guard conversationState == .idle else {
             Logger.warning("Cannot start conversation, current state: \(conversationState)")
             return
@@ -111,6 +112,7 @@ class ConversationManager: ObservableObject {
         Logger.state("Starting conversation - topic: \(topic.title), language: \(language)")
         conversationState = .listening
         currentTopic = topic
+        currentContext = context
         
         // Load settings and update voice threshold and silence timeout
         let settings = settingsRepository.loadSettings()
@@ -139,6 +141,7 @@ class ConversationManager: ObservableObject {
         isStopping = true
         conversationState = .idle
         currentTopic = nil
+        currentContext = nil
         
         Logger.state("Stopping audio manager")
         audioManager.stopListening()
@@ -220,6 +223,7 @@ class ConversationManager: ObservableObject {
         do {
             // Get AI response (empty messages for opening)
             Logger.state("Calling chatService.sendMessageWithCode() for opening message")
+            let contextSummary = currentContext?.getContextSummary() ?? ""
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: [],
                 codeContext: currentCodeContext,
@@ -227,7 +231,8 @@ class ConversationManager: ObservableObject {
                 level: currentLevel,
                 language: language,
                 mode: currentMode,
-                apiKey: apiKey
+                apiKey: apiKey,
+                context: contextSummary
             )
             
             Logger.info("AIResponse received - spokenText: \(aiResponse.spokenText.prefix(50))...")
@@ -349,6 +354,9 @@ class ConversationManager: ObservableObject {
             // Update code context before sending
             updateCodeContextFromEditor()
             
+            // Include context if available for follow-up questions
+            let contextSummary = currentContext?.getContextSummary() ?? ""
+            
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
@@ -356,7 +364,8 @@ class ConversationManager: ObservableObject {
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
-                apiKey: apiKey
+                apiKey: apiKey,
+                context: contextSummary
             )
             
             let response = aiResponse.spokenText
