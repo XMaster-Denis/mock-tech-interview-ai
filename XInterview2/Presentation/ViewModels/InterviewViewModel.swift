@@ -19,7 +19,6 @@ class InterviewViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var code: String = ""
     @Published var codeEditorViewModel = CodeEditorViewModel()
-    @Published var interviewMode: InterviewMode = .questionsOnly
     @Published var topics: [InterviewTopic] = []
     @Published var isEditingTopic = false
     @Published var topicToEdit: InterviewTopic?
@@ -105,18 +104,6 @@ class InterviewViewModel: ObservableObject {
         conversationManager.onError = { [weak self] error in
             self?.errorMessage = error
         }
-    }
-    
-    // MARK: - Mode Management
-    
-    var interviewModeBinding: Binding<InterviewMode> {
-        Binding(
-            get: { [weak self] in self?.interviewMode ?? .questionsOnly },
-            set: { [weak self] newMode in
-                self?.interviewMode = newMode
-                self?.conversationManager.updateInterviewMode(newMode)
-            }
-        )
     }
     
     // MARK: - Public Methods

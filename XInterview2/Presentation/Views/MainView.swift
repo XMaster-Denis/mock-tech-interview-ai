@@ -107,18 +107,6 @@ struct MainView: View {
     
     private var controlPanel: some View {
         HStack(spacing: 20) {
-            // Interview mode selector
-            Picker("Mode", selection: viewModel.interviewModeBinding) {
-                ForEach(InterviewMode.allCases) { mode in
-                    Text(mode.displayName).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 200)
-            
-            Divider()
-                .frame(height: 20)
-            
             // Session status
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.session.isActive ? "Interview Active" : "Not Started")
