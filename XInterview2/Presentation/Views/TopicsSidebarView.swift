@@ -50,7 +50,7 @@ struct TopicsSidebarView: View {
             
             // Topics list
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(viewModel.topics) { topic in
                         TopicRowView(
                             topic: topic,
@@ -98,79 +98,78 @@ struct TopicRowView: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     
-    @State private var isHovering = false
-    
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 6) {
+            // Topic content - clickable entire area
             Button(action: onTap) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     HStack {
                         Text(topic.title)
                             .font(.subheadline)
                             .fontWeight(isSelected ? .semibold : .regular)
                             .foregroundColor(.primary)
+                            .lineLimit(1)
                         
                         Spacer()
                     }
                     
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
                         Text(topic.codeLanguage.displayName)
                             .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
                             .background(Color.blue.opacity(0.2))
                             .foregroundColor(.blue)
-                            .cornerRadius(4)
+                            .cornerRadius(3)
                         
                         Text(topic.interviewMode.displayName)
                             .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
                             .background(Color.green.opacity(0.2))
                             .foregroundColor(.green)
-                            .cornerRadius(4)
+                            .cornerRadius(3)
                         
                         Text(topic.level.displayName)
                             .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
                             .background(Color.orange.opacity(0.2))
                             .foregroundColor(.orange)
-                            .cornerRadius(4)
+                            .cornerRadius(3)
                     }
                     
                     Text(topic.prompt)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
+                .padding(6)
                 .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-                .cornerRadius(8)
+                .cornerRadius(6)
             }
             .buttonStyle(.plain)
             
-            if isHovering {
-                VStack(spacing: 4) {
-                    Button(action: onEdit) {
-                        Image(systemName: "pencil")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                    .buttonStyle(.plain)
+            // Action buttons - always visible
+            VStack(spacing: 2) {
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                .padding(.top, 4)
+                .buttonStyle(.plain)
+                .help("Edit topic")
+                
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("Delete topic")
             }
-        }
-        .onHover { hovering in
-            isHovering = hovering
+            .padding(.top, 2)
         }
     }
 }
