@@ -27,9 +27,9 @@ struct HybridInterviewPrompt {
         \(context)
         
         Use this context to:
-        - Avoid repeating topics` user has already mastered
+        - Avoid repeating topics user has already mastered
         - Focus follow-up questions on areas where user made mistakes
-        - Build upon` user's demonstrated strengths
+        - Build upon user's demonstrated strengths
         - Adapt difficulty based on their performance
         """
         

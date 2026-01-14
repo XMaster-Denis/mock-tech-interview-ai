@@ -607,53 +607,6 @@ class ConversationManager: ObservableObject {
         conversationHistory.append(message)
     }
     
-    private func generateOpeningPrompt(topic: InterviewTopic, language: Language) -> String {
-        let topicTitle = topic.title
-        let instructions = topic.prompt
-        
-        switch language {
-        case .english:
-            return """
-            You are an interview tutor for \(topicTitle).
-            
-            Instructions: \(instructions)
-            
-            Keep everything extremely short:
-            - Questions: 1 sentence max
-            - Answers: 1-2 sentences max
-            - No explanations or filler
-            
-            Start with "Hi! Let's prepare for \(topicTitle)." followed by your first question.
-            """
-        case .german:
-            return """
-            Du bist ein Interview-Tutor für \(topicTitle).
-            
-            Anweisungen: \(instructions)
-            
-            Halte alles extrem kurz:
-            - Fragen: max 1 Satz
-            - Antworten: max 1-2 Sätze
-            - Keine Erklärungen oder Füllwörter
-            
-            Beginne mit "Hallo! Lass uns auf \(topicTitle) vorbereiten." gefolgt von deiner ersten Frage.
-            """
-        case .russian:
-            return """
-            Ты — наставник для подготовки к \(topicTitle).
-            
-            Инструкции: \(instructions)
-            
-            Всё должно быть очень кратко:
-            - Вопросы: max 1 предложение
-            - Ответы: max 1-2 предложения
-            - Без объяснений и лишних слов
-            
-            Начни с "Привет! Давай подготовимся к \(topicTitle)." и задай первый вопрос.
-            """
-        }
-    }
-    
     // MARK: - Properties
     
     var isListening: Bool {

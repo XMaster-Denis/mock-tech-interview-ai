@@ -274,34 +274,3 @@ struct CodeEvaluation: Codable {
         )
     }
 }
-
-// MARK: - Legacy Support (for backward compatibility)
-
-extension OpenAIChatServiceProtocol {
-    /// Legacy method for backward compatibility
-    func sendMessage(
-        messages: [TranscriptMessage],
-        topic: InterviewTopic,
-        language: Language,
-        apiKey: String
-    ) async throws -> String {
-        let emptyContext = CodeContext(
-            currentCode: "",
-            language: .swift,
-            recentChanges: []
-        )
-        
-        let response = try await sendMessageWithCode(
-            messages: messages,
-            codeContext: emptyContext,
-            topic: topic,
-            level: .junior,
-            language: language,
-            mode: .questionsOnly,
-            apiKey: apiKey,
-            context: ""
-        )
-        
-        return response.spokenText
-    }
-}

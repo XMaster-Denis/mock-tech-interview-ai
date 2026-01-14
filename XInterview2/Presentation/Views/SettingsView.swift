@@ -304,9 +304,9 @@ class AudioTestViewModel: ObservableObject {
     @Published var statusText: String = "Ready to test"
     @Published var logs: [String] = []
     
-    private let audioEngine = AudioEngine()
-    private var cancellables = Set<AnyCancellable>()
+    private let voiceDetector = VoiceDetector()
     private var testTask: Task<Void, Never>?
+    private let testDuration: TimeInterval = 5.0
     
     init() {
         setupObservations()
@@ -314,20 +314,8 @@ class AudioTestViewModel: ObservableObject {
     
     private func setupObservations() {
         // Observe audio level
-        audioEngine.$audioLevel
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] level in
-                self?.audioLevel = level
-            }
-            .store(in: &cancellables)
-        
-        // Observe logs
-        audioEngine.$audioLogs
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] logs in
-                self?.logs = logs
-            }
-            .store(in: &cancellables)
+        voiceDetector.$audioLevel
+            .assign(to: &$audioLevel)
     }
     
     func startTest() async {
@@ -335,42 +323,67 @@ class AudioTestViewModel: ObservableObject {
         
         isRecording = true
         statusText = "Testing..."
+        logs.removeAll()
         
-        do {
-            let stream = try audioEngine.startTestRecording(duration: 5.0)
+        addLog("🎙️ Starting microphone test for \(Int(testDuration)) seconds...")
+        addLog("💡 Speak into your microphone to test voice detection")
+        
+        voiceDetector.startListening()
+        
+        // Monitor audio level during test
+        testTask = Task {
+            let startTime = Date()
             
-            for await _ in stream {
-                // Logs are automatically observed via $audioLogs
+            while !Task.isCancelled {
+                let elapsed = Date().timeIntervalSince(startTime)
+                
+                if elapsed >= testDuration {
+                    break
+                }
+                
+                // Log audio level periodically
+                if Int(elapsed * 10) % 5 == 0 { // Every 0.5 seconds
+                    let levelStr = String(format: "%.3f", audioLevel)
+                    addLog("🎚️ Audio level: \(levelStr)")
+                }
+                
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
             }
             
-            await MainActor.run {
-                statusText = "Test completed"
-            }
-            
-            // Keep showing results for a moment
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            
-            isRecording = false
-            statusText = "Ready to test"
-            
-        } catch {
-            logs.append("❌ Test failed: \(error.localizedDescription)")
-            statusText = "Test failed"
-            isRecording = false
+            await stopTest()
         }
     }
     
     func stopTest() async {
+        guard isRecording else { return }
+        
         isRecording = false
         statusText = "Stopped"
-        try? audioEngine.stopTestRecording()
+        
+        voiceDetector.stopListening()
+        
+        testTask?.cancel()
+        testTask = nil
+        
+        addLog("🛑 Test stopped")
+        
         await MainActor.run {
             statusText = "Ready to test"
         }
     }
     
     func clearLogs() {
-        audioEngine.clearLogs()
         logs.removeAll()
+        addLog("🗑️ Logs cleared")
+    }
+    
+    private func addLog(_ message: String) {
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        logs.append("[\(timestamp)] \(message)")
+        
+        // Keep only last 100 logs
+        if logs.count > 100 {
+            logs.removeFirst()
+        }
     }
 }
