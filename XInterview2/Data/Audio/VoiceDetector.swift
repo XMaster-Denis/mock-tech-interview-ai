@@ -3,6 +3,7 @@
 //  XInterview2
 //
 //  Voice Activity Detection for continuous speech recognition
+//  Now with adaptive noise analysis and microphone calibration
 //
 
 import AVFoundation
@@ -34,12 +35,19 @@ class VoiceDetector: NSObject, ObservableObject {
     // MARK: - Configuration
     
     private let silenceThreshold: Float = 0.05
-    private var speechStartThreshold: Float // Configurable via settings
+    private var speechStartThreshold: Float // Configurable via settings (fallback when adaptive mode is off)
     private var silenceTimeout: TimeInterval // Configurable via settings
     private let minSpeechDuration: TimeInterval = 0.2  // Lowered from 0.5 for faster testing
     private let minSpeechLevel: Float = 0.04  // Minimum average audio level to consider as valid speech (not noise)
     private let maxRecordingDuration: TimeInterval = 30.0
-    private let calibrationDelay: TimeInterval = 1.0 // Ignore first 1s for mic calibration
+    private let calibrationDelay: TimeInterval = 1.0 // Ignore first 1s for mic calibration (legacy)
+    
+    // MARK: - Adaptive Noise Analysis
+    
+    private let noiseAnalyzer: NoiseAnalyzer
+    private var useAdaptiveMode: Bool = true  // Enable adaptive noise analysis
+    private var adaptiveThreshold: Float = 0.0  // Current adaptive threshold
+    private var noiseLevel: Float = 0.0  // Current noise level
     
     // MARK: - Properties
     
@@ -61,6 +69,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var isCalibrated: Bool = false // True after calibration delay
     private var silenceTimerRunning: Bool = false // Prevent duplicate timers
     private var fallbackTimer: Timer? // Force handleSpeechEnd() if main timer fails
+    private var cancellables = Set<AnyCancellable>() // For Combine subscriptions
     
     // MARK: - Callbacks
     
@@ -71,15 +80,30 @@ class VoiceDetector: NSObject, ObservableObject {
     override init() {
         self.speechStartThreshold = 0.15 // Lower default threshold for better sensitivity
         self.silenceTimeout = 1.5  // Default silence timeout
+        self.noiseAnalyzer = NoiseAnalyzer(configuration: .default)
         super.init()
         setupAudioSession()
+        observeNoiseAnalyzer()
     }
     
-    init(speechThreshold: Float, silenceTimeout: Double = 1.5) {
+    init(speechThreshold: Float, silenceTimeout: Double = 1.5, adaptiveMode: Bool = true) {
         self.speechStartThreshold = speechThreshold
         self.silenceTimeout = silenceTimeout
+        self.useAdaptiveMode = adaptiveMode
+        self.noiseAnalyzer = NoiseAnalyzer(configuration: .default)
         super.init()
         setupAudioSession()
+        observeNoiseAnalyzer()
+    }
+    
+    init(speechThreshold: Float, silenceTimeout: Double = 1.5, noiseConfig: NoiseAnalyzerConfiguration) {
+        self.speechStartThreshold = speechThreshold
+        self.silenceTimeout = silenceTimeout
+        self.useAdaptiveMode = true
+        self.noiseAnalyzer = NoiseAnalyzer(configuration: noiseConfig)
+        super.init()
+        setupAudioSession()
+        observeNoiseAnalyzer()
     }
     
     deinit {
@@ -111,6 +135,37 @@ class VoiceDetector: NSObject, ObservableObject {
     func updateSilenceTimeout(_ timeout: Double) {
         Logger.voice("Updating silence timeout to: \(timeout)s")
         self.silenceTimeout = timeout
+    }
+    
+    /// Enable or disable adaptive noise analysis mode
+    func setAdaptiveMode(_ enabled: Bool) {
+        Logger.voice("Setting adaptive mode to: \(enabled)")
+        useAdaptiveMode = enabled
+        if enabled {
+            Logger.voice("🎤 Adaptive mode enabled - using noise analyzer")
+        } else {
+            Logger.voice("📊 Using fixed threshold: \(speechStartThreshold)")
+        }
+    }
+    
+    /// Get current adaptive threshold (if adaptive mode is enabled)
+    func getCurrentAdaptiveThreshold() -> Float {
+        return useAdaptiveMode ? adaptiveThreshold : speechStartThreshold
+    }
+    
+    /// Get current noise level
+    func getCurrentNoiseLevel() -> Float {
+        return noiseLevel
+    }
+    
+    /// Check if environment is too noisy
+    func isEnvironmentTooNoisy() -> Bool {
+        return useAdaptiveMode && noiseAnalyzer.isEnvironmentTooNoisy()
+    }
+    
+    /// Get calibration status
+    func getCalibrationStatus() -> CalibrationStatus {
+        return noiseAnalyzer.calibrationStatus
     }
     
     func startListening() {
@@ -185,16 +240,33 @@ class VoiceDetector: NSObject, ObservableObject {
             isSpeechActive = false
             speechDetected = false
             
-        // Start calibration timer - capture threshold to avoid main actor warning
-        let currentThreshold = self.speechStartThreshold
-        Timer.scheduledTimer(withTimeInterval: calibrationDelay, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.isCalibrated = true
-                Logger.voice("✅ Calibration complete, speech detection enabled (threshold: \(currentThreshold))")
+            // Start noise analyzer calibration if adaptive mode is enabled
+            if useAdaptiveMode {
+                Logger.voice("🎤 Starting adaptive noise calibration...")
+                noiseAnalyzer.startCalibration()
+                
+                // Wait for calibration to complete before enabling speech detection
+                Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        self?.isCalibrated = true
+                        self?.adaptiveThreshold = self?.noiseAnalyzer.getCurrentThreshold() ?? 0.15
+                        self?.noiseLevel = self?.noiseAnalyzer.getCurrentNoiseLevel() ?? 0.0
+                        Logger.voice("✅ Adaptive calibration complete, speech detection enabled")
+                        Logger.voice("   Noise level: \(String(format: "%.3f", self?.noiseLevel ?? 0))")
+                        Logger.voice("   Adaptive threshold: \(String(format: "%.3f", self?.adaptiveThreshold ?? 0))")
+                    }
+                }
+            } else {
+                // Legacy calibration - just wait fixed delay
+                Timer.scheduledTimer(withTimeInterval: calibrationDelay, repeats: false) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        self?.isCalibrated = true
+                        Logger.voice("✅ Legacy calibration complete, speech detection enabled (threshold: \(self?.speechStartThreshold ?? 0.15))")
+                    }
+                }
             }
-        }
             
-            Logger.success("Recording started (calibrating for \(calibrationDelay)s)")
+            Logger.success("Recording started (calibrating...)")
         } catch {
             Logger.error("Failed to start recording", error: error)
             onVoiceEvent?(.error(error))
@@ -279,7 +351,27 @@ class VoiceDetector: NSObject, ObservableObject {
         let level = max(0.0, min(1.0, (averagePower + 60) / 60))
         audioLevel = level
         
-        let isAboveThreshold = level > speechStartThreshold
+        // Use adaptive noise analyzer if enabled
+        var effectiveThreshold: Float
+        var isAboveThreshold: Bool
+        
+        if useAdaptiveMode {
+            // Analyze with noise analyzer
+            let analysis = noiseAnalyzer.analyze(audioLevel: level)
+            adaptiveThreshold = analysis.adaptiveThreshold
+            noiseLevel = analysis.noiseLevel
+            effectiveThreshold = analysis.adaptiveThreshold
+            isAboveThreshold = analysis.isVoiceDetected
+            
+            // Log calibration progress
+            if case .inProgress(let progress) = analysis.calibrationStatus {
+                Logger.voice("🎤 Calibrating... \(Int(progress * 100))%")
+            }
+        } else {
+            // Use fixed threshold
+            effectiveThreshold = speechStartThreshold
+            isAboveThreshold = level > speechStartThreshold
+        }
         
         // Skip speech detection during calibration
         if !isCalibrated {
@@ -294,7 +386,8 @@ class VoiceDetector: NSObject, ObservableObject {
             silenceTimer?.invalidate()
             silenceStartTime = nil
             
-            Logger.voice("🎤 SPEECH STARTED! Level: \(String(format: "%.2f", level)) > Threshold: \(speechStartThreshold)")
+            let thresholdName = useAdaptiveMode ? "Adaptive" : "Fixed"
+            Logger.voice("🎤 SPEECH STARTED! Level: \(String(format: "%.2f", level)) > Threshold: \(String(format: "%.2f", effectiveThreshold)) (\(thresholdName))")
             onVoiceEvent?(.speechStarted)
         }
         // Speech in progress (cancel silence timer if still speaking)
@@ -334,7 +427,8 @@ class VoiceDetector: NSObject, ObservableObject {
             silenceTimerProgress = 0.0
             silenceTimerElapsed = 0.0
             
-            Logger.voice("🔇 SILENCE DETECTED! Level: \(String(format: "%.2f", level)) < Threshold: \(speechStartThreshold)")
+            let thresholdName = useAdaptiveMode ? "Adaptive" : "Fixed"
+            Logger.voice("🔇 SILENCE DETECTED! Level: \(String(format: "%.2f", level)) < Threshold: \(String(format: "%.2f", effectiveThreshold)) (\(thresholdName))")
             Logger.voice("⏳ Waiting \(String(format: "%.1f", silenceTimeout))s to confirm speech ended...")
             
             // Start progress animation timer - capture values to avoid main actor warnings
@@ -581,5 +675,22 @@ class VoiceDetector: NSObject, ObservableObject {
             startRecording()
             startLevelMonitoring()
         }
+    }
+    
+    // MARK: - Private Methods - Noise Analyzer
+    
+    private func observeNoiseAnalyzer() {
+        // Observe noise analyzer published properties
+        noiseAnalyzer.$currentNoiseLevel
+            .sink { [weak self] level in
+                self?.noiseLevel = level
+            }
+            .store(in: &cancellables)
+        
+        noiseAnalyzer.$adaptiveThreshold
+            .sink { [weak self] threshold in
+                self?.adaptiveThreshold = threshold
+            }
+            .store(in: &cancellables)
     }
 }
