@@ -17,16 +17,11 @@ enum TopicsRepositoryError: Error {
 class TopicsRepository {
     private let fileName = "topics.json"
     private let folderName = "XInterview"
-    private let defaultTopicsFile = "default_topics.json"
     
     private var fileURL: URL {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let folderURL = documentsDirectory.appendingPathComponent(folderName)
         return folderURL.appendingPathComponent(fileName)
-    }
-    
-    private var defaultTopicsURL: URL {
-        Bundle.main.url(forResource: "default_topics", withExtension: "json") ?? fileURL
     }
     
     init() {
@@ -52,32 +47,57 @@ class TopicsRepository {
     
     private func ensureDefaultTopicsExist() {
         if !FileManager.default.fileExists(atPath: fileURL.path) {
-            loadDefaultTopicsFromBundle()
+            let defaultTopics = createDefaultTopics()
+            switch saveTopics(defaultTopics) {
+            case .success:
+                Logger.info("Created default topics file with \(defaultTopics.count) topics")
+            case .failure(let error):
+                Logger.error("Failed to create default topics: \(error.localizedDescription)")
+            }
         }
     }
     
-    private func loadDefaultTopicsFromBundle() {
-        guard let bundleURL = Bundle.main.url(forResource: "default_topics", withExtension: "json") else {
-            Logger.warning("Default topics file not found in bundle")
-            return
-        }
-        
-        do {
-            let data = try Data(contentsOf: bundleURL)
-            let topics = try JSONDecoder().decode([InterviewTopic].self, from: data)
-            saveTopics(topics)
-            Logger.info("Loaded \(topics.count) default topics from bundle")
-        } catch {
-            Logger.error("Failed to load default topics from bundle: \(error.localizedDescription)")
-        }
+    // MARK: - Default Topics
+    
+    private func createDefaultTopics() -> [InterviewTopic] {
+        return [
+            InterviewTopic(
+                title: "Swift Basics",
+                prompt: "Ask the candidate about basic Swift concepts like optionals, closures, and value types vs reference types.",
+                level: .junior,
+                codeLanguage: .swift,
+                interviewMode: .questionsOnly
+            ),
+            InterviewTopic(
+                title: "iOS Architecture",
+                prompt: "Discuss iOS architecture patterns like MVC, MVVM, and SwiftUI. Ask about state management and data flow.",
+                level: .middle,
+                codeLanguage: .swift,
+                interviewMode: .questionsOnly
+            ),
+            InterviewTopic(
+                title: "SwiftUI Layout",
+                prompt: "Test the candidate's knowledge of SwiftUI layout system. Ask to implement a simple UI with proper constraints.",
+                level: .junior,
+                codeLanguage: .swift,
+                interviewMode: .codeTasks
+            ),
+            InterviewTopic(
+                title: "Async Programming",
+                prompt: "Mix of questions and coding tasks about Swift's async/await and Combine framework.",
+                level: .middle,
+                codeLanguage: .swift,
+                interviewMode: .hybrid
+            )
+        ]
     }
     
     // MARK: - CRUD Operations
     
     func loadTopics() -> Result<[InterviewTopic], TopicsRepositoryError> {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            // Try loading from bundle as fallback
-            loadDefaultTopicsFromBundle()
+            // Create default topics if file doesn't exist
+            ensureDefaultTopicsExist()
             return loadTopics()
         }
         
