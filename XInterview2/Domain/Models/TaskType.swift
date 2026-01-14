@@ -20,47 +20,6 @@ enum TaskType: String, Codable {
             return "Code Task"
         }
     }
-    
-    // MARK: - Coding Keys for snake_case JSON
-    
-    enum TaskTypeCodingKeys: String, CodingKey {
-        case question = "question"
-        case codeTask = "code_task"
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: TaskTypeCodingKeys.self)
-        let commonContainer = try decoder.container(keyedBy: TaskTypeCommonCodingKeys.self)
-        let rawValue = try commonContainer.decode(String.self, forKey: .type)
-        
-        switch rawValue {
-        case TaskTypeCodingKeys.question.rawValue:
-            self = .question
-        case TaskTypeCodingKeys.codeTask.rawValue:
-            self = .codeTask
-        default:
-            let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Invalid task type: \(rawValue)")
-            throw DecodingError.dataCorrupted(context)
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        let rawValue: String
-        
-        switch self {
-        case .question:
-            rawValue = TaskTypeCodingKeys.question.rawValue
-        case .codeTask:
-            rawValue = TaskTypeCodingKeys.codeTask.rawValue
-        }
-        
-        var container = encoder.container(keyedBy: TaskTypeCommonCodingKeys.self)
-        try container.encode(rawValue, forKey: .type)
-    }
-    
-    enum TaskTypeCommonCodingKeys: String, CodingKey {
-        case type
-    }
 }
 
 /// Hint context for when AI provides assistance
@@ -111,46 +70,5 @@ enum HintType: String, Codable {
         case .textHint:
             return "Text Hint"
         }
-    }
-    
-    // MARK: - Coding Keys for snake_case JSON
-    
-    enum HintTypeCodingKeys: String, CodingKey {
-        case codeInsertion = "code_insertion"
-        case textHint = "text_hint"
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: HintTypeCodingKeys.self)
-        let commonContainer = try decoder.container(keyedBy: HintTypeCommonCodingKeys.self)
-        let rawValue = try commonContainer.decode(String.self, forKey: .type)
-        
-        switch rawValue {
-        case HintTypeCodingKeys.codeInsertion.rawValue:
-            self = .codeInsertion
-        case HintTypeCodingKeys.textHint.rawValue:
-            self = .textHint
-        default:
-            let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Invalid hint type: \(rawValue)")
-            throw DecodingError.dataCorrupted(context)
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        let rawValue: String
-        
-        switch self {
-        case .codeInsertion:
-            rawValue = HintTypeCodingKeys.codeInsertion.rawValue
-        case .textHint:
-            rawValue = HintTypeCodingKeys.textHint.rawValue
-        }
-        
-        var container = encoder.container(keyedBy: HintTypeCommonCodingKeys.self)
-        try container.encode(rawValue, forKey: .type)
-    }
-    
-    enum HintTypeCommonCodingKeys: String, CodingKey {
-        case type
     }
 }

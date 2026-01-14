@@ -145,22 +145,45 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         Logger.info("Raw JSON from OpenAI: \(assistantMessage)")
         
         // Parse JSON response
-        guard let data = assistantMessage.data(using: .utf8),
-              let aiResponse = try? JSONDecoder().decode(AIResponse.self, from: data) else {
-            Logger.error("Failed to parse AI response as JSON - using fallback")
-            // Fallback to plain text response with default task type
+        guard let data = assistantMessage.data(using: .utf8) else {
+            Logger.error("Failed to convert response to UTF-8 data")
+            throw HTTPError.serverError("Invalid response encoding")
+        }
+        
+        do {
+            let aiResponse = try JSONDecoder().decode(AIResponse.self, from: data)
+            Logger.success("AI response parsed successfully - taskType: \(aiResponse.taskType), hasEditorAction: \(aiResponse.editorAction != nil)")
+            return aiResponse
+        } catch {
+            Logger.error("Failed to parse AI response as JSON: \(error.localizedDescription)")
+            Logger.debug("JSON that failed to parse: \(assistantMessage)")
+            
+            // Try to extract spoken text from JSON manually as fallback
+            if let jsonData = assistantMessage.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let spokenText = json["spoken_text"] as? String {
+                Logger.info("Extracted spoken_text from malformed JSON")
+                return AIResponse(
+                    taskType: .question,
+                    spokenText: spokenText,
+                    codeTemplate: nil,
+                    editorAction: EditorAction.none,
+                    evaluation: nil,
+                    hintContext: nil
+                )
+            }
+            
+            // Last resort: return error message
+            Logger.error("Could not extract spoken_text from JSON - returning error message")
             return AIResponse(
                 taskType: .question,
-                spokenText: assistantMessage,
+                spokenText: "Извините, произошла ошибка при обработке ответа. Пожалуйста, попробуйте еще раз.",
                 codeTemplate: nil,
                 editorAction: EditorAction.none,
                 evaluation: nil,
                 hintContext: nil
             )
         }
-        
-        Logger.success("AI response parsed - action: \(aiResponse.editorAction != nil)")
-        return aiResponse
     }
     
     func analyzeCodeErrors(
