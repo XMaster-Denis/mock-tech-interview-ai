@@ -18,7 +18,7 @@ class InterviewViewModel: ObservableObject {
     @Published var voiceThreshold: Float = 0.15  // From settings for UI display
     @Published var errorMessage: String?
     @Published var code: String = ""
-    @Published var codeEditorViewModel = CodeEditorViewModel()
+    @Published var codeLanguage: CodeLanguageInterview = .swift
     @Published var topics: [InterviewTopic] = []
     @Published var isEditingTopic = false
     @Published var topicToEdit: InterviewTopic?
@@ -45,7 +45,6 @@ class InterviewViewModel: ObservableObject {
             ttsService: OpenAITTSService(),
             settingsRepository: SettingsRepository(),
             topicsRepository: TopicsRepository(),
-            codeEditorViewModel: CodeEditorViewModel(),
             developerLevel: .junior
         )
     }
@@ -56,7 +55,6 @@ class InterviewViewModel: ObservableObject {
         ttsService: OpenAITTSServiceProtocol,
         settingsRepository: SettingsRepositoryProtocol,
         topicsRepository: TopicsRepository,
-        codeEditorViewModel: CodeEditorViewModel,
         developerLevel: DeveloperLevel = .junior
     ) {
         self.whisperService = whisperService
@@ -64,15 +62,13 @@ class InterviewViewModel: ObservableObject {
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
         self.topicsRepository = topicsRepository
-        self.codeEditorViewModel = codeEditorViewModel
         
-        // Initialize ConversationManager on MainActor with code editor
+        // Initialize ConversationManager on MainActor
         self.conversationManager = ConversationManager(
             whisperService: whisperService,
             chatService: chatService,
             ttsService: ttsService,
             settingsRepository: settingsRepository,
-            codeEditorViewModel: codeEditorViewModel,
             developerLevel: developerLevel
         )
         
@@ -104,6 +100,19 @@ class InterviewViewModel: ObservableObject {
         conversationManager.onError = { [weak self] error in
             self?.errorMessage = error
         }
+        
+        // Setup code update callback
+        conversationManager.onCodeUpdate = { [weak self] newCode in
+            self?.code = newCode
+        }
+        
+        // Sync code changes to ConversationManager
+        $code
+            .dropFirst() // Skip initial value
+            .sink { [weak self] newCode in
+                self?.conversationManager.updateCodeContext(code: newCode, language: self?.codeLanguage ?? .swift)
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Public Methods
@@ -217,6 +226,22 @@ class InterviewViewModel: ObservableObject {
     
     var selectedTopic: InterviewTopic {
         session.topic
+    }
+    
+    // MARK: - Code Editor Methods
+    
+    /// Set code in the editor (called by ConversationManager)
+    func setCode(_ newCode: String) {
+        code = newCode
+        // Sync to ConversationManager
+        conversationManager.updateCodeContext(code: newCode, language: codeLanguage)
+    }
+    
+    /// Update code language
+    func updateCodeLanguage(_ language: CodeLanguageInterview) {
+        codeLanguage = language
+        // Sync to ConversationManager
+        conversationManager.updateCodeContext(code: code, language: language)
     }
     
     // MARK: - Message Handling

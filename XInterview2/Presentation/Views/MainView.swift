@@ -48,10 +48,7 @@ struct MainView: View {
                     CodeEditorView(
                         code: $viewModel.code,
                         language: .swift,
-                        isEditable: true,
-                        onCodeChange: { newCode in
-                            // Notify viewModel of changes
-                        }
+                        isEditable: true
                     )
                 }
                 

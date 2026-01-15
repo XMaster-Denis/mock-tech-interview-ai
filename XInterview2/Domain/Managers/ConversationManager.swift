@@ -36,7 +36,6 @@ class ConversationManager: ObservableObject {
     private let settingsRepository: SettingsRepositoryProtocol
     
     // Code Editor Integration
-    private(set) var codeEditorViewModel: CodeEditorViewModel?
     private var currentCodeContext: CodeContext = CodeContext(currentCode: "", language: .swift, recentChanges: [])
     private var currentLevel: DeveloperLevel = .junior
     
@@ -54,6 +53,7 @@ class ConversationManager: ObservableObject {
     var onUserMessage: ((String) -> Void)?
     var onAIMessage: ((String) -> Void)?
     var onError: ((String) -> Void)?
+    var onCodeUpdate: ((String) -> Void)?
     
     // MARK: - Initialization
     
@@ -62,14 +62,12 @@ class ConversationManager: ObservableObject {
         chatService: OpenAIChatServiceProtocol,
         ttsService: OpenAITTSServiceProtocol,
         settingsRepository: SettingsRepositoryProtocol,
-        codeEditorViewModel: CodeEditorViewModel? = nil,
         developerLevel: DeveloperLevel = .junior
     ) {
         self.whisperService = whisperService
         self.chatService = chatService
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
-        self.codeEditorViewModel = codeEditorViewModel
         self.currentLevel = developerLevel
         
         let audioManager = FullDuplexAudioManager()
@@ -124,11 +122,6 @@ class ConversationManager: ObservableObject {
         // Start continuous listening
         Logger.state("Starting audio listening")
         audioManager.startListening()
-        
-        // Initialize code context if editor is available
-        if let editor = codeEditorViewModel {
-            updateCodeContext(from: editor)
-        }
         
         // Generate opening message
         Logger.state("Sending opening message task")
@@ -243,7 +236,7 @@ class ConversationManager: ObservableObject {
             
             // Apply code if present
             if let aicode = aiResponse.aicode, !aicode.isEmpty {
-                codeEditorViewModel?.setCode(aicode)
+                onCodeUpdate?(aicode)
                 Logger.success("Code set in editor: \(aicode.prefix(50))...")
             }
             
@@ -349,9 +342,6 @@ class ConversationManager: ObservableObject {
                 return
             }
             
-            // Update code context before sending
-            updateCodeContextFromEditor()
-            
             // Include context if available for follow-up questions
             let contextSummary = currentContext?.getContextSummary() ?? ""
             
@@ -370,7 +360,7 @@ class ConversationManager: ObservableObject {
             
             // Apply code if present
             if let aicode = aiResponse.aicode, !aicode.isEmpty {
-                codeEditorViewModel?.setCode(aicode)
+                onCodeUpdate?(aicode)
                 Logger.success("Code set in editor: \(aicode.prefix(50))...")
             }
             
@@ -476,24 +466,12 @@ class ConversationManager: ObservableObject {
     
     // MARK: - Code Editor Integration
     
-    private func updateCodeContext(from viewModel: CodeEditorViewModel) {
+    func updateCodeContext(code: String, language: CodeLanguageInterview) {
         currentCodeContext = CodeContext(
-            currentCode: viewModel.code,
-            language: viewModel.language,
+            currentCode: code,
+            language: language,
             recentChanges: []
         )
-    }
-    
-    private func updateCodeContextFromEditor() {
-        guard let editor = codeEditorViewModel else { return }
-        updateCodeContext(from: editor)
-    }
-    
-    func setCodeEditorViewModel(_ viewModel: CodeEditorViewModel, level: DeveloperLevel = .junior) {
-        self.codeEditorViewModel = viewModel
-        self.currentLevel = level
-        updateCodeContext(from: viewModel)
-        Logger.info("Code editor attached - level: \(level.displayName)")
     }
     
     func updateInterviewMode(_ mode: InterviewMode) {
