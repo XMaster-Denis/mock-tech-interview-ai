@@ -185,46 +185,7 @@ class CodeEditorViewModel: ObservableObject {
     
     // MARK: - Editor Actions
     
-    func applyEditorAction(_ action: EditorActionNSRange, to codeString: inout String) {
-        isAIEditing = true
-        defer { isAIEditing = false }
-        
-        switch action {
-        case .insert(let text, let location):
-            // Insert text at specific location
-            let insertIndex = codeString.index(codeString.startIndex, offsetBy: min(location, codeString.utf16.count))
-            codeString.insert(contentsOf: text, at: insertIndex)
-            selectedRange = NSRange(location: location + text.utf16.count, length: 0)
-            
-        case .replace(let range, let text):
-            // Replace text in range
-            guard range.location <= codeString.utf16.count else { return }
-            let endLocation = min(range.location + range.length, codeString.utf16.count)
-            
-            if let rangeIndex = Range(NSRange(location: range.location, length: endLocation - range.location), in: codeString) {
-                codeString.removeSubrange(rangeIndex)
-                let insertIndex = codeString.index(codeString.startIndex, offsetBy: range.location)
-                codeString.insert(contentsOf: text, at: insertIndex)
-            }
-            selectedRange = NSRange(location: range.location + text.utf16.count, length: 0)
-            
-        case .clear:
-            // Clear all code
-            codeString = ""
-            selectedRange = NSRange(location: 0, length: 0)
-            
-        case .highlight(let ranges):
-            // Highlight specific ranges (hints or errors)
-            hintRanges = ranges
-            
-        case .none:
-            // No action
-            break
-        }
-        
-        // Notify that code was modified by AI
-        onCodeChanged?()
-    }
+
     
     // MARK: - Callbacks
     

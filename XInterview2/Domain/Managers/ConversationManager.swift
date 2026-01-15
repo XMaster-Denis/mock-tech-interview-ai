@@ -237,20 +237,17 @@ class ConversationManager: ObservableObject {
             )
             
             Logger.info("AIResponse received - spokenText: \(aiResponse.spokenText.prefix(50))...")
-            Logger.info("AIResponse - hasEditorAction: \(aiResponse.editorAction != nil)")
-            Logger.info("AIResponse - hasEvaluation: \(aiResponse.evaluation != nil)")
+            Logger.info("AIResponse - hasAicode: \(aiResponse.aicode != nil)")
             
             let response = aiResponse.spokenText
             
-            // Apply editor action if present
-            if let action = aiResponse.editorAction {
-                applyEditorAction(action)
+            // Apply code if present
+            if let aicode = aiResponse.aicode, !aicode.isEmpty {
+                codeEditorViewModel?.setCode(aicode)
+                Logger.success("Code set in editor: \(aicode.prefix(50))...")
             }
             
-            // Apply code template if present
-            if let codeTemplate = aiResponse.codeTemplate {
-                codeEditorViewModel?.setCode(codeTemplate)
-            }
+
             
             // Check if stopping before proceeding
             guard !isStopping else {
@@ -371,25 +368,17 @@ class ConversationManager: ObservableObject {
             
             let response = aiResponse.spokenText
             
-            // Apply editor action if present
-            if let action = aiResponse.editorAction {
-                applyEditorAction(action)
+            // Apply code if present
+            if let aicode = aiResponse.aicode, !aicode.isEmpty {
+                codeEditorViewModel?.setCode(aicode)
+                Logger.success("Code set in editor: \(aicode.prefix(50))...")
             }
             
-            // Apply code template if present
-            if let codeTemplate = aiResponse.codeTemplate {
-                codeEditorViewModel?.setCode(codeTemplate)
-            }
+
             
-            // Handle hint context if present (AI providing assistance)
-            if let hint = aiResponse.hintContext {
-                applyHint(hint)
-            }
+
             
-            // Handle evaluation if present
-            if let evaluation = aiResponse.evaluation {
-                handleEvaluation(evaluation)
-            }
+
             
             // Check if stopping after getting AI response
             guard !isStopping else {
@@ -517,85 +506,11 @@ class ConversationManager: ObservableObject {
         Logger.info("Developer level updated: \(level.displayName)")
     }
     
-    private func applyEditorAction(_ action: EditorAction) {
-        guard let editor = codeEditorViewModel else {
-            Logger.warning("Cannot apply editor action - no editor attached")
-            return
-        }
-        
-        Logger.info("Applying editor action")
-        
-        switch action {
-        case .insert(let text, let location):
-            // Insert at specific location
-            editor.insertCodeAtCursor(text)
-            // Optionally move cursor to location
-        case .replace(let rangeCodable, let text):
-            editor.replaceCodeInRange(rangeCodable.range, with: text)
-        case .clear:
-            editor.replaceAllCode("")
-        case .highlight(let rangesCodable):
-            let ranges = rangesCodable.map { $0.range }
-            editor.highlightHints(ranges)
-        case .none:
-            break
-        }
-        
-        // Update code context after applying action
-        updateCodeContext(from: editor)
-    }
+
     
-    private func handleEvaluation(_ evaluation: CodeEvaluation) {
-        Logger.info("Code evaluation - isCorrect: \(evaluation.isCorrect)")
-        
-        guard let editor = codeEditorViewModel else { return }
-        
-        if evaluation.isCorrect {
-            // Show success feedback - can add UI notification later
-            Logger.success("Code is correct: \(evaluation.feedback)")
-        } else {
-            // Highlight error lines
-            let errorRanges = evaluation.issueLines.compactMap { editor.rangeForLine($0) }
-            let errors = errorRanges.enumerated().map { index, range in
-                CodeError(
-                    range: range,
-                    message: evaluation.feedback,
-                    severity: evaluation.severity ?? .error,
-                    line: evaluation.issueLines[index]
-                )
-            }
-            editor.highlightErrors(errors)
-        }
-    }
+
     
-    private func applyHint(_ hint: HintContext) {
-        Logger.info("Applying hint - type: \(hint.type)")
-        
-        guard let editor = codeEditorViewModel else {
-            Logger.warning("Cannot apply hint - no editor attached")
-            return
-        }
-        
-        switch hint.type {
-        case .codeInsertion:
-            // Insert code and highlight it
-            if let code = hint.code {
-                editor.insertCodeAtCursor(code)
-                if let range = hint.highlightRange {
-                    editor.highlightHints([range.range])
-                }
-                Logger.success("Inserted hint code: \(code.prefix(50))...")
-            }
-        case .textHint:
-            // Just explanation, no code insertion
-            if let explanation = hint.explanation {
-                Logger.info("Text hint: \(explanation)")
-            }
-        }
-        
-        // Update code context after hint
-        updateCodeContext(from: editor)
-    }
+
     
     // MARK: - Helpers
     

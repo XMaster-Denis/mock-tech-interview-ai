@@ -159,47 +159,7 @@ class CodeEditorController: ObservableObject {
     }
     
     /// Apply an AI action to the editor
-    func applyAIAction(_ action: EditorActionNSRange, animated: Bool = true) {
-        showAIThinking()
-        defer { hideAIThinking() }
-        
-        switch action {
-        case .insert(let text, let location):
-            if animated {
-                animateCodeChange {
-                    self.viewModel.code.insert(
-                        contentsOf: text,
-                        at: self.viewModel.code.index(
-                            self.viewModel.code.startIndex,
-                            offsetBy: location
-                        )
-                    )
-                    self.viewModel.highlightCode()
-                }
-            } else {
-                viewModel.code.insert(
-                    contentsOf: text,
-                    at: viewModel.code.index(
-                        viewModel.code.startIndex,
-                        offsetBy: location
-                    )
-                )
-                viewModel.highlightCode()
-            }
-            
-        case .replace(let range, let text):
-            replaceCodeInRange(range, with: text, animated: animated)
-            
-        case .clear:
-            replaceAllCode("", animated: animated)
-            
-        case .highlight(let ranges):
-            highlightHints(ranges)
-            
-        case .none:
-            break
-        }
-    }
+
     
     // MARK: - Helper Methods
     

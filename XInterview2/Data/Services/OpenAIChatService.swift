@@ -152,7 +152,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         
         do {
             let aiResponse = try JSONDecoder().decode(AIResponse.self, from: data)
-            Logger.success("AI response parsed successfully - taskType: \(aiResponse.taskType), hasEditorAction: \(aiResponse.editorAction != nil)")
+            Logger.success("AI response parsed successfully - spokenText: \(aiResponse.spokenText), hasAicode: \(aiResponse.aicode != nil)")
             return aiResponse
         } catch {
             Logger.error("Failed to parse AI response as JSON: \(error.localizedDescription)")
@@ -164,24 +164,16 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                let spokenText = json["spoken_text"] as? String {
                 Logger.info("Extracted spoken_text from malformed JSON")
                 return AIResponse(
-                    taskType: .question,
                     spokenText: spokenText,
-                    codeTemplate: nil,
-                    editorAction: EditorAction.none,
-                    evaluation: nil,
-                    hintContext: nil
+                    aicode: nil
                 )
             }
             
             // Last resort: return error message
             Logger.error("Could not extract spoken_text from JSON - returning error message")
             return AIResponse(
-                taskType: .question,
                 spokenText: "Извините, произошла ошибка при обработке ответа. Пожалуйста, попробуйте еще раз.",
-                codeTemplate: nil,
-                editorAction: EditorAction.none,
-                evaluation: nil,
-                hintContext: nil
+                aicode: nil
             )
         }
     }
