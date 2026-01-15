@@ -93,8 +93,15 @@ enum EditorAction: Codable {
             self = .insert(text: text, location: location)
         case .replace:
             let text = try container.decode(String.self, forKey: .text)
-            let rangeCodable = try container.decode(NSRangeCodable.self, forKey: .range)
-            self = .replace(range: rangeCodable, text: text)
+            // Range is optional - if not provided, replace entire document
+            if let rangeCodable = try? container.decode(NSRangeCodable.self, forKey: .range) {
+                self = .replace(range: rangeCodable, text: text)
+            } else {
+                // Default range: replace entire document (0 to Int.max)
+                let defaultRange = NSRange(location: 0, length: Int.max)
+                let rangeCodable = NSRangeCodable(defaultRange)
+                self = .replace(range: rangeCodable, text: text)
+            }
         case .clear:
             self = .clear
         case .highlight:
