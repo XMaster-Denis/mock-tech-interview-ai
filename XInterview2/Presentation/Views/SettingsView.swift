@@ -196,6 +196,50 @@ struct SettingsView: View {
                                 .foregroundColor(.red)
                         }
                     }
+                    
+                    // Calibration button
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            Task {
+                                await viewModel.calibrateNoiseLevel()
+                            }
+                        }) {
+                            Label("Calibrate Noise Level (3s)", systemImage: "waveform.path")
+                        }
+                        .disabled(viewModel.isCalibrating)
+                        .buttonStyle(.bordered)
+                        
+                        if viewModel.isCalibrating {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        }
+                        
+                        if viewModel.calibrationProgress > 0 {
+                            Text("\(Int(viewModel.calibrationProgress * 100))%")
+                                .font(.caption)
+                                .monospacedDigit()
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Show calibration result
+                    if let calibratedThreshold = viewModel.calibratedNoiseLevel {
+                        HStack {
+                            Text("Calibrated threshold:")
+                                .font(.caption)
+                            Text(String(format: "%.2f", calibratedThreshold))
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .monospacedDigit()
+                                .foregroundColor(.green)
+                            
+                            Spacer()
+                            
+                            Label("Applied ✓", systemImage: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                    }
                 }
                 
                 Divider()
@@ -255,6 +299,65 @@ struct SettingsView: View {
                     Text("⚠️ Shorter timeout = faster but may cut off early speech")
                         .font(.caption2)
                         .foregroundColor(.orange)
+                }
+                
+                Divider()
+                
+                // Min Speech Level
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Min Speech Level")
+                        .font(.headline)
+                    
+                    Text("Minimum audio level to validate speech (filters quiet noises)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 16) {
+                        Text("Less Strict")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Slider(value: $viewModel.minSpeechLevel, in: 0.01...0.1, step: 0.005)
+                            .frame(minWidth: 200)
+                        
+                        Text("More Strict")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Current level:")
+                            .font(.caption)
+                        Text(String(format: "%.3f", viewModel.minSpeechLevel))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .monospacedDigit()
+                        
+                        Spacer()
+                        
+                        // Show level indicator
+                        if viewModel.minSpeechLevel < 0.03 {
+                            Label("Very Permissive", systemImage: "speaker.wave.3.fill")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        } else if viewModel.minSpeechLevel < 0.05 {
+                            Label("Permissive", systemImage: "speaker.wave.2.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        } else if viewModel.minSpeechLevel < 0.07 {
+                            Label("Normal", systemImage: "speaker.wave.1.fill")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        } else {
+                            Label("Strict", systemImage: "speaker.slash.fill")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    
+                    Text("💡 Lower values = more sensitive (may catch quiet speech)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
                 
                 Spacer()

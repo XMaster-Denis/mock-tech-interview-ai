@@ -114,11 +114,12 @@ class ConversationManager: ObservableObject {
         currentTopic = topic
         currentContext = context
         
-        // Load settings and update voice threshold and silence timeout
+        // Load settings and update voice threshold, silence timeout, and min speech level
         let settings = settingsRepository.loadSettings()
         audioManager.updateVoiceThreshold(settings.voiceThreshold)
         audioManager.updateSilenceTimeout(settings.silenceTimeout)
-        Logger.info("Voice threshold: \(settings.voiceThreshold), Silence timeout: \(settings.silenceTimeout)s")
+        audioManager.updateMinSpeechLevel(settings.minSpeechLevel)
+        Logger.info("Voice threshold: \(settings.voiceThreshold), Silence timeout: \(settings.silenceTimeout)s, Min speech level: \(settings.minSpeechLevel)")
         
         // Start continuous listening
         Logger.state("Starting audio listening")

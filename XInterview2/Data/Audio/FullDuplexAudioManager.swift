@@ -69,6 +69,11 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         voiceDetector.updateSilenceTimeout(timeout)
     }
     
+    func updateMinSpeechLevel(_ level: Float) {
+        Logger.audio("Updating min speech level to: \(level)")
+        voiceDetector.updateMinSpeechLevel(level)
+    }
+    
     private func setupAudioSession() {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()

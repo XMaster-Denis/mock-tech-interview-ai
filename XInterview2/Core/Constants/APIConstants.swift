@@ -34,4 +34,6 @@ enum UserDefaultsKeys {
     static let selectedLanguage = "selected_language"
     static let selectedVoice = "selected_voice"
     static let voiceThreshold = "voice_threshold"
+    static let silenceTimeout = "silence_timeout"
+    static let minSpeechLevel = "min_speech_level"
 }

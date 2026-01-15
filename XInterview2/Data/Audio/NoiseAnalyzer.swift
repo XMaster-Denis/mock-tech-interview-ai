@@ -5,20 +5,25 @@
 //  Adaptive noise analyzer with microphone calibration
 //  Automatically adjusts thresholds based on background noise level
 //
+//  Адаптивный анализатор шума с калибровкой микрофона
+//  Автоматически настраивает пороги на основе уровня фонового шума
+//
 
 import AVFoundation
 import Combine
 import Foundation
 
 // MARK: - Noise Analysis Result
+// MARK: - Результат анализа шума
 
+/// Результат анализа шума
 struct NoiseAnalysisResult {
-    let audioLevel: Float           // Current audio level (0.0-1.0)
-    let noiseLevel: Float           // Estimated background noise level (0.0-1.0)
-    let signalToNoiseRatio: Float   // SNR in dB
-    let isVoiceDetected: Bool       // Whether voice is present
-    let confidence: Float           // Detection confidence (0.0-1.0)
-    let adaptiveThreshold: Float    // Current adaptive threshold
+    let audioLevel: Float           // Текущий уровень аудио (0.0-1.0)
+    let noiseLevel: Float           // Оцененный уровень фонового шума (0.0-1.0)
+    let signalToNoiseRatio: Float   // Отношение сигнал/шум в дБ
+    let isVoiceDetected: Bool       // Присутствует ли голос
+    let confidence: Float           // Уверенность обнаружения (0.0-1.0)
+    let adaptiveThreshold: Float    // Текущий адаптивный порог
     let calibrationStatus: CalibrationStatus
     
     var description: String {
@@ -29,56 +34,62 @@ struct NoiseAnalysisResult {
 }
 
 // MARK: - Calibration Status
+// MARK: - Статус калибровки
 
+/// Статус калибровки анализатора шума
 enum CalibrationStatus {
-    case notStarted
-    case inProgress(progress: Float)  // 0.0 to 1.0
-    case completed(noiseLevel: Float)
-    case failed(Error)
+    case notStarted                                      // Калибровка не началась
+    case inProgress(progress: Float)                      // В процессе (0.0 - 1.0)
+    case completed(noiseLevel: Float)                     // Завершена
+    case failed(Error)                                    // Ошибка
 }
 
 // MARK: - Noise Analyzer Configuration
+// MARK: - Конфигурация анализатора шума
 
+/// Конфигурация анализатора шума
 struct NoiseAnalyzerConfiguration {
-    /// Duration of initial calibration in seconds
+    /// Длительность начальной калибровки в секундах
     let calibrationDuration: TimeInterval
     
-    /// Minimum samples required for reliable calibration
+    /// Минимальное количество сэмплов для надежной калибровки
     let minCalibrationSamples: Int
     
-    /// SNR threshold for voice detection (in dB)
+    /// Порог SNR для обнаружения голоса (в дБ)
     let snrThreshold: Float
     
-    /// Minimum audio level above noise to consider as voice (0.0-1.0)
+    /// Минимальный уровень аудио выше шума для рассмотрения как голос (0.0-1.0)
     let minSignalAboveNoise: Float
     
-    /// Smoothing factor for noise level estimation (0.0-1.0, higher = more responsive)
+    /// Коэффициент сглаживания для оценки уровня шума (0.0-1.0, выше = более отзывчивый)
     let noiseSmoothingFactor: Float
     
-    /// Window size for statistical analysis (number of samples)
+    /// Размер окна для статистического анализа (количество сэмплов)
     let statisticalWindowSize: Int
     
-    /// Maximum noise level before considering environment too noisy (0.0-1.0)
+    /// Максимальный уровень шума перед тем, как считать окружение слишком шумным (0.0-1.0)
     let maxAcceptableNoiseLevel: Float
     
-    /// Minimum audio level to consider as potential voice (0.0-1.0)
+    /// Минимальный уровень аудио для рассмотрения как потенциальный голос (0.0-1.0)
     let minAbsoluteAudioLevel: Float
     
+    /// Конфигурация по умолчанию
     static let `default` = NoiseAnalyzerConfiguration(
-        calibrationDuration: 2.0,          // 2 seconds calibration
-        minCalibrationSamples: 20,          // At least 20 samples
-        snrThreshold: 6.0,                 // 6 dB SNR threshold
-        minSignalAboveNoise: 0.05,         // Signal must be 5% above noise
-        noiseSmoothingFactor: 0.1,         // 10% smoothing
-        statisticalWindowSize: 10,          // 10 samples window
-        maxAcceptableNoiseLevel: 0.3,      // Max 30% noise level
-        minAbsoluteAudioLevel: 0.02        // Min 2% absolute level
+        calibrationDuration: 2.0,          // 2 секунды калибровки
+        minCalibrationSamples: 20,          // Минимум 20 сэмплов
+        snrThreshold: 6.0,                 // Порог SNR 6 дБ
+        minSignalAboveNoise: 0.05,         // Сигнал должен быть на 5% выше шума
+        noiseSmoothingFactor: 0.1,         // 10% сглаживание
+        statisticalWindowSize: 10,          // Окно из 10 сэмплов
+        maxAcceptableNoiseLevel: 0.3,      // Максимум 30% шума
+        minAbsoluteAudioLevel: 0.02        // Минимум 2% абсолютный уровень
     )
     
+    /// Чувствительная конфигурация (более чувствительная к тихой речи)
     static let sensitive = NoiseAnalyzerConfiguration(
         calibrationDuration: 2.0,
         minCalibrationSamples: 20,
-        snrThreshold: 3.0,                 // More sensitive (3 dB)
+        snrThreshold: 3.0,                 // Более чувствительный (3 дБ)
         minSignalAboveNoise: 0.03,
         noiseSmoothingFactor: 0.15,
         statisticalWindowSize: 10,
@@ -86,12 +97,13 @@ struct NoiseAnalyzerConfiguration {
         minAbsoluteAudioLevel: 0.015
     )
     
+    /// Строгая конфигурация (меньше ложных срабатываний)
     static let strict = NoiseAnalyzerConfiguration(
-        calibrationDuration: 3.0,          // Longer calibration
+        calibrationDuration: 3.0,          // Более длинная калибровка
         minCalibrationSamples: 30,
-        snrThreshold: 10.0,                // Stricter (10 dB)
+        snrThreshold: 10.0,                // Более строгий (10 дБ)
         minSignalAboveNoise: 0.08,
-        noiseSmoothingFactor: 0.05,        // Less smoothing
+        noiseSmoothingFactor: 0.05,        // Меньше сглаживания
         statisticalWindowSize: 15,
         maxAcceptableNoiseLevel: 0.2,
         minAbsoluteAudioLevel: 0.03
@@ -99,51 +111,88 @@ struct NoiseAnalyzerConfiguration {
 }
 
 // MARK: - Noise Analyzer
+// MARK: - Анализатор шума
 
+/// Адаптивный анализатор шума для автоматической настройки порогов обнаружения речи
+/// Выполняет калибровку фонового шума и адаптивно настраивает пороги
 @MainActor
 class NoiseAnalyzer: ObservableObject {
     
     // MARK: - Published Properties
+    // MARK: - Опубликованные свойства
     
+    /// Статус калибровки
     @Published var calibrationStatus: CalibrationStatus = .notStarted
+    
+    /// Текущий уровень шума
     @Published var currentNoiseLevel: Float = 0.0
+    
+    /// Текущий адаптивный порог
     @Published var adaptiveThreshold: Float = 0.0
+    
+    /// Флаг indicates, что калибровка завершена
     @Published var isCalibrated: Bool = false
     
     // MARK: - Configuration
+    // MARK: - Конфигурация
     
+    /// Конфигурация анализатора шума
     private let config: NoiseAnalyzerConfiguration
     
     // MARK: - State
+    // MARK: - Состояние
     
+    /// Сэмплы для калибровки
     private var calibrationSamples: [Float] = []
+    
+    /// История уровней шума
     private var noiseLevelHistory: [Float] = []
+    
+    /// История уровней аудио
     private var audioLevelHistory: [Float] = []
+    
+    /// Время начала калибровки
     private var calibrationStartTime: Date?
+    
+    /// Таймер калибровки
     private var calibrationTimer: Timer?
+    
+    /// Оцененный уровень шума
     private var estimatedNoiseLevel: Float = 0.0
+    
+    /// Время последнего обновления
     private var lastUpdateTime: Date?
     
     // MARK: - Statistics
+    // MARK: - Статистика
     
+    /// Средний уровень
     private var meanLevel: Float = 0.0
+    
+    /// Стандартное отклонение
     private var stdDevLevel: Float = 0.0
+    
+    /// Пиковый уровень
     private var peakLevel: Float = 0.0
     
     // MARK: - Initialization
+    // MARK: - Инициализация
     
+    /// Инициализировать анализатор шума с конфигурацией
     init(configuration: NoiseAnalyzerConfiguration = .default) {
         self.config = configuration
         Logger.noise("NoiseAnalyzer initialized with configuration: \(config.calibrationDuration)s calibration")
     }
     
+    /// Деинициализация - очистка таймера
     deinit {
         calibrationTimer?.invalidate()
     }
     
     // MARK: - Public Methods
+    // MARK: - Публичные методы
     
-    /// Start calibration to measure background noise
+    /// Начать калибровку для измерения фонового шума
     func startCalibration() {
         Logger.noise("Starting calibration...")
         calibrationSamples.removeAll()
@@ -155,7 +204,7 @@ class NoiseAnalyzer: ObservableObject {
         calibrationStatus = .inProgress(progress: 0.0)
         isCalibrated = false
         
-        // Start calibration timer
+        // Запустить таймер калибровки
         calibrationTimer?.invalidate()
         calibrationTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -166,14 +215,14 @@ class NoiseAnalyzer: ObservableObject {
         Logger.noise("Calibration started - will collect samples for \(config.calibrationDuration)s")
     }
     
-    /// Stop calibration
+    /// Остановить калибровку
     func stopCalibration() {
         calibrationTimer?.invalidate()
         calibrationTimer = nil
         Logger.noise("Calibration stopped")
     }
     
-    /// Reset analyzer state
+    /// Сбросить состояние анализатора
     func reset() {
         Logger.noise("Resetting analyzer state")
         stopCalibration()
@@ -190,37 +239,37 @@ class NoiseAnalyzer: ObservableObject {
         adaptiveThreshold = 0.0
     }
     
-    /// Analyze audio level and determine if voice is present
+    /// Проанализировать уровень аудио и определить присутствует ли голос
     func analyze(audioLevel: Float) -> NoiseAnalysisResult {
         let now = Date()
         lastUpdateTime = now
         
-        // Update history
+        // Обновить историю
         audioLevelHistory.append(audioLevel)
         if audioLevelHistory.count > config.statisticalWindowSize * 2 {
             audioLevelHistory.removeFirst()
         }
         
-        // If calibrating, collect samples
+        // Если калибруется, собирать сэмплы
         if case .inProgress = calibrationStatus {
             collectCalibrationSample(audioLevel)
         }
         
-        // Update noise level estimation
+        // Обновить оценку уровня шума
         updateNoiseLevelEstimation(audioLevel)
         
-        // Calculate statistics
+        // Вычислить статистику
         calculateStatistics()
         
-        // Calculate adaptive threshold
+        // Вычислить адаптивный порог
         let threshold = calculateAdaptiveThreshold()
         adaptiveThreshold = threshold
         currentNoiseLevel = estimatedNoiseLevel
         
-        // Detect voice
+        // Обнаружить голос
         let (isVoice, confidence) = detectVoice(audioLevel: audioLevel)
         
-        // Calculate SNR
+        // Вычислить SNR
         let snr = calculateSNR(audioLevel: audioLevel)
         
         let result = NoiseAnalysisResult(
@@ -233,27 +282,27 @@ class NoiseAnalyzer: ObservableObject {
             calibrationStatus: calibrationStatus
         )
         
-        // Log significant events
+        // Логировать значимые события
         if isVoice && confidence > 0.7 {
             Logger.noise("✅ Voice detected: \(result.description)")
         } else if case .completed = calibrationStatus {
-            Logger.noise("🔊 Analysis: \(result.description)")
+            //  Logger.noise("🔊 Analysis: \(result.description)")
         }
         
         return result
     }
     
-    /// Get current adaptive threshold
+    /// Получить текущий адаптивный порог
     func getCurrentThreshold() -> Float {
         return adaptiveThreshold
     }
     
-    /// Get current noise level
+    /// Получить текущий уровень шума
     func getCurrentNoiseLevel() -> Float {
         return estimatedNoiseLevel
     }
     
-    /// Check if environment is too noisy
+    /// Проверить, слишком ли шумное окружение
     func isEnvironmentTooNoisy() -> Bool {
         return estimatedNoiseLevel > config.maxAcceptableNoiseLevel
     }

@@ -17,10 +17,15 @@ class SettingsViewModel: ObservableObject {
     @Published var selectedVoice: String = APIConstants.Voice.alloy
     @Published var voiceThreshold: Float = 0.2
     @Published var silenceTimeout: Double = 1.5
+    @Published var minSpeechLevel: Float = 0.04
+    @Published var calibratedNoiseLevel: Float? = nil
+    @Published var isCalibrating: Bool = false
+    @Published var calibrationProgress: Double = 0.0
     
     // MARK: - Dependencies
     
     private let settingsRepository: SettingsRepositoryProtocol
+    private let calibrationManager = AudioCalibrationManager()
     
     // MARK: - Initialization
     
@@ -32,6 +37,7 @@ class SettingsViewModel: ObservableObject {
         self.settingsRepository = settingsRepository
         // Initialize on MainActor
         loadSettings()
+        setupCalibrationManager()
     }
     
     // MARK: - Public Methods
@@ -43,6 +49,8 @@ class SettingsViewModel: ObservableObject {
         selectedVoice = settings.selectedVoice
         voiceThreshold = settings.voiceThreshold
         silenceTimeout = settings.silenceTimeout
+        minSpeechLevel = settings.minSpeechLevel
+        calibratedNoiseLevel = settings.calibratedNoiseThreshold
     }
     
     func saveSettings() {
@@ -51,14 +59,49 @@ class SettingsViewModel: ObservableObject {
             selectedLanguage: selectedLanguage,
             selectedVoice: selectedVoice,
             voiceThreshold: voiceThreshold,
-            silenceTimeout: silenceTimeout
+            silenceTimeout: silenceTimeout,
+            minSpeechLevel: minSpeechLevel,
+            calibratedNoiseThreshold: calibratedNoiseLevel
         )
         settingsRepository.saveSettings(settings)
+    }
+    
+    func calibrateNoiseLevel() async {
+        isCalibrating = true
+        calibratedNoiseLevel = nil
+        calibrationProgress = 0.0
+        
+        // Подписаться на прогресс калибровки
+        calibrationManager.$calibrationProgress
+            .sink { [weak self] progress in
+                self?.calibrationProgress = progress
+            }
+            .store(in: &cancellables)
+        
+        // Выполнить калибровку
+        let result = await calibrationManager.calibrateNoiseLevel(duration: 3.0)
+        
+        // Обновить порог
+        voiceThreshold = result.recommendedThreshold
+        calibratedNoiseLevel = result.recommendedThreshold
+        isCalibrating = false
+        calibrationProgress = 1.0
+        
+        // Автоматически сохранить настройки
+        saveSettings()
+    }
+    
+    private func setupCalibrationManager() {
+        // Подписаться на обновления калибровки
+        calibrationManager.$isCalibrating
+            .assign(to: &$isCalibrating)
     }
     
     var hasValidAPIKey: Bool {
         !apiKey.isEmpty && apiKey.count > 20
     }
+    
+    var cancellables = Set<AnyCancellable>()
     
     var availableVoices: [String] {
         [
