@@ -51,6 +51,9 @@ struct MainView: View {
                         isEditable: true
                     )
                 }
+                .onChange(of: viewModel.code) { oldValue, newValue in
+                    print("!!! MainView viewModel.code changed: '\(oldValue.prefix(30))...' -> '\(newValue.prefix(30))...'")
+                }
                 
                 // Right: Transcript
                 TranscriptView(viewModel: viewModel)

@@ -103,6 +103,7 @@ class InterviewViewModel: ObservableObject {
         
         // Setup code update callback
         conversationManager.onCodeUpdate = { [weak self] newCode in
+            print("!!!!!!!!!!!!!!Code updated: \(newCode)")
             self?.code = newCode
         }
         

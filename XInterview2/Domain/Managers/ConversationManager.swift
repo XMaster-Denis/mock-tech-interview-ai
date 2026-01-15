@@ -467,6 +467,7 @@ class ConversationManager: ObservableObject {
     // MARK: - Code Editor Integration
     
     func updateCodeContext(code: String, language: CodeLanguageInterview) {
+        print("!2!!!!!!!!!Updating code context with new code - \(code)")
         currentCodeContext = CodeContext(
             currentCode: code,
             language: language,
