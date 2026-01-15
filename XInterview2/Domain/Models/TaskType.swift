@@ -60,8 +60,8 @@ struct HintContext: Codable {
 
 /// Type of hint AI can provide
 enum HintType: String, Codable {
-    case codeInsertion   /// Insert actual code into editor
-    case textHint       /// Just give a text hint/explanation
+    case codeInsertion = "code_insertion"   /// Insert actual code into editor
+    case textHint = "text_hint"             /// Just give a text hint/explanation
     
     var displayName: String {
         switch self {
