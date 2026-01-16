@@ -807,7 +807,7 @@ class ConversationManager: ObservableObject {
     
     /// Request next question after correct solution
     private func requestNextQuestion() async {
-        Logger.info("requestNextQuestion() called")
+        Logger.info("requestNextQuestion() called - isRequestingNextQuestion: \(isRequestingNextQuestion)")
         
         guard let topic = currentTopic else {
             Logger.error("No current topic available")
@@ -822,10 +822,13 @@ class ConversationManager: ObservableObject {
             // Set flag to indicate we're requesting next question
             isRequestingNextQuestion = true
             isProcessingChatRequest = true
-            defer { 
+            defer {
                 isProcessingChatRequest = false
                 isRequestingNextQuestion = false
+                Logger.info("requestNextQuestion() completed - isRequestingNextQuestion reset to false")
             }
+            
+            Logger.info("requestNextQuestion() - Setting isRequestingNextQuestion=true, isProcessingChatRequest=true")
             
             // Add a message to indicate we want the next question
             let nextQuestionMessage = TranscriptMessage(
@@ -834,7 +837,9 @@ class ConversationManager: ObservableObject {
                 timestamp: Date()
             )
             conversationHistory.append(nextQuestionMessage)
+            Logger.info("requestNextQuestion() - Added 'Please provide the next question.' to conversation history")
             
+            Logger.info("requestNextQuestion() - Calling chatService.sendMessageWithCode()")
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
@@ -846,6 +851,7 @@ class ConversationManager: ObservableObject {
                 context: contextSummary
             )
             
+            Logger.info("requestNextQuestion() - AI response received, calling handleAIResponse()")
             await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
             
         } catch {
@@ -923,35 +929,46 @@ class ConversationManager: ObservableObject {
         
         // Update task state based on AI response
         if let taskState = aiResponse.taskState {
+            Logger.info("handleAIResponse() - Processing taskState: \(taskState.rawValue)")
             switch taskState {
             case .taskPresented:
+                Logger.info("handleAIResponse() - New question presented with code")
                 updateTaskState(.taskPresented(expectedSolution: aiResponse.aicode))
                 currentTaskCode = aiResponse.aicode ?? ""
                 
             case .checkingSolution:
                 // AI is checking user's solution
+                Logger.info("handleAIResponse() - Checking solution, isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
                 if let isCorrect = aiResponse.isCorrect {
                     if isCorrect {
+                        Logger.info("handleAIResponse() - Solution is correct, updating task state to noTask")
                         updateTaskState(.noTask)
                     } else {
+                        Logger.info("handleAIResponse() - Solution is incorrect, keeping task state as taskPresented")
                         updateTaskState(.taskPresented(expectedSolution: nil))
                     }
                 }
                 
             case .providingHint:
                 // AI is giving a hint - stay in task presented state
+                Logger.info("handleAIResponse() - Hint provided, keeping task state as taskPresented")
                 updateTaskState(.taskPresented(expectedSolution: nil))
                 
             case .showingSolution:
                 // AI is showing solution - wait for user confirmation
+                Logger.info("handleAIResponse() - Solution shown, updating task state to waitingForUserConfirmation")
                 updateTaskState(.waitingForUserConfirmation)
                 
             case .waitingForUnderstanding:
+                Logger.info("handleAIResponse() - Waiting for understanding, updating task state to waitingForUserConfirmation")
                 updateTaskState(.waitingForUserConfirmation)
                 
             case .none:
+                Logger.info("handleAIResponse() - No task state, updating to noTask")
                 updateTaskState(.noTask)
             }
+        } else {
+            Logger.warning("handleAIResponse() - No taskState in AI response")
         }
         
         // Apply code in editor based on state
