@@ -181,7 +181,6 @@ class NoiseAnalyzer: ObservableObject {
     /// Инициализировать анализатор шума с конфигурацией
     init(configuration: NoiseAnalyzerConfiguration = .default) {
         self.config = configuration
-        Logger.noise("NoiseAnalyzer initialized with configuration: \(config.calibrationDuration)s calibration")
     }
     
     /// Деинициализация - очистка таймера
@@ -194,7 +193,6 @@ class NoiseAnalyzer: ObservableObject {
     
     /// Начать калибровку для измерения фонового шума
     func startCalibration() {
-        Logger.noise("Starting calibration...")
         calibrationSamples.removeAll()
         noiseLevelHistory.removeAll()
         audioLevelHistory.removeAll()
@@ -212,19 +210,16 @@ class NoiseAnalyzer: ObservableObject {
             }
         }
         
-        Logger.noise("Calibration started - will collect samples for \(config.calibrationDuration)s")
     }
     
     /// Остановить калибровку
     func stopCalibration() {
         calibrationTimer?.invalidate()
         calibrationTimer = nil
-        Logger.noise("Calibration stopped")
     }
     
     /// Сбросить состояние анализатора
     func reset() {
-        Logger.noise("Resetting analyzer state")
         stopCalibration()
         calibrationSamples.removeAll()
         noiseLevelHistory.removeAll()
@@ -284,9 +279,7 @@ class NoiseAnalyzer: ObservableObject {
         
         // Логировать значимые события
         if isVoice && confidence > 0.7 {
-            Logger.noise("✅ Voice detected: \(result.description)")
-        } else if case .completed = calibrationStatus {
-            //  Logger.noise("🔊 Analysis: \(result.description)")
+            // Voice detected
         }
         
         return result
@@ -366,19 +359,11 @@ class NoiseAnalyzer: ObservableObject {
         calibrationStatus = .completed(noiseLevel: estimatedNoiseLevel)
         isCalibrated = true
         
-        Logger.noise("✅ Calibration complete!")
-        Logger.noise("   Samples collected: \(calibrationSamples.count)")
-        Logger.noise("   Median level: \(String(format: "%.3f", medianNoise))")
-        Logger.noise("   90th percentile: \(String(format: "%.3f", noiseFloor))")
-        Logger.noise("   Estimated noise: \(String(format: "%.3f", estimatedNoiseLevel))")
-        Logger.noise("   Mean: \(String(format: "%.3f", meanLevel))")
-        Logger.noise("   Std Dev: \(String(format: "%.3f", stdDevLevel))")
-        Logger.noise("   Adaptive threshold: \(String(format: "%.3f", adaptiveThreshold))")
+        // Calibration complete
         
         // Check if environment is too noisy
         if isEnvironmentTooNoisy() {
-            Logger.warning("⚠️ Environment is noisy (noise level: \(String(format: "%.2f", estimatedNoiseLevel)))")
-            Logger.warning("💡 Consider moving to a quieter location or using a better microphone")
+            // Environment is noisy
         }
     }
     

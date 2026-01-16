@@ -111,8 +111,6 @@ class AudioCalibrationManager: ObservableObject {
     /// - Parameter duration: Длительность калибровки в секундах (по умолчанию 3.0)
     /// - Returns: Результат калибровки с рекомендуемым порогом
     func calibrateNoiseLevel(duration: TimeInterval = 3.0) async -> CalibrationResult {
-        Logger.audio("Starting noise calibration for \(duration)s")
-        
         await MainActor.run {
             isCalibrating = true
             calibrationProgress = 0.0
@@ -146,9 +144,6 @@ class AudioCalibrationManager: ObservableObject {
             
             // Сохранить результат
             lastCalibrationResult = result
-            
-            // Логировать результат
-            Logger.audio("Calibration complete: \(result.description)")
             
             // Вызвать callback
             onCalibrationComplete?(result)
@@ -260,7 +255,6 @@ class AudioCalibrationManager: ObservableObject {
         let samplesCollected = calibrationSamples.count
         
         guard samplesCollected >= minSamples else {
-            Logger.warning("Insufficient samples collected: \(samplesCollected) < \(minSamples)")
             // Вернуть значения по умолчанию
             return CalibrationResult(
                 noiseLevel: 0.0,

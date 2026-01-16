@@ -38,7 +38,6 @@ class TopicsRepository {
         if !FileManager.default.fileExists(atPath: folderURL.path) {
             do {
                 try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
-                Logger.info("Created XInterview data directory at: \(folderURL.path)")
             } catch {
                 Logger.error("Failed to create XInterview data directory: \(error.localizedDescription)")
             }
@@ -50,7 +49,7 @@ class TopicsRepository {
             let defaultTopics = createDefaultTopics()
             switch saveTopics(defaultTopics) {
             case .success:
-                Logger.info("Created default topics file with \(defaultTopics.count) topics")
+                break
             case .failure(let error):
                 Logger.error("Failed to create default topics: \(error.localizedDescription)")
             }
@@ -104,7 +103,6 @@ class TopicsRepository {
         do {
             let data = try Data(contentsOf: fileURL)
             let topics = try JSONDecoder().decode([InterviewTopic].self, from: data)
-            Logger.info("Loaded \(topics.count) topics from storage")
             return .success(topics)
         } catch {
             Logger.error("Failed to load topics: \(error.localizedDescription)")
@@ -118,7 +116,6 @@ class TopicsRepository {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(topics)
             try data.write(to: fileURL, options: .atomic)
-            Logger.info("Saved \(topics.count) topics to storage")
             return .success(())
         } catch {
             Logger.error("Failed to save topics: \(error.localizedDescription)")

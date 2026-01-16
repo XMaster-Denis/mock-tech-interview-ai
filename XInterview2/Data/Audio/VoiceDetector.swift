@@ -180,14 +180,12 @@ class VoiceDetector: NSObject, ObservableObject {
     /// Обновить минимальный уровень речи для валидации
     func updateMinSpeechLevel(_ level: Float) {
         self.minSpeechLevel = level
-        Logger.voice("VoiceDetector.minSpeechLevel updated to: \(level)")
     }
     
     /// Начать прослушивание микрофона
     func startListening() {
         guard !isListening else { return }
         
-        Logger.voice("VoiceDetector.startListening()")
         isListening = true
         isPaused = false
         
@@ -197,7 +195,6 @@ class VoiceDetector: NSObject, ObservableObject {
     
     /// Остановить прослушивание микрофона
     func stopListening() {
-        Logger.voice("VoiceDetector.stopListening()")
         isListening = false
         isPaused = true
         
@@ -212,14 +209,12 @@ class VoiceDetector: NSObject, ObservableObject {
     
     /// Приостановить прослушивание (без остановки записи)
     func pauseListening() {
-        Logger.voice("VoiceDetector.pauseListening()")
         isPaused = true
         stopLevelMonitoring()
     }
     
     /// Возобновить прослушивание
     func resumeListening() {
-        Logger.voice("VoiceDetector.resumeListening()")
         isPaused = false
         startLevelMonitoring()
     }
@@ -352,7 +347,6 @@ class VoiceDetector: NSObject, ObservableObject {
             silenceTimer = nil
             silenceStartTime = nil
             
-            Logger.voice("VoiceDetector.speechStarted() - Level: \(String(format: "%.2f", level)) > Threshold: \(String(format: "%.2f", effectiveThreshold))")
             onVoiceEvent?(.speechStarted)
         }
         // Речь продолжается (отменить таймер тишины если пользователь все еще говорит)
@@ -383,8 +377,6 @@ class VoiceDetector: NSObject, ObservableObject {
             isSilenceTimerActive = true
             silenceTimerProgress = 0.0
             silenceTimerElapsed = 0.0
-            
-            Logger.voice("VoiceDetector.silenceDetected() - Level: \(String(format: "%.2f", level)) < Threshold: \(String(format: "%.2f", effectiveThreshold))")
             
             // Запустить таймер анимации прогресса
             let timeoutValue = self.silenceTimeout
@@ -571,7 +563,6 @@ class VoiceDetector: NSObject, ObservableObject {
                     // Проверить средний уровень аудио для фильтрации тихих шумов
                     let avgLevel = calculateAverageLevel(from: trimmedData)
                     if avgLevel < minSpeechLevel {
-                        Logger.warning("VoiceDetector.audioTooQuiet() - Avg level: \(String(format: "%.3f", avgLevel)) < \(minSpeechLevel)")
                         // Не отправлять событие, просто перезапустить прослушивание
                         return
                     }
@@ -580,8 +571,6 @@ class VoiceDetector: NSObject, ObservableObject {
                 } catch {
                     // Использовать оригинальные данные если обрезание не удалось
                     Logger.error("VoiceDetector.trimFailed() - Using original audio", error: error)
-                    let originalSizeKB = Double(originalData.count) / 1024
-                    Logger.voice("VoiceDetector.sendingAudio() - Original size: \(String(format: "%.1f", originalSizeKB)) KB")
                     onVoiceEvent?(.speechEnded(originalData))
                 }
             }

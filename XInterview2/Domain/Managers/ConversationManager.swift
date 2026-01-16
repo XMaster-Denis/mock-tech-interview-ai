@@ -128,11 +128,9 @@ class ConversationManager: ObservableObject {
     
     func startConversation(topic: InterviewTopic, language: Language, context: InterviewContext? = nil) {
         guard conversationState == .idle else {
-            Logger.warning("Cannot start conversation, current state: \(conversationState)")
             return
         }
         
-        Logger.state("Starting conversation - topic: \(topic.title), language: \(language)")
         conversationState = .listening
         currentTopic = topic
         currentContext = context
@@ -142,38 +140,31 @@ class ConversationManager: ObservableObject {
         audioManager.updateVoiceThreshold(settings.voiceThreshold)
         audioManager.updateSilenceTimeout(settings.silenceTimeout)
         audioManager.updateMinSpeechLevel(settings.minSpeechLevel)
-        Logger.info("Voice threshold: \(settings.voiceThreshold), Silence timeout: \(settings.silenceTimeout)s, Min speech level: \(settings.minSpeechLevel)")
         
         // Start continuous listening
-        Logger.state("Starting audio listening")
         audioManager.startListening()
         
         // Generate opening message
-        Logger.state("Sending opening message task")
         Task {
             await sendOpeningMessage(topic: topic, language: language)
         }
     }
     
     func stopConversation() {
-        Logger.state("Stopping conversation")
         isStopping = true
         conversationState = .idle
         currentTopic = nil
         currentContext = nil
         
-        Logger.state("Stopping audio manager")
         audioManager.stopListening()
         audioManager.stopPlayback()
         
-        Logger.state("Cancelling processing task")
         processingTask?.cancel()
         processingTask = nil
         
         // Reset stopping flag after a delay to allow pending operations to complete
         Task {
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-            Logger.state("Resetting isStopping flag")
             isStopping = false
         }
     }
@@ -185,68 +176,51 @@ class ConversationManager: ObservableObject {
         // Only cancel if we're NOT processing a Chat API request
         // This prevents "Network error: cancelled" when user speaks during API call
         if processingTask != nil && !isProcessingChatRequest {
-            Logger.warning("Cancelling processing task due to user speech (not in Chat API call)")
             processingTask?.cancel()
             processingTask = nil
-        } else if isProcessingChatRequest {
-            Logger.state("User started speaking during Chat API request - will NOT cancel to prevent 'Network error: cancelled'")
         }
     }
     
     private func handleUserSpeechEnded(audioData: Data) {
-        Logger.state("User finished speaking - audio data: \(audioData.count) bytes")
-        
         guard conversationState != .speaking else {
-            Logger.warning("Ignoring speech end - currently speaking")
             return
-        }
-        
-        // Check for existing processing task - this could indicate a race condition
-        if processingTask != nil {
-            Logger.warning("Existing processing task found when speech ended - this may cause double requests")
         }
         
         conversationState = .processing
         isProcessing = true
         
-        Logger.state("Creating processing task for user speech")
         processingTask = Task { [weak self] in
             await self?.processUserSpeech(audioData: audioData)
         }
     }
     
     private func handleTTSCancelled() {
-        Logger.state("TTS was cancelled by user")
         conversationState = .listening
         shouldRequestNextQuestion = false
     }
     
     private func handleTTSCompleted() {
-        Logger.state("TTS completed")
-        Logger.debug("handleTTSCompleted() - shouldRequestNextQuestion: \(shouldRequestNextQuestion)")
         conversationState = .listening
         isProcessing = false
-        
+
         // Check if we need to request the next question
+        Logger.debug("🔔 handleTTSCompleted: shouldRequestNextQuestion=\(shouldRequestNextQuestion)")
         if shouldRequestNextQuestion {
-            Logger.state("Requesting next question after TTS completion")
             shouldRequestNextQuestion = false
+            Logger.debug("🚀 Calling requestNextQuestion()")
             Task {
                 await requestNextQuestion()
             }
         } else {
-            Logger.debug("handleTTSCompleted() - NOT requesting next question, shouldRequestNextQuestion is false")
+            Logger.debug("⏭️ Not requesting next question (shouldRequestNextQuestion=false)")
         }
     }
     
     // MARK: - Message Processing
     
     private func sendOpeningMessage(topic: InterviewTopic, language: Language) async {
-        Logger.state("sendOpeningMessage() START - topic: \(topic.title), language: \(language)")
-        
         // Check if stopping
         guard !isStopping else {
-            Logger.warning("sendOpeningMessage() cancelled - isStopping=true")
             return
         }
         
@@ -261,7 +235,6 @@ class ConversationManager: ObservableObject {
         
         do {
             // Get AI response (empty messages for opening)
-            Logger.state("Calling chatService.sendMessageWithCode() for opening message")
             let contextSummary = currentContext?.getContextSummary() ?? ""
             
             // Set flag to prevent cancellation during Chat API request
@@ -279,12 +252,8 @@ class ConversationManager: ObservableObject {
                 context: contextSummary
             )
             
-            Logger.info("AIResponse received - spokenText: \(aiResponse.spokenText.prefix(50))...")
-            Logger.info("AIResponse - hasAicode: \(aiResponse.aicode != nil)")
-            
             // Check if stopping before proceeding
             guard !isStopping else {
-                Logger.warning("sendOpeningMessage() cancelled after getting response - isStopping=true")
                 return
             }
             
@@ -297,7 +266,6 @@ class ConversationManager: ObservableObject {
         } catch {
             // Only handle error if not stopping
             guard !isStopping else {
-                Logger.warning("sendOpeningMessage() error cancelled due to stop")
                 return
             }
             
@@ -316,11 +284,8 @@ class ConversationManager: ObservableObject {
     }
     
     private func processUserSpeech(audioData: Data) async {
-        Logger.state("processUserSpeech() START - audio data: \(audioData.count) bytes")
-        
         // Check if stopping before processing
         guard !isStopping else {
-            Logger.warning("processUserSpeech() cancelled - isStopping=true")
             return
         }
         
@@ -339,7 +304,6 @@ class ConversationManager: ObservableObject {
         do {
             // Transcribe audio with technical prompt and temperature
             let prompt = PromptTemplates.Whisper.prompt(for: settings.selectedLanguage)
-            Logger.state("Calling whisperService.transcribe() with prompt and temperature")
             let userText = try await whisperService.transcribe(
                 audioData: audioData,
                 apiKey: apiKey,
@@ -348,16 +312,12 @@ class ConversationManager: ObservableObject {
                 temperature: 0.1
             )
             
-            Logger.state("Received transcription: '\(userText)'")
-            
             // Check if stopping after transcription
             guard !isStopping else {
-                Logger.warning("processUserSpeech() cancelled after transcription - isStopping=true")
                 return
             }
             
             guard !userText.isEmpty else {
-                Logger.warning("Empty transcription, ignoring")
                 guard !isStopping else { return }
                 conversationState = .listening
                 isProcessing = false
@@ -439,7 +399,6 @@ class ConversationManager: ObservableObject {
             isProcessingChatRequest = true
             defer { isProcessingChatRequest = false }
             
-            Logger.state("Calling chatService.sendMessageWithCode() - isProcessingChatRequest=true (will NOT cancel on user speech)")
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
@@ -455,7 +414,6 @@ class ConversationManager: ObservableObject {
             
         } catch HTTPError.requestCancelled {
             // Request was cancelled due to user speech - this is expected
-            Logger.warning("processUserSpeech() - request cancelled (likely due to user speech - this is the source of 'Network error: cancelled'")
             // Reset state without showing error
             guard !isStopping else { return }
             isProcessingChatRequest = false
@@ -464,7 +422,6 @@ class ConversationManager: ObservableObject {
         } catch {
             // Only handle error if not stopping (cancelled errors are expected on stop)
             guard !isStopping else {
-                Logger.warning("processUserSpeech() error cancelled due to stop")
                 return
             }
             
@@ -483,40 +440,31 @@ class ConversationManager: ObservableObject {
     }
     
     private func speakResponse(_ text: String, language: Language, apiKey: String, skipSpeechCheck: Bool = false) async {
-        Logger.state("speakResponse() START - text length: \(text.count)")
-        
         // Check if stopping before TTS
         guard !isStopping else {
-            Logger.warning("speakResponse() cancelled - isStopping=true")
             return
         }
         
         do {
             // Generate speech
             let settings = settingsRepository.loadSettings()
-            Logger.state("Calling ttsService.generateSpeech() - voice: \(settings.selectedVoice)")
             let audioData = try await ttsService.generateSpeech(
                 text: text,
                 voice: settings.selectedVoice,
                 apiKey: apiKey
             )
             
-            Logger.state("Received TTS audio data: \(audioData.count) bytes")
-            
             // Check if stopping after generating speech
             guard !isStopping else {
-                Logger.warning("speakResponse() cancelled after generation - isStopping=true")
                 return
             }
             
             // Play (interruptible)
-            Logger.state("Calling audioManager.speak()")
             conversationState = .speaking
             try await audioManager.speak(audioData, canBeInterrupted: true, skipSpeechCheck: skipSpeechCheck)
             
         } catch let error as NSError where error.code == NSURLErrorCancelled || (error.domain == "AudioManager" && error.code == -1) {
             // TTS was cancelled due to user speech - this is expected
-            Logger.warning("speakResponse() - TTS cancelled (expected on user speech interruption)")
             // Reset state without showing error
             guard !isStopping else { return }
             conversationState = .listening
@@ -524,7 +472,6 @@ class ConversationManager: ObservableObject {
         } catch {
             // Only handle error if not stopping
             guard !isStopping else {
-                Logger.warning("speakResponse() error cancelled due to stop")
                 return
             }
             
@@ -551,12 +498,10 @@ class ConversationManager: ObservableObject {
     
     func updateInterviewMode(_ mode: InterviewMode) {
         self.currentMode = mode
-        Logger.info("Interview mode updated: \(mode.displayName)")
     }
     
     func updateDeveloperLevel(_ level: DeveloperLevel) {
         self.currentLevel = level
-        Logger.info("Developer level updated: \(level.displayName)")
     }
     
  
@@ -568,11 +513,8 @@ class ConversationManager: ObservableObject {
     /// Отправляет текстовое сообщение пользователя минуя транскрибацию аудио
     /// - Parameter text: Текст сообщения пользователя
     func sendTextMessage(_ text: String) async {
-        Logger.state("sendTextMessage() START - text: '\(text)'")
-        
         // Проверка флага isStopping
         guard !isStopping else {
-            Logger.warning("sendTextMessage() cancelled - isStopping=true")
             return
         }
         
@@ -587,7 +529,6 @@ class ConversationManager: ObservableObject {
         
         do {
             // Добавляем сообщение пользователя в историю
-            Logger.state("Adding user message to history")
             addMessage(role: TranscriptMessage.MessageRole.user, content: text)
             onUserMessage?(text)
             
@@ -616,7 +557,6 @@ class ConversationManager: ObservableObject {
             
             // Проверка флага isStopping
             guard !isStopping else {
-                Logger.warning("sendTextMessage() cancelled after AI response - isStopping=true")
                 return
             }
             
@@ -625,7 +565,6 @@ class ConversationManager: ObservableObject {
             
         } catch {
             guard !isStopping else {
-                Logger.warning("sendTextMessage() error cancelled due to stop")
                 return
             }
             
@@ -645,24 +584,20 @@ class ConversationManager: ObservableObject {
         currentTaskState = newState
         taskState = newState
         onTaskStateChanged?(newState)
-        Logger.info("Task state updated: \(newState)")
     }
     
     /// Confirm task completion from UI button
     func confirmTaskCompletion() async {
-        Logger.info("confirmTaskCompletion() called from UI")
         await checkUserSolution()
     }
     
     /// Request help from UI button
     func requestHelpFromUI() async {
-        Logger.info("requestHelpFromUI() called from UI")
         await requestHelp()
     }
     
     /// Confirm understanding from UI button
     func confirmUnderstanding() async {
-        Logger.info("confirmUnderstanding() called from UI")
         updateTaskState(.noTask)
         
         // Trigger next question
@@ -757,8 +692,6 @@ class ConversationManager: ObservableObject {
     
     /// Check user's solution
     private func checkUserSolution() async {
-        Logger.info("checkUserSolution() called")
-        
         guard let topic = currentTopic else {
             Logger.error("No current topic available")
             return
@@ -807,8 +740,6 @@ class ConversationManager: ObservableObject {
     
     /// Request next question after correct solution
     private func requestNextQuestion() async {
-        Logger.info("requestNextQuestion() called - isRequestingNextQuestion: \(isRequestingNextQuestion)")
-        
         guard let topic = currentTopic else {
             Logger.error("No current topic available")
             return
@@ -825,10 +756,7 @@ class ConversationManager: ObservableObject {
             defer {
                 isProcessingChatRequest = false
                 isRequestingNextQuestion = false
-                Logger.info("requestNextQuestion() completed - isRequestingNextQuestion reset to false")
             }
-            
-            Logger.info("requestNextQuestion() - Setting isRequestingNextQuestion=true, isProcessingChatRequest=true")
             
             // Add a message to indicate we want the next question
             let nextQuestionMessage = TranscriptMessage(
@@ -837,9 +765,7 @@ class ConversationManager: ObservableObject {
                 timestamp: Date()
             )
             conversationHistory.append(nextQuestionMessage)
-            Logger.info("requestNextQuestion() - Added 'The previous task was completed correctly. Please provide a NEW coding task with a problem statement and starter code.' to conversation history")
             
-            Logger.info("requestNextQuestion() - Calling chatService.sendMessageWithCode()")
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
@@ -851,7 +777,6 @@ class ConversationManager: ObservableObject {
                 context: contextSummary
             )
             
-            Logger.info("requestNextQuestion() - AI response received, calling handleAIResponse()")
             await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
             
         } catch {
@@ -862,8 +787,6 @@ class ConversationManager: ObservableObject {
     
     /// Request help from AI
     private func requestHelp() async {
-        Logger.info("requestHelp() called")
-        
         guard let topic = currentTopic else {
             Logger.error("No current topic available")
             return
@@ -912,63 +835,46 @@ class ConversationManager: ObservableObject {
     
     /// Handle AI response with task state logic
     private func handleAIResponse(_ aiResponse: AIResponse, language: Language, apiKey: String) async {
-        Logger.info("handleAIResponse() - taskState: \(aiResponse.taskState?.rawValue ?? "nil"), isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
-        Logger.debug("handleAIResponse() - spokenText: '\(aiResponse.spokenText)'")
-        Logger.debug("handleAIResponse() - hasAicode: \(aiResponse.aicode != nil), aicode: \(aiResponse.aicode ?? "nil")")
-        Logger.debug("handleAIResponse() - hasHint: \(aiResponse.hint != nil), hintCode: \(aiResponse.hintCode != nil), correctCode: \(aiResponse.correctCode != nil)")
-        
         // Check if this is a correct solution confirmation (we need to request next question after TTS)
         // Only rely on is_correct flag, ignore task_state completely
         // But prevent infinite loop when we're already requesting next question
+        Logger.debug("🔍 handleAIResponse: isCorrect=\(String(describing: aiResponse.isCorrect)), taskState=\(String(describing: aiResponse.taskState)), isRequestingNextQuestion=\(isRequestingNextQuestion)")
         if aiResponse.isCorrect == true && !isRequestingNextQuestion {
-            Logger.info("Correct solution detected - will request next question after TTS")
             shouldRequestNextQuestion = true
-        } else {
-            Logger.info("NOT requesting next question - isCorrect: \(aiResponse.isCorrect?.description ?? "nil"), isRequestingNextQuestion: \(isRequestingNextQuestion)")
+            Logger.debug("✅ Set shouldRequestNextQuestion=true because isCorrect=true")
         }
         
         // Update task state based on AI response
         if let taskState = aiResponse.taskState {
-            Logger.info("handleAIResponse() - Processing taskState: \(taskState.rawValue)")
             switch taskState {
             case .taskPresented:
-                Logger.info("handleAIResponse() - New question presented with code")
                 updateTaskState(.taskPresented(expectedSolution: aiResponse.aicode))
                 currentTaskCode = aiResponse.aicode ?? ""
                 
             case .checkingSolution:
                 // AI is checking user's solution
-                Logger.info("handleAIResponse() - Checking solution, isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
                 if let isCorrect = aiResponse.isCorrect {
                     if isCorrect {
-                        Logger.info("handleAIResponse() - Solution is correct, updating task state to noTask")
                         updateTaskState(.noTask)
                     } else {
-                        Logger.info("handleAIResponse() - Solution is incorrect, keeping task state as taskPresented")
                         updateTaskState(.taskPresented(expectedSolution: nil))
                     }
                 }
                 
             case .providingHint:
                 // AI is giving a hint - stay in task presented state
-                Logger.info("handleAIResponse() - Hint provided, keeping task state as taskPresented")
                 updateTaskState(.taskPresented(expectedSolution: nil))
                 
             case .showingSolution:
                 // AI is showing solution - wait for user confirmation
-                Logger.info("handleAIResponse() - Solution shown, updating task state to waitingForUserConfirmation")
                 updateTaskState(.waitingForUserConfirmation)
                 
             case .waitingForUnderstanding:
-                Logger.info("handleAIResponse() - Waiting for understanding, updating task state to waitingForUserConfirmation")
                 updateTaskState(.waitingForUserConfirmation)
                 
             case .none:
-                Logger.info("handleAIResponse() - No task state, updating to noTask")
                 updateTaskState(.noTask)
             }
-        } else {
-            Logger.warning("handleAIResponse() - No taskState in AI response")
         }
         
         // Apply code in editor based on state
@@ -977,10 +883,8 @@ class ConversationManager: ObservableObject {
             if aiResponse.taskState == .providingHint {
                 // For hints, we might add logic to partially update code
                 // For now, we'll show the hint in spoken_text and keep current code
-                Logger.info("Hint provided, not overwriting user's code")
             } else {
                 onCodeUpdate?(aicode)
-                Logger.success("Code set in editor: \(aicode.prefix(50))...")
             }
         }
         

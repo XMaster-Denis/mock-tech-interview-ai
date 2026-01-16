@@ -278,13 +278,11 @@ class InterviewViewModel: ObservableObject {
         let text = textInput.trimmingCharacters(in: .whitespacesAndNewlines)
         
         guard !text.isEmpty else {
-            Logger.warning("Cannot send empty text message")
             return
         }
         
         guard session.isActive else {
             errorMessage = "Please start the interview first"
-            Logger.warning("Cannot send message - interview is not active")
             return
         }
         
@@ -304,7 +302,6 @@ class InterviewViewModel: ObservableObject {
     /// Confirm task completion from UI button
     func confirmTaskCompletion() {
         guard session.isActive else {
-            Logger.warning("Cannot confirm task - interview is not active")
             return
         }
         
@@ -316,7 +313,6 @@ class InterviewViewModel: ObservableObject {
     /// Request help from UI button
     func requestHelp() {
         guard session.isActive else {
-            Logger.warning("Cannot request help - interview is not active")
             return
         }
         
@@ -328,7 +324,6 @@ class InterviewViewModel: ObservableObject {
     /// Confirm understanding from UI button
     func confirmUnderstanding() {
         guard session.isActive else {
-            Logger.warning("Cannot confirm understanding - interview is not active")
             return
         }
         

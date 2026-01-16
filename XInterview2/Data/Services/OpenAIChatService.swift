@@ -86,12 +86,10 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         if let cachedKey = cachedPromptKey,
            cachedKey == promptKey,
            let cachedPrompt = cachedSystemPrompt {
-            Logger.debug("Using cached system prompt")
             return cachedPrompt
         }
         
         // Generate new prompt and cache it
-        Logger.debug("Generating new system prompt")
         let newPrompt = PromptTemplates.System.hybridInterview(
             for: topic,
             level: level,
@@ -156,14 +154,15 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             throw HTTPError.serverError("Failed to encode request")
         }
         
-        Logger.network("Chat request body size: \(body.count) bytes")
+        // Log JSON request to GPT
+        if let jsonString = String(data: body, encoding: .utf8) {
+            Logger.jsonRequest(jsonString)
+        }
         
         let headers = [
             "Content-Type": "application/json",
             "Authorization": "Bearer \(apiKey)"
         ]
-        
-        Logger.network("Sending chat request to OpenAI API")
         let response: ChatResponse = try await httpClient.request(
             endpoint: APIConstants.chatEndpoint,
             method: .post,
@@ -177,8 +176,8 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             throw HTTPError.serverError("No response from AI")
         }
         
-        Logger.success("Chat response received - length: \(assistantMessage.count) chars")
-        Logger.info("Raw JSON from OpenAI: \(assistantMessage)")
+        // Log JSON response from GPT
+        Logger.jsonResponse(assistantMessage)
         
         // Parse JSON response
         guard let data = assistantMessage.data(using: .utf8) else {
@@ -188,19 +187,15 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         
         do {
             let aiResponse = try JSONDecoder().decode(AIResponse.self, from: data)
-            Logger.success("AI response parsed successfully - spokenText: '\(aiResponse.spokenText)'")
-            Logger.debug("AI response details - taskState: \(aiResponse.taskState?.rawValue ?? "nil"), isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
-            Logger.debug("AI response details - hasAicode: \(aiResponse.aicode != nil), hasHint: \(aiResponse.hint != nil), hasHintCode: \(aiResponse.hintCode != nil), hasCorrectCode: \(aiResponse.correctCode != nil)")
             return aiResponse
         } catch {
             Logger.error("Failed to parse AI response as JSON: \(error.localizedDescription)")
-            Logger.debug("JSON that failed to parse: \(assistantMessage)")
+            Logger.jsonResponse(assistantMessage)
             
             // Try to extract spoken text from JSON manually as fallback
             if let jsonData = assistantMessage.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
                let spokenText = json["spoken_text"] as? String {
-                Logger.info("Extracted spoken_text from malformed JSON")
                 return AIResponse(
                     spokenText: spokenText,
                     aicode: nil
@@ -222,8 +217,6 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         level: DeveloperLevel,
         apiKey: String
     ) async throws -> [CodeError] {
-        Logger.network("Analyze code errors START - code length: \(code.count)")
-        
         let prompt = buildCodeAnalysisPrompt(code: code, topic: topic, level: level)
         
         let messages = [
@@ -267,8 +260,6 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         context: CodeContext,
         apiKey: String
     ) async throws -> CodeEvaluation {
-        Logger.network("Evaluate code START - code length: \(code.count)")
-        
         let prompt = buildEvaluationPrompt(code: code, context: context)
         
         let messages = [

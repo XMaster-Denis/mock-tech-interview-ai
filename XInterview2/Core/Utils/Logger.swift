@@ -106,4 +106,14 @@ class Logger {
     static func state(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         debug("🔄 \(message)", file: file, function: function, line: line)
     }
+    
+    // MARK: - JSON Logging
+    
+    static func jsonRequest(_ jsonString: String, file: String = #file, function: String = #function, line: Int = #line) {
+        log("📤 JSON Request to GPT:\n\(jsonString)", level: .info, file: file, function: function, line: line)
+    }
+    
+    static func jsonResponse(_ jsonString: String, file: String = #file, function: String = #function, line: Int = #line) {
+        log("📥 JSON Response from GPT:\n\(jsonString)", level: .info, file: file, function: function, line: line)
+    }
 }

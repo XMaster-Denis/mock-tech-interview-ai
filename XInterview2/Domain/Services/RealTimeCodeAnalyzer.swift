@@ -84,8 +84,6 @@ class RealTimeCodeAnalyzer: ObservableObject {
         isAnalyzing = true
         defer { isAnalyzing = false }
         
-        Logger.debug("Real-time code analysis started - code length: \(code.count)")
-        
         do {
             let errors = try await chatService.analyzeCodeErrors(
                 code: code,
@@ -96,8 +94,6 @@ class RealTimeCodeAnalyzer: ObservableObject {
             
             detectedErrors = errors
             lastAnalysisTime = Date()
-            
-            Logger.debug("Analysis complete - found \(errors.count) errors")
             
             // Notify via callback if set
             onErrorsDetected?(errors)
