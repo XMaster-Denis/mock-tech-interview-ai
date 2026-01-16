@@ -493,8 +493,6 @@ class VoiceDetector: NSObject, ObservableObject {
         let bytesPerSecond = 32000.0  // 16kHz * 2 bytes * 1 channel
         let originalDuration = Double(data.count - 44) / bytesPerSecond
         
-        Logger.voice("VoiceDetector.trimWAVData() - Original: \(String(format: "%.2f", originalDuration))s, Trimmed: \(String(format: "%.2f", duration))s, Saved: \(String(format: "%.1f", savedPercent))%")
-        
         return trimmedData
     }
     
@@ -548,13 +546,11 @@ class VoiceDetector: NSObject, ObservableObject {
         
         // Обработать только если речь длилась достаточно долго
         guard duration >= minSpeechDuration else {
-            Logger.warning("VoiceDetector.speechTooShort() - Duration: \(String(format: "%.2f", duration))s < \(minSpeechDuration)s")
+
             isSpeechActive = false
             speechStartTime = nil
             return
         }
-        
-        Logger.voice("VoiceDetector.speechEnded() - Duration: \(String(format: "%.2f", duration))s")
         
         // Вычислить смещения для обрезания
         let startOffset = startTime.timeIntervalSince(recordingStart)
@@ -581,7 +577,6 @@ class VoiceDetector: NSObject, ObservableObject {
                         return
                     }
                     
-                    Logger.voice("VoiceDetector.sendingAudio() - Size: \(trimmedData.count) bytes, Avg level: \(String(format: "%.3f", avgLevel))")
                     onVoiceEvent?(.speechEnded(trimmedData))
                 } catch {
                     // Использовать оригинальные данные если обрезание не удалось

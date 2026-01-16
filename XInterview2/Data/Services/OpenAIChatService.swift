@@ -79,10 +79,6 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         apiKey: String,
         context: String
     ) async throws -> AIResponse {
-        Logger.network("Chat sendMessageWithCode() START - topic: \(topic.title), level: \(level.displayName), mode: \(mode.displayName)")
-        Logger.network("Code length: \(codeContext.currentCode.count) chars")
-        Logger.network("Conversation history count: \(messages.count)")
-        Logger.network("Context length: \(context.count) chars")
         
         let systemPrompt = PromptTemplates.System.hybridInterview(
             for: topic,

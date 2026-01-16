@@ -40,6 +40,8 @@ class DefaultHTTPClient: HTTPClient {
                 throw HTTPError.invalidResponse
             }
             
+            Logger.network("HTTP response received - status: \(httpResponse.statusCode)")
+            
             switch httpResponse.statusCode {
             case 200...299:
                 return try JSONDecoder().decode(T.self, from: data)
@@ -60,9 +62,28 @@ class DefaultHTTPClient: HTTPClient {
         } catch {
             // Check if error is CancellationError (code -999 in Swift)
             let nsError = error as NSError
-            if nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError {
+            
+            // Log all error details for debugging
+            Logger.network("HTTP error details - domain: \(nsError.domain), code: \(nsError.code), description: \(nsError.localizedDescription)")
+            
+            // Check for NSURLErrorCancelled (code -999) - this is the actual error from URLSession
+            if nsError.code == NSURLErrorCancelled {
+                Logger.network("HTTP request CANCELLED - NSURLErrorCancelled")
                 throw HTTPError.requestCancelled
             }
+            
+            // Check for NSUserCancelledError (legacy check)
+            if nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError {
+                Logger.network("HTTP request CANCELLED - NSUserCancelledError")
+                throw HTTPError.requestCancelled
+            }
+            
+            // Check for Task cancellation
+            if error is CancellationError {
+                Logger.network("HTTP request CANCELLED - CancellationError")
+                throw HTTPError.requestCancelled
+            }
+            
             throw HTTPError.networkError(error)
         }
     }

@@ -48,6 +48,10 @@ class ConversationManager: ObservableObject {
     private var processingTask: Task<Void, Never>?
     private var isStopping: Bool = false
     
+    // Flag to track if we're currently processing a Chat API request
+    // This prevents cancelling requests mid-flight when user starts speaking
+    private var isProcessingChatRequest: Bool = false
+    
     // MARK: - Callbacks
     
     var onUserMessage: ((String) -> Void)?
@@ -156,13 +160,15 @@ class ConversationManager: ObservableObject {
     // MARK: - Voice Event Handlers
     
     private func handleUserSpeechStarted() {
-        Logger.state("User started speaking")
         
-        // Cancel any ongoing processing
-        if processingTask != nil {
-            Logger.state("Cancelling processing task due to user speech")
+        // Only cancel if we're NOT processing a Chat API request
+        // This prevents "Network error: cancelled" when user speaks during API call
+        if processingTask != nil && !isProcessingChatRequest {
+            Logger.warning("Cancelling processing task due to user speech (not in Chat API call)")
             processingTask?.cancel()
             processingTask = nil
+        } else if isProcessingChatRequest {
+            Logger.state("User started speaking during Chat API request - will NOT cancel to prevent 'Network error: cancelled'")
         }
     }
     
@@ -172,6 +178,11 @@ class ConversationManager: ObservableObject {
         guard conversationState != .speaking else {
             Logger.warning("Ignoring speech end - currently speaking")
             return
+        }
+        
+        // Check for existing processing task - this could indicate a race condition
+        if processingTask != nil {
+            Logger.warning("Existing processing task found when speech ended - this may cause double requests")
         }
         
         conversationState = .processing
@@ -218,6 +229,11 @@ class ConversationManager: ObservableObject {
             // Get AI response (empty messages for opening)
             Logger.state("Calling chatService.sendMessageWithCode() for opening message")
             let contextSummary = currentContext?.getContextSummary() ?? ""
+            
+            // Set flag to prevent cancellation during Chat API request
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: [],
                 codeContext: currentCodeContext,
@@ -249,15 +265,12 @@ class ConversationManager: ObservableObject {
             }
             
             // Add to conversation history
-            Logger.state("Adding AI response to conversation history")
             addMessage(role: TranscriptMessage.MessageRole.assistant, content: response)
             
             // Notify UI
-            Logger.state("Notifying UI of AI message")
             onAIMessage?(response)
             
             // Convert to speech (opening message - skip speech check to allow playback)
-            Logger.state("Converting AI response to speech (skipSpeechCheck=true for non-interruptible)")
             await speakResponse(response, language: language, apiKey: apiKey, skipSpeechCheck: true)
             
         } catch {
@@ -268,6 +281,9 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.error("Failed to send opening message", error: error)
+            
+            // Reset flag on error
+            isProcessingChatRequest = false
             
             // Use error description if available, otherwise localized description
             let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -327,11 +343,9 @@ class ConversationManager: ObservableObject {
                 return
             }
             
-            Logger.state("User message: '\(userText)'")
             
             // Add user message to history BEFORE calling API
             // This ensures AI has context of what user just said
-            Logger.state("Adding user message to history")
             addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
             
             onUserMessage?(userText)
@@ -345,6 +359,11 @@ class ConversationManager: ObservableObject {
             // Include context if available for follow-up questions
             let contextSummary = currentContext?.getContextSummary() ?? ""
             
+            // Set flag to prevent cancellation during Chat API request
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
+            Logger.state("Calling chatService.sendMessageWithCode() - isProcessingChatRequest=true (will NOT cancel on user speech)")
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
@@ -385,9 +404,10 @@ class ConversationManager: ObservableObject {
             
         } catch HTTPError.requestCancelled {
             // Request was cancelled due to user speech - this is expected
-            Logger.warning("processUserSpeech() - transcribe request cancelled (expected on user speech)")
+            Logger.warning("processUserSpeech() - request cancelled (likely due to user speech - this is the source of 'Network error: cancelled')")
             // Reset state without showing error
             guard !isStopping else { return }
+            isProcessingChatRequest = false
             conversationState = .listening
             isProcessing = false
         } catch {
@@ -398,6 +418,9 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.error("Processing failed", error: error)
+            
+            // Reset flag on error
+            isProcessingChatRequest = false
             
             // Use error description if available, otherwise localized description
             let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -467,7 +490,6 @@ class ConversationManager: ObservableObject {
     // MARK: - Code Editor Integration
     
     func updateCodeContext(code: String, language: CodeLanguageInterview) {
-        print("!2!!!!!!!!!Updating code context with new code - \(code)")
         currentCodeContext = CodeContext(
             currentCode: code,
             language: language,
@@ -527,6 +549,10 @@ class ConversationManager: ObservableObject {
             
             let contextSummary = currentContext?.getContextSummary() ?? ""
             
+            // Set flag to prevent cancellation during Chat API request
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
@@ -566,6 +592,10 @@ class ConversationManager: ObservableObject {
             }
             
             Logger.error("Failed to send text message", error: error)
+            
+            // Reset flag on error
+            isProcessingChatRequest = false
+            
             let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             onError?(errorMessage)
         }
