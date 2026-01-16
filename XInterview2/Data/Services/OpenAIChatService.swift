@@ -188,7 +188,9 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         
         do {
             let aiResponse = try JSONDecoder().decode(AIResponse.self, from: data)
-            Logger.success("AI response parsed successfully - spokenText: \(aiResponse.spokenText), hasAicode: \(aiResponse.aicode != nil)")
+            Logger.success("AI response parsed successfully - spokenText: '\(aiResponse.spokenText)'")
+            Logger.debug("AI response details - taskState: \(aiResponse.taskState?.rawValue ?? "nil"), isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
+            Logger.debug("AI response details - hasAicode: \(aiResponse.aicode != nil), hasHint: \(aiResponse.hint != nil), hasHintCode: \(aiResponse.hintCode != nil), hasCorrectCode: \(aiResponse.correctCode != nil)")
             return aiResponse
         } catch {
             Logger.error("Failed to parse AI response as JSON: \(error.localizedDescription)")

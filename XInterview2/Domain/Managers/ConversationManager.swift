@@ -68,6 +68,10 @@ class ConversationManager: ObservableObject {
     // Flag to track if we need to request the next question after TTS completes
     private var shouldRequestNextQuestion: Bool = false
     
+    // Flag to track if we're currently requesting the next question
+    // This prevents infinite loop when AI returns is_correct: true for next question request
+    private var isRequestingNextQuestion: Bool = false
+    
     // MARK: - Callbacks
     
     var onUserMessage: ((String) -> Void)?
@@ -219,6 +223,7 @@ class ConversationManager: ObservableObject {
     
     private func handleTTSCompleted() {
         Logger.state("TTS completed")
+        Logger.debug("handleTTSCompleted() - shouldRequestNextQuestion: \(shouldRequestNextQuestion)")
         conversationState = .listening
         isProcessing = false
         
@@ -229,6 +234,8 @@ class ConversationManager: ObservableObject {
             Task {
                 await requestNextQuestion()
             }
+        } else {
+            Logger.debug("handleTTSCompleted() - NOT requesting next question, shouldRequestNextQuestion is false")
         }
     }
     
@@ -365,7 +372,7 @@ class ConversationManager: ObservableObject {
                 let language = settings.selectedLanguage
                 
                 if isCompletionPhrase(userText, language: language) {
-                    // User says they completed the task
+                    // User says they completed task
                     addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
                     onUserMessage?(userText)
                     await checkUserSolution()
@@ -448,7 +455,7 @@ class ConversationManager: ObservableObject {
             
         } catch HTTPError.requestCancelled {
             // Request was cancelled due to user speech - this is expected
-            Logger.warning("processUserSpeech() - request cancelled (likely due to user speech - this is the source of 'Network error: cancelled')")
+            Logger.warning("processUserSpeech() - request cancelled (likely due to user speech - this is the source of 'Network error: cancelled'")
             // Reset state without showing error
             guard !isStopping else { return }
             isProcessingChatRequest = false
@@ -511,6 +518,7 @@ class ConversationManager: ObservableObject {
             // TTS was cancelled due to user speech - this is expected
             Logger.warning("speakResponse() - TTS cancelled (expected on user speech interruption)")
             // Reset state without showing error
+            guard !isStopping else { return }
             conversationState = .listening
             isProcessing = false
         } catch {
@@ -551,11 +559,9 @@ class ConversationManager: ObservableObject {
         Logger.info("Developer level updated: \(level.displayName)")
     }
     
-
+ 
     
-
-    
-
+ 
     
     // MARK: - Text Message Handling
     
@@ -702,7 +708,7 @@ class ConversationManager: ObservableObject {
             return completionPhrases.contains { lowercasedText.contains($0) }
             
         case .russian:
-            let completionPhrases = ["готов", "сделал", "всё", "готово", "закончил", "все", "готова", "готовы"]
+            let completionPhrases = ["готов", "сделал", "всё", "закончил", "готово"]
             return completionPhrases.contains { lowercasedText.contains($0) }
             
         case .german:
@@ -740,7 +746,7 @@ class ConversationManager: ObservableObject {
             return confirmationPhrases.contains { lowercasedText.contains($0) }
             
         case .russian:
-            let confirmationPhrases = ["понял", "всё понятно", "готов", "понятно", "все понятно"]
+            let confirmationPhrases = ["понял", "всё понятно", "готов", "понятно"]
             return confirmationPhrases.contains { lowercasedText.contains($0) }
             
         case .german:
@@ -813,8 +819,13 @@ class ConversationManager: ObservableObject {
         let contextSummary = currentContext?.getContextSummary() ?? ""
         
         do {
+            // Set flag to indicate we're requesting next question
+            isRequestingNextQuestion = true
             isProcessingChatRequest = true
-            defer { isProcessingChatRequest = false }
+            defer { 
+                isProcessingChatRequest = false
+                isRequestingNextQuestion = false
+            }
             
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
@@ -888,11 +899,17 @@ class ConversationManager: ObservableObject {
     /// Handle AI response with task state logic
     private func handleAIResponse(_ aiResponse: AIResponse, language: Language, apiKey: String) async {
         Logger.info("handleAIResponse() - taskState: \(aiResponse.taskState?.rawValue ?? "nil"), isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
+        Logger.debug("handleAIResponse() - spokenText: '\(aiResponse.spokenText)'")
+        Logger.debug("handleAIResponse() - hasAicode: \(aiResponse.aicode != nil), aicode: \(aiResponse.aicode ?? "nil")")
+        Logger.debug("handleAIResponse() - hasHint: \(aiResponse.hint != nil), hintCode: \(aiResponse.hintCode != nil), correctCode: \(aiResponse.correctCode != nil)")
         
         // Check if this is a correct solution confirmation (we need to request next question after TTS)
-        if aiResponse.isCorrect == true && aiResponse.taskState == TaskState.none {
+        // Only rely on is_correct flag, ignore task_state completely
+        if aiResponse.isCorrect == true {
             Logger.info("Correct solution detected - will request next question after TTS")
             shouldRequestNextQuestion = true
+        } else {
+            Logger.info("NOT requesting next question - isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
         }
         
         // Update task state based on AI response

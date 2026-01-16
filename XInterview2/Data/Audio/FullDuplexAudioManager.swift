@@ -152,7 +152,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
             return
         }
         
-        Logger.audio("Starting continuous listening")
+//        Logger.audio("Starting continuous listening")
         configureAudioSessionForRecording()
         audioState = .listening
         isListening = true
@@ -160,7 +160,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     }
     
     func stopListening() {
-        Logger.audio("Stopping listening")
+//        Logger.audio("Stopping listening")
         audioState = .idle
         isListening = false
         voiceDetector.stopListening()
@@ -168,12 +168,12 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
     }
     
     func pauseListening() {
-        Logger.audio("Pausing listening during AI speech")
+//        Logger.audio("Pausing listening during AI speech")
         voiceDetector.pauseListening()
     }
     
     func resumeListening() {
-        Logger.audio("Resuming listening")
+//        Logger.audio("Resuming listening")
         voiceDetector.resumeListening()
     }
     
@@ -205,7 +205,6 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
         // Configure audio session for playback (important for macOS)
         configureAudioSessionForPlayback()
         
-        Logger.audio("Starting TTS playback (\(audioData.count) bytes)")
         audioState = .speaking
         isSpeaking = true
         isTTSPrepared = true
@@ -238,7 +237,7 @@ class FullDuplexAudioManager: NSObject, ObservableObject {
                 }
                 
                 ttsTask = Task { @MainActor in
-                    Logger.audio("Calling ttsPlayer.play()")
+              
                     ttsPlayer?.play()
                     
                     // Wait for playback to complete or be interrupted

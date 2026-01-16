@@ -427,7 +427,6 @@ class VoiceDetector: NSObject, ObservableObject {
         if let startTime = recordingStartTime {
             let duration = Date().timeIntervalSince(startTime)
             if duration >= maxRecordingDuration {
-                Logger.warning("VoiceDetector.maxDurationReached() - Duration: \(String(format: "%.1f", duration))s")
                 stopRecording()
                 // Перезапустить немедленно для непрерывного прослушивания
                 startRecording()

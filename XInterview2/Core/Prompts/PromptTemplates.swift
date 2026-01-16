@@ -186,11 +186,11 @@ enum PromptTemplates {
                 """
             case .python:
                 return """
-                # Python code template
-                # Use # YOUR CODE HERE for placeholders
+                // Python code template
+                // Use # YOUR CODE HERE for placeholders
                 
                 def example_function():
-                    # YOUR CODE HERE
+                    // YOUR CODE HERE
                     return None  # Replace this line
                 """
             }
@@ -461,14 +461,17 @@ enum PromptTemplates {
                 - Set task_state to "checking_solution"
                 - Analyze the current code in the editor
                 - Set is_correct to true or false based on analysis
-                - If correct:
-                  - Set task_state to "none"
-                  - Set is_correct to true
-                  - spoken_text should contain a diverse confirmation phrase (use different variations: "Excellent!", "Great job!", "That's correct!", "Perfect!", "Well done!", "Right!", "Spot on!", "Nice work!", etc.)
-                  - DO NOT include the next question in this response - the system will request the next question automatically
-                - If incorrect:
-                  - Set task_state to "providing_hint"
-                  - spoken_text should give a brief hint
+                
+                ## CORRECT SOLUTION
+                If solution is CORRECT (is_correct = true):
+                - Set task_state to "none" (CRITICAL! NEVER set "checking_solution" for correct solutions!)
+                - Set is_correct to true
+                - spoken_text should contain a diverse confirmation phrase (use different variations: "Excellent!", "Great job!", "That's correct!", "Perfect!", "Well done!", "Right!", "Spot on!", "Nice work!", etc.)
+                - DO NOT include the next question in this response - the system will request the next question automatically
+                
+                If solution is INCORRECT:
+                - Set task_state to "providing_hint"
+                - spoken_text should give a brief hint
                 
                 When providing a hint:
                 - Set task_state to "providing_hint"
@@ -503,14 +506,17 @@ enum PromptTemplates {
                 - Установи task_state в "checking_solution"
                 - Проанализируй текущий код в редакторе
                 - Установи is_correct в true или false на основе анализа
-                - Если правильно:
-                  - Установи task_state в "none"
-                  - Установи is_correct в true
-                  - spoken_text должен содержать разнообразную фразу подтверждения (используй разные варианты: "Отлично!", "Молодец!", "Правильно!", "Супер!", "Всё верно!", "Так держать!", "Хорошая работа!", "Точно!", "Отличная работа!" и т.д.)
-                  - НЕ включай следующий вопрос в этот ответ - система сама запросит следующий вопрос
-                - Если неправильно:
-                  - Установи task_state в "providing_hint"
-                  - spoken_text должен дать краткую подсказку
+                
+                ## ПРАВИЛЬНОЕ РЕШЕНИЕ
+                Если решение ПРАВИЛЬНОЕ (is_correct = true):
+                - Установи task_state в "none" (ОБЯЗАТЕЛЬНО! Никогда не устанавливай "checking_solution" для правильного решения!)
+                - Установи is_correct в true
+                - spoken_text должен содержать разнообразную фразу подтверждения (используй разные варианты: "Отлично!", "Молодец!", "Правильно!", "Супер!", "Всё верно!", "Так держать!", "Хорошая работа!", "Точно!", "Отличная работа!" и т.д.)
+                - НЕ включай следующий вопрос в этот ответ - система сама запросит следующий вопрос
+                
+                Если решение НЕПРАВИЛЬНОЕ:
+                - Установи task_state в "providing_hint"
+                - spoken_text должен дать краткую подсказку
                 
                 При предоставлении подсказки:
                 - Установи task_state в "providing_hint"
@@ -545,14 +551,17 @@ enum PromptTemplates {
                 - Setze task_state auf "checking_solution"
                 - Analysiere den aktuellen Code im Editor
                 - Setze is_correct auf true oder false basierend auf Analyse
-                - Wenn korrekt:
-                  - Setze task_state auf "none"
-                  - Setze is_correct auf true
-                  - spoken_text sollte eine vielfältige Bestätigungsphrase enthalten (verwende verschiedene Variationen: "Ausgezeichnet!", "Gut gemacht!", "Das ist korrekt!", "Perfekt!", "Weiter so!", "Richtig!", "Treffer!", "Gute Arbeit!" usw.)
-                  - SCHLIESSE die nächste Frage NICHT in diese Antwort ein - das System wird die nächste Frage automatisch anfordern
-                - Wenn inkorrekt:
-                  - Setze task_state auf "providing_hint"
-                  - spoken_text sollte einen kurzen Hinweis geben
+                
+                ## KORREKTE LÖSUNG
+                Wenn Lösung KORREKT ist (is_correct = true):
+                - Setze task_state auf "none" (KRITISCH! NIEMALS "checking_solution" für korrekte Lösungen setzen!)
+                - Setze is_correct auf true
+                - spoken_text sollte eine vielfältige Bestätigungsphrase enthalten (verwende verschiedene Variationen: "Ausgezeichnet!", "Gut gemacht!", "Das ist korrekt!", "Perfekt!", "Weiter so!", "Richtig!", "Treffer!", "Gute Arbeit!" usw.)
+                - SCHLIESSE die nächste Frage NICHT in diese Antwort ein - das System wird die nächste Frage automatisch anfordern
+                
+                Wenn Lösung INKORREKT ist:
+                - Setze task_state auf "providing_hint"
+                - spoken_text sollte einen kurzen Hinweis geben
                 
                 Bei Bereitstellung eines Hinweises:
                 - Setze task_state auf "providing_hint"
