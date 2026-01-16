@@ -833,11 +833,11 @@ class ConversationManager: ObservableObject {
             // Add a message to indicate we want the next question
             let nextQuestionMessage = TranscriptMessage(
                 role: .user,
-                text: "Please provide the next question.",
+                text: "The previous task was completed correctly. Please provide a NEW coding task with a problem statement and starter code.",
                 timestamp: Date()
             )
             conversationHistory.append(nextQuestionMessage)
-            Logger.info("requestNextQuestion() - Added 'Please provide the next question.' to conversation history")
+            Logger.info("requestNextQuestion() - Added 'The previous task was completed correctly. Please provide a NEW coding task with a problem statement and starter code.' to conversation history")
             
             Logger.info("requestNextQuestion() - Calling chatService.sendMessageWithCode()")
             let aiResponse = try await chatService.sendMessageWithCode(
