@@ -51,6 +51,9 @@ class ConversationManager: ObservableObject {
     // Task State Management
     private var currentTaskState: InterviewTaskState = .noTask
     private var currentTaskCode: String = ""
+    private var currentTaskText: String = ""
+    private var recentTopics: [String] = []
+    private let maxRecentTopics = 5
     
     // MARK: - Properties
     
@@ -71,6 +74,7 @@ class ConversationManager: ObservableObject {
     // Flag to track if we're currently requesting the next question
     // This prevents infinite loop when AI returns is_correct: true for next question request
     private var isRequestingNextQuestion: Bool = false
+    private var lastLLMMode: LLMMode?
     
     // MARK: - Callbacks
     
@@ -235,7 +239,7 @@ class ConversationManager: ObservableObject {
         
         do {
             // Get AI response (empty messages for opening)
-            let contextSummary = currentContext?.getContextSummary() ?? ""
+            let contextSummary = buildGenContext(language: language)
             
             // Set flag to prevent cancellation during Chat API request
             isProcessingChatRequest = true
@@ -248,6 +252,7 @@ class ConversationManager: ObservableObject {
                 level: currentLevel,
                 language: language,
                 mode: currentMode,
+                llmMode: .generateTask,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -393,7 +398,7 @@ class ConversationManager: ObservableObject {
             }
             
             // Include context if available for follow-up questions
-            let contextSummary = currentContext?.getContextSummary() ?? ""
+            let contextSummary = buildGenContext(language: settings.selectedLanguage)
             
             // Set flag to prevent cancellation during Chat API request
             isProcessingChatRequest = true
@@ -406,6 +411,7 @@ class ConversationManager: ObservableObject {
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
+                llmMode: .generateTask,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -538,7 +544,7 @@ class ConversationManager: ObservableObject {
                 return
             }
             
-            let contextSummary = currentContext?.getContextSummary() ?? ""
+            let contextSummary = buildGenContext(language: settings.selectedLanguage)
             
             // Set flag to prevent cancellation during Chat API request
             isProcessingChatRequest = true
@@ -551,6 +557,7 @@ class ConversationManager: ObservableObject {
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
+                llmMode: .generateTask,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -599,38 +606,7 @@ class ConversationManager: ObservableObject {
     /// Confirm understanding from UI button
     func confirmUnderstanding() async {
         updateTaskState(.noTask)
-        
-        // Trigger next question
-        guard let topic = currentTopic else {
-            Logger.error("No current topic available")
-            return
-        }
-        
-        let settings = settingsRepository.loadSettings()
-        let apiKey = settings.apiKey
-        let contextSummary = currentContext?.getContextSummary() ?? ""
-        
-        do {
-            isProcessingChatRequest = true
-            defer { isProcessingChatRequest = false }
-            
-            let aiResponse = try await chatService.sendMessageWithCode(
-                messages: conversationHistory,
-                codeContext: currentCodeContext,
-                topic: topic,
-                level: currentLevel,
-                language: settings.selectedLanguage,
-                mode: currentMode,
-                apiKey: apiKey,
-                context: contextSummary
-            )
-            
-            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
-            
-        } catch {
-            Logger.error("Failed to get next question", error: error)
-            onError?(error.localizedDescription)
-        }
+        await requestNextQuestion()
     }
     
     /// Check if text contains completion phrases
@@ -708,26 +684,22 @@ class ConversationManager: ObservableObject {
         do {
             isProcessingChatRequest = true
             defer { isProcessingChatRequest = false }
-            
-            let contextSummary = currentContext?.getContextSummary() ?? ""
-            
-            // Add a system message indicating user is ready for solution check
-            let checkMessage = TranscriptMessage(
-                role: .user,
-                text: "I'm done with the task. Please check my solution.",
-                timestamp: Date()
+            let checkContext = buildCheckContext(
+                language: settings.selectedLanguage,
+                isHelpRequest: false
             )
-            conversationHistory.append(checkMessage)
+            lastLLMMode = .checkSolution
             
             let aiResponse = try await chatService.sendMessageWithCode(
-                messages: conversationHistory,
+                messages: [],
                 codeContext: currentCodeContext,
                 topic: topic,
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
+                llmMode: .checkSolution,
                 apiKey: apiKey,
-                context: contextSummary
+                context: checkContext
             )
             
             await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
@@ -747,7 +719,7 @@ class ConversationManager: ObservableObject {
         
         let settings = settingsRepository.loadSettings()
         let apiKey = settings.apiKey
-        let contextSummary = currentContext?.getContextSummary() ?? ""
+        let contextSummary = buildGenContext(language: settings.selectedLanguage)
         
         do {
             // Set flag to indicate we're requesting next question
@@ -758,21 +730,15 @@ class ConversationManager: ObservableObject {
                 isRequestingNextQuestion = false
             }
             
-            // Add a message to indicate we want the next question
-            let nextQuestionMessage = TranscriptMessage(
-                role: .user,
-                text: "The previous task was completed correctly. Please provide a NEW coding task with a problem statement and starter code.",
-                timestamp: Date()
-            )
-            conversationHistory.append(nextQuestionMessage)
-            
+            lastLLMMode = .generateTask
             let aiResponse = try await chatService.sendMessageWithCode(
-                messages: conversationHistory,
+                messages: [],
                 codeContext: currentCodeContext,
                 topic: topic,
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
+                llmMode: .generateTask,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -803,26 +769,22 @@ class ConversationManager: ObservableObject {
         do {
             isProcessingChatRequest = true
             defer { isProcessingChatRequest = false }
-            
-            let contextSummary = currentContext?.getContextSummary() ?? ""
-            
-            // Add a system message indicating user needs help
-            let helpMessage = TranscriptMessage(
-                role: .user,
-                text: "I need help with this task.",
-                timestamp: Date()
+            let checkContext = buildCheckContext(
+                language: settings.selectedLanguage,
+                isHelpRequest: true
             )
-            conversationHistory.append(helpMessage)
+            lastLLMMode = .checkSolution
             
             let aiResponse = try await chatService.sendMessageWithCode(
-                messages: conversationHistory,
+                messages: [],
                 codeContext: currentCodeContext,
                 topic: topic,
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
+                llmMode: .checkSolution,
                 apiKey: apiKey,
-                context: contextSummary
+                context: checkContext
             )
             
             await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
@@ -835,11 +797,8 @@ class ConversationManager: ObservableObject {
     
     /// Handle AI response with task state logic
     private func handleAIResponse(_ aiResponse: AIResponse, language: Language, apiKey: String) async {
-        // Check if this is a correct solution confirmation (we need to request next question after TTS)
-        // Only rely on is_correct flag, ignore task_state completely
-        // But prevent infinite loop when we're already requesting next question
         Logger.debug("🔍 handleAIResponse: isCorrect=\(String(describing: aiResponse.isCorrect)), taskState=\(String(describing: aiResponse.taskState)), isRequestingNextQuestion=\(isRequestingNextQuestion)")
-        if aiResponse.isCorrect == true && !isRequestingNextQuestion {
+        if lastLLMMode == .checkSolution, aiResponse.isCorrect == true, !isRequestingNextQuestion {
             shouldRequestNextQuestion = true
             Logger.debug("✅ Set shouldRequestNextQuestion=true because isCorrect=true")
         }
@@ -850,6 +809,14 @@ class ConversationManager: ObservableObject {
             case .taskPresented:
                 updateTaskState(.taskPresented(expectedSolution: aiResponse.aicode))
                 currentTaskCode = aiResponse.aicode ?? ""
+                currentTaskText = aiResponse.spokenText
+                if recentTopics.last != aiResponse.spokenText {
+                    recentTopics.append(aiResponse.spokenText)
+                }
+                if recentTopics.count > maxRecentTopics {
+                    recentTopics = Array(recentTopics.suffix(maxRecentTopics))
+                }
+                currentContext?.updateRecentTask(taskText: aiResponse.spokenText, maxTopics: maxRecentTopics)
                 
             case .checkingSolution:
                 // AI is checking user's solution
@@ -875,6 +842,10 @@ class ConversationManager: ObservableObject {
             case .none:
                 updateTaskState(.noTask)
             }
+        }
+        
+        if lastLLMMode == .checkSolution, aiResponse.isCorrect == true {
+            updateTaskState(.noTask)
         }
         
         // Apply code in editor based on state
@@ -904,6 +875,69 @@ class ConversationManager: ObservableObject {
             timestamp: Date()
         )
         conversationHistory.append(message)
+    }
+    
+    private func buildCheckContext(language: Language, isHelpRequest: Bool) -> String {
+        let taskText = currentTaskText.isEmpty ? "(no task text)" : currentTaskText
+        let requirements = "(none)"
+        let helpLine = isHelpRequest ? "help" : "verify"
+        
+        switch language {
+        case .russian:
+            return """
+            Задание (кратко):
+            \(taskText)
+            
+            Ожидаемое поведение/ограничения:
+            \(requirements)
+            
+            Запрос пользователя: \(isHelpRequest ? "нужна подсказка" : "проверка решения")
+            """
+        case .english:
+            return """
+            Task (short):
+            \(taskText)
+            
+            Expected behavior/constraints:
+            \(requirements)
+            
+            User request: \(helpLine)
+            """
+        case .german:
+            return """
+            Aufgabe (kurz):
+            \(taskText)
+            
+            Erwartetes Verhalten/Einschraenkungen:
+            \(requirements)
+            
+            Nutzeranfrage: \(helpLine)
+            """
+        }
+    }
+    
+    private func buildGenContext(language: Language) -> String {
+        let recent = recentTopics.suffix(maxRecentTopics)
+        let recentLine = recent.isEmpty ? "recent_topics: none" : "recent_topics: \(recent.joined(separator: "; "))"
+        let avoidLine = "avoid: none"
+        
+        switch language {
+        case .russian:
+            return """
+            recent_topics: \(recent.isEmpty ? "none" : recent.joined(separator: "; "))
+            avoid: none
+            """
+        case .english:
+            return """
+            \(recentLine)
+            \(avoidLine)
+            """
+        case .german:
+            return """
+            \(recentLine)
+            \(avoidLine)
+            """
+        }
     }
     
     // MARK: - Properties

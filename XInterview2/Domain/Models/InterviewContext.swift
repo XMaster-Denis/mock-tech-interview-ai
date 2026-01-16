@@ -90,6 +90,9 @@ struct InterviewContext: Codable {
     var mistakes: [Mistake]
     var strengths: [String]
     var weaknesses: [String]
+    var lastTaskId: UUID?
+    var lastTaskText: String
+    var recentTopics: [String]
     var lastUpdated: Date
     
     init(
@@ -99,6 +102,9 @@ struct InterviewContext: Codable {
         mistakes: [Mistake] = [],
         strengths: [String] = [],
         weaknesses: [String] = [],
+        lastTaskId: UUID? = nil,
+        lastTaskText: String = "",
+        recentTopics: [String] = [],
         lastUpdated: Date = Date()
     ) {
         self.sessionId = sessionId
@@ -107,6 +113,9 @@ struct InterviewContext: Codable {
         self.mistakes = mistakes
         self.strengths = strengths
         self.weaknesses = weaknesses
+        self.lastTaskId = lastTaskId
+        self.lastTaskText = lastTaskText
+        self.recentTopics = recentTopics
         self.lastUpdated = lastUpdated
     }
     
@@ -172,6 +181,13 @@ struct InterviewContext: Codable {
         return summary
     }
     
+    /// Returns a compact context for task generation
+    func getCompactTaskContext(maxTopics: Int = 5) -> String {
+        let recent = recentTopics.suffix(maxTopics)
+        let recentLine = recent.isEmpty ? "recent_topics: none" : "recent_topics: \(recent.joined(separator: "; "))"
+        return recentLine
+    }
+    
     /// Updates the last updated timestamp
     mutating func touch() {
         lastUpdated = Date()
@@ -209,5 +225,23 @@ struct InterviewContext: Codable {
             weaknesses.append(weakness)
             touch()
         }
+    }
+    
+    /// Tracks the last task and updates the recent topics ring buffer
+    mutating func updateRecentTask(taskText: String, maxTopics: Int = 5) {
+        let trimmed = taskText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        lastTaskId = UUID()
+        lastTaskText = trimmed
+        
+        if recentTopics.last != trimmed {
+            recentTopics.append(trimmed)
+            if recentTopics.count > maxTopics {
+                recentTopics = Array(recentTopics.suffix(maxTopics))
+            }
+        }
+        
+        touch()
     }
 }

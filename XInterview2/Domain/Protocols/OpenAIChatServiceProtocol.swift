@@ -18,6 +18,7 @@ protocol OpenAIChatServiceProtocol {
     ///   - level: Developer skill level
     ///   - language: Programming language
     ///   - mode: Interview mode
+    ///   - llmMode: LLM mode for check vs generation
     ///   - apiKey: OpenAI API key
     ///   - context: Interview context with progress summary
     /// - Returns: Structured AI response with potential editor actions
@@ -28,6 +29,7 @@ protocol OpenAIChatServiceProtocol {
         level: DeveloperLevel,
         language: Language,
         mode: InterviewMode,
+        llmMode: LLMMode,
         apiKey: String,
         context: String
     ) async throws -> AIResponse
