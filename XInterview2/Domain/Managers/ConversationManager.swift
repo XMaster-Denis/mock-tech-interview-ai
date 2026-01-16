@@ -344,11 +344,11 @@ class ConversationManager: ObservableObject {
                     return
                 }
                 
-                if isHelpRequest(userText, language: language) {
+                if let helpMode = HelpModeDetector.detectHelpMode(userText, language: language) {
                     // User asks for help
                     addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
                     onUserMessage?(userText)
-                    await requestHelp()
+                    await requestHelp(mode: helpMode, userMessage: userText)
                     return
                 }
                 
@@ -534,6 +534,16 @@ class ConversationManager: ObservableObject {
         }
         
         do {
+            if case .taskPresented = currentTaskState {
+                let language = settings.selectedLanguage
+                if let helpMode = HelpModeDetector.detectHelpMode(text, language: language) {
+                    addMessage(role: TranscriptMessage.MessageRole.user, content: text)
+                    onUserMessage?(text)
+                    await requestHelp(mode: helpMode, userMessage: text)
+                    return
+                }
+            }
+            
             // Добавляем сообщение пользователя в историю
             addMessage(role: TranscriptMessage.MessageRole.user, content: text)
             onUserMessage?(text)
@@ -600,7 +610,19 @@ class ConversationManager: ObservableObject {
     
     /// Request help from UI button
     func requestHelpFromUI() async {
-        await requestHelp()
+        let language = settingsRepository.loadSettings().selectedLanguage
+        let userMessage: String
+        
+        switch language {
+        case .russian:
+            userMessage = "Подскажи"
+        case .english:
+            userMessage = "Help"
+        case .german:
+            userMessage = "Hilfe"
+        }
+        
+        await requestHelp(mode: .hintOnly, userMessage: userMessage)
     }
     
     /// Confirm understanding from UI button
@@ -628,24 +650,6 @@ class ConversationManager: ObservableObject {
         }
     }
     
-    /// Check if text contains help request phrases
-    private func isHelpRequest(_ text: String, language: Language) -> Bool {
-        let lowercasedText = text.lowercased()
-        
-        switch language {
-        case .english:
-            let helpPhrases = ["i don't know", "help me", "can't do it", "how do i do this", "hint", "don't know", "help"]
-            return helpPhrases.contains { lowercasedText.contains($0) }
-            
-        case .russian:
-            let helpPhrases = ["не знаю", "помоги", "не могу", "как сделать", "подскажи", "помощь"]
-            return helpPhrases.contains { lowercasedText.contains($0) }
-            
-        case .german:
-            let helpPhrases = ["ich weiß nicht", "hilf mir", "kann ich nicht", "wie mache ich das", "hinweis", "hilfe"]
-            return helpPhrases.contains { lowercasedText.contains($0) }
-        }
-    }
     
     /// Check if text contains understanding confirmation phrases
     private func isUnderstandingConfirmation(_ text: String, language: Language) -> Bool {
@@ -752,7 +756,7 @@ class ConversationManager: ObservableObject {
     }
     
     /// Request help from AI
-    private func requestHelp() async {
+    private func requestHelp(mode: HelpMode, userMessage: String) async {
         guard let topic = currentTopic else {
             Logger.error("No current topic available")
             return
@@ -769,22 +773,21 @@ class ConversationManager: ObservableObject {
         do {
             isProcessingChatRequest = true
             defer { isProcessingChatRequest = false }
-            let checkContext = buildCheckContext(
-                language: settings.selectedLanguage,
-                isHelpRequest: true
-            )
-            lastLLMMode = .checkSolution
+            let helpContext = buildHelpContext(language: settings.selectedLanguage)
+            lastLLMMode = .assistHelp(mode)
             
             let aiResponse = try await chatService.sendMessageWithCode(
-                messages: [],
+                messages: [
+                    TranscriptMessage(role: .user, text: userMessage, timestamp: Date())
+                ],
                 codeContext: currentCodeContext,
                 topic: topic,
                 level: currentLevel,
                 language: settings.selectedLanguage,
                 mode: currentMode,
-                llmMode: .checkSolution,
+                llmMode: .assistHelp(mode),
                 apiKey: apiKey,
-                context: checkContext
+                context: helpContext
             )
             
             await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
@@ -798,7 +801,7 @@ class ConversationManager: ObservableObject {
     /// Handle AI response with task state logic
     private func handleAIResponse(_ aiResponse: AIResponse, language: Language, apiKey: String) async {
         Logger.debug("🔍 handleAIResponse: isCorrect=\(String(describing: aiResponse.isCorrect)), taskState=\(String(describing: aiResponse.taskState)), isRequestingNextQuestion=\(isRequestingNextQuestion)")
-        if lastLLMMode == .checkSolution, aiResponse.isCorrect == true, !isRequestingNextQuestion {
+        if lastLLMMode?.isCheckSolution == true, aiResponse.isCorrect == true, !isRequestingNextQuestion {
             shouldRequestNextQuestion = true
             Logger.debug("✅ Set shouldRequestNextQuestion=true because isCorrect=true")
         }
@@ -832,6 +835,10 @@ class ConversationManager: ObservableObject {
                 // AI is giving a hint - stay in task presented state
                 updateTaskState(.taskPresented(expectedSolution: nil))
                 
+            case .providingSolution:
+                // AI is providing full solution - keep task active
+                updateTaskState(.taskPresented(expectedSolution: nil))
+                
             case .showingSolution:
                 // AI is showing solution - wait for user confirmation
                 updateTaskState(.waitingForUserConfirmation)
@@ -844,12 +851,14 @@ class ConversationManager: ObservableObject {
             }
         }
         
-        if lastLLMMode == .checkSolution, aiResponse.isCorrect == true {
+        if lastLLMMode?.isCheckSolution == true, aiResponse.isCorrect == true {
             updateTaskState(.noTask)
         }
         
         // Apply code in editor based on state
-        if let aicode = aiResponse.aicode {
+        if let solutionCode = aiResponse.solutionCode, aiResponse.taskState == .providingSolution {
+            onCodeUpdate?(solutionCode)
+        } else if let aicode = aiResponse.aicode {
             // If this is a hint (hintCode), don't overwrite entire code
             if aiResponse.taskState == .providingHint {
                 // For hints, we might add logic to partially update code
@@ -861,6 +870,9 @@ class ConversationManager: ObservableObject {
         
         // Notify UI of AI message
         onAIMessage?(aiResponse.spokenText)
+        if let explanation = aiResponse.explanation, !explanation.isEmpty {
+            onAIMessage?(explanation)
+        }
         
         // Speak the response
         await speakResponse(aiResponse.spokenText, language: language, apiKey: apiKey)
@@ -912,6 +924,35 @@ class ConversationManager: ObservableObject {
             \(requirements)
             
             Nutzeranfrage: \(helpLine)
+            """
+        }
+    }
+    
+    private func buildHelpContext(language: Language) -> String {
+        let taskText = currentTaskText.isEmpty ? "(no task text)" : currentTaskText
+        let requirements = "(none)"
+        
+        switch language {
+        case .russian:
+            return """
+            \(taskText)
+            
+            Ожидаемое поведение/ограничения:
+            \(requirements)
+            """
+        case .english:
+            return """
+            \(taskText)
+            
+            Expected behavior/constraints:
+            \(requirements)
+            """
+        case .german:
+            return """
+            \(taskText)
+            
+            Erwartetes Verhalten/Einschraenkungen:
+            \(requirements)
             """
         }
     }

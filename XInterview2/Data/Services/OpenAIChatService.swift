@@ -156,6 +156,34 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         return newPrompt
     }
     
+    private func getAssistHelpSystemPrompt(
+        topic: InterviewTopic,
+        level: DeveloperLevel,
+        language: Language,
+        helpMode: HelpMode
+    ) -> String {
+        let modeKey = (helpMode == .fullSolution) ? "full" : "hint"
+        let promptKey = "assist-\(modeKey)-\(topic.id.uuidString)-\(level.rawValue)-\(language.rawValue)"
+        
+        if let cachedKey = cachedPromptKey,
+           cachedKey == promptKey,
+           let cachedPrompt = cachedSystemPrompt {
+            return cachedPrompt
+        }
+        
+        let newPrompt = PromptTemplates.System.assistHelp(
+            for: topic,
+            level: level,
+            language: language,
+            helpMode: helpMode
+        )
+        
+        cachedPromptKey = promptKey
+        cachedSystemPrompt = newPrompt
+        
+        return newPrompt
+    }
+    
     private func buildCheckUserMessage(context: String, code: String, language: Language) -> String {
         switch language {
         case .russian:
@@ -207,6 +235,37 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             Thema: \(topic.title)
             Sprache: \(language.displayName)
             \(context)
+            """
+        }
+    }
+    
+    private func buildAssistUserMessage(
+        context: String,
+        code: String,
+        userMessage: String,
+        language: Language
+    ) -> String {
+        switch language {
+        case .russian:
+            return """
+            Задача: \(context)
+            Код пользователя:
+            \(code)
+            Пользователь: \(userMessage)
+            """
+        case .english:
+            return """
+            Task: \(context)
+            User code:
+            \(code)
+            User: \(userMessage)
+            """
+        case .german:
+            return """
+            Aufgabe: \(context)
+            Benutzer-Code:
+            \(code)
+            Nutzer: \(userMessage)
             """
         }
     }
@@ -269,6 +328,8 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 taskState: response.taskState,
                 hint: response.hint,
                 hintCode: response.hintCode,
+                solutionCode: nil,
+                explanation: nil,
                 correctCode: nil,
                 isCorrect: response.isCorrect
             )
@@ -279,9 +340,38 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 taskState: response.taskState,
                 hint: nil,
                 hintCode: nil,
+                solutionCode: nil,
+                explanation: nil,
                 correctCode: nil,
                 isCorrect: nil
             )
+        case .assistHelp(let helpMode):
+            switch helpMode {
+            case .hintOnly:
+                return AIResponse(
+                    spokenText: response.spokenText,
+                    aicode: nil,
+                    taskState: response.taskState,
+                    hint: response.hint,
+                    hintCode: response.hintCode,
+                    solutionCode: nil,
+                    explanation: nil,
+                    correctCode: nil,
+                    isCorrect: response.isCorrect
+                )
+            case .fullSolution:
+                return AIResponse(
+                    spokenText: response.spokenText,
+                    aicode: nil,
+                    taskState: response.taskState,
+                    hint: nil,
+                    hintCode: nil,
+                    solutionCode: response.solutionCode,
+                    explanation: response.explanation,
+                    correctCode: nil,
+                    isCorrect: response.isCorrect
+                )
+            }
         }
     }
     
@@ -317,6 +407,28 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             }
             let aicodeText = response.aicode?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return !aicodeText.isEmpty
+        case .assistHelp(let helpMode):
+            switch helpMode {
+            case .hintOnly:
+                guard response.taskState == .providingHint else {
+                    return false
+                }
+                guard response.isCorrect == false else {
+                    return false
+                }
+                let hintText = response.hint?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return !hintText.isEmpty
+            case .fullSolution:
+                guard response.taskState == .providingSolution else {
+                    return false
+                }
+                guard response.isCorrect == false else {
+                    return false
+                }
+                let solutionText = response.solutionCode?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let explanationText = response.explanation?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return !solutionText.isEmpty && !explanationText.isEmpty
+            }
         }
     }
     
@@ -334,6 +446,18 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             return "Previous response missed required fields. Return JSON per GEN_TASK schema with task_state=task_presented and aicode."
         case (.generateTask, .german):
             return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nach GEN_TASK-Schema mit task_state=task_presented und aicode."
+        case (.assistHelp(.hintOnly), .russian):
+            return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON по схеме hintOnly с task_state=providing_hint и hint."
+        case (.assistHelp(.hintOnly), .english):
+            return "Previous response missed required fields. Return JSON per hintOnly schema with task_state=providing_hint and hint."
+        case (.assistHelp(.hintOnly), .german):
+            return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nach hintOnly-Schema mit task_state=providing_hint und hint."
+        case (.assistHelp(.fullSolution), .russian):
+            return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON по схеме fullSolution с task_state=providing_solution и solution_code."
+        case (.assistHelp(.fullSolution), .english):
+            return "Previous response missed required fields. Return JSON per fullSolution schema with task_state=providing_solution and solution_code."
+        case (.assistHelp(.fullSolution), .german):
+            return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nach fullSolution-Schema mit task_state=providing_solution und solution_code."
         }
     }
     
@@ -393,6 +517,63 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 """,
                 taskState: .taskPresented
             )
+        case (.assistHelp(.hintOnly), .russian):
+            return AIResponse(
+                spokenText: "Попробуй начать с простой проверки и разбить задачу на шаги.",
+                taskState: .providingHint,
+                hint: "Начни с базового условия и проверь крайние случаи.",
+                isCorrect: false
+            )
+        case (.assistHelp(.hintOnly), .english):
+            return AIResponse(
+                spokenText: "Try to start with a simple check and break it into steps.",
+                taskState: .providingHint,
+                hint: "Start with a base condition and handle edge cases.",
+                isCorrect: false
+            )
+        case (.assistHelp(.hintOnly), .german):
+            return AIResponse(
+                spokenText: "Starte mit einer einfachen Pruefung und zerlege die Aufgabe.",
+                taskState: .providingHint,
+                hint: "Beginne mit einer Basisbedingung und pruefe Randfaelle.",
+                isCorrect: false
+            )
+        case (.assistHelp(.fullSolution), .russian):
+            return AIResponse(
+                spokenText: "Вот рабочее решение и краткое объяснение.",
+                taskState: .providingSolution,
+                solutionCode: """
+                func solve(_ value: Int) -> Int {
+                    return value
+                }
+                """,
+                explanation: "Функция принимает значение и возвращает его без изменений. Это минимальная заглушка для примера. Замени тело под конкретную задачу. Обычно решение строится из проверки условий и вычислений. Добавь обработку краевых случаев.",
+                isCorrect: false
+            )
+        case (.assistHelp(.fullSolution), .english):
+            return AIResponse(
+                spokenText: "Here is a working solution and a short explanation.",
+                taskState: .providingSolution,
+                solutionCode: """
+                func solve(_ value: Int) -> Int {
+                    return value
+                }
+                """,
+                explanation: "The function takes a value and returns it unchanged. This is a minimal placeholder solution. Replace the body for your specific task. Typical solutions combine checks and computations. Add edge case handling.",
+                isCorrect: false
+            )
+        case (.assistHelp(.fullSolution), .german):
+            return AIResponse(
+                spokenText: "Hier ist eine Loesung und eine kurze Erklaerung.",
+                taskState: .providingSolution,
+                solutionCode: """
+                func solve(_ value: Int) -> Int {
+                    return value
+                }
+                """,
+                explanation: "Die Funktion nimmt einen Wert und gibt ihn unveraendert zurueck. Das ist eine minimale Platzhalter-Loesung. Ersetze den Rumpf fuer deine Aufgabe. Uebliche Loesungen kombinieren Pruefungen und Berechnungen. Randfaelle beachten.",
+                isCorrect: false
+            )
         }
     }
     
@@ -409,10 +590,19 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         apiKey: String,
         context: String
     ) async throws -> AIResponse {
-        let temperature: Double = (llmMode == .checkSolution) ? 0.2 : 0.7
+        let temperature: Double
+        switch llmMode {
+        case .checkSolution:
+            temperature = 0.2
+        case .generateTask:
+            temperature = 0.7
+        case .assistHelp:
+            temperature = 0.3
+        }
+        
         var chatMessages: [ChatMessage]
         
-        if llmMode == .checkSolution {
+        if llmMode.isCheckSolution {
             let systemPrompt = getCheckSystemPrompt(
                 topic: topic,
                 level: level,
@@ -427,7 +617,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 ChatMessage(role: "system", content: systemPrompt),
                 ChatMessage(role: "user", content: userContent)
             ]
-        } else if mode == .codeTasks {
+        } else if llmMode.isGenerateTask && mode == .codeTasks {
             let systemPrompt = getGenSystemPrompt(
                 topic: topic,
                 level: level,
@@ -438,6 +628,23 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 topic: topic,
                 language: language,
                 context: context
+            )
+            chatMessages = [
+                ChatMessage(role: "system", content: systemPrompt),
+                ChatMessage(role: "user", content: userContent)
+            ]
+        } else if case let .assistHelp(helpMode) = llmMode {
+            let systemPrompt = getAssistHelpSystemPrompt(
+                topic: topic,
+                level: level,
+                language: language,
+                helpMode: helpMode
+            )
+            let userContent = buildAssistUserMessage(
+                context: context,
+                code: codeContext.currentCode,
+                userMessage: messages.last?.text ?? "",
+                language: language
             )
             chatMessages = [
                 ChatMessage(role: "system", content: systemPrompt),
@@ -466,7 +673,13 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             ))
         }
         
-        let shouldValidate = (llmMode == .checkSolution) || (mode == .codeTasks)
+        let shouldValidate: Bool
+        switch llmMode {
+        case .checkSolution, .assistHelp:
+            shouldValidate = true
+        case .generateTask:
+            shouldValidate = (mode == .codeTasks)
+        }
         
         do {
             let assistantMessage = try await requestChatResponse(

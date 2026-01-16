@@ -155,4 +155,49 @@ final class LLMResponseValidationTests: XCTestCase {
         XCTAssertLessThanOrEqual(messageCount, 4)
         XCTAssertEqual(messageCount, 2)
     }
+    
+    func testHelpFullSolutionRequiresSolutionCode() async throws {
+        let mock = MockHTTPClient(responses: [
+            #"{"spoken_text":"Here.","task_state":"providing_solution","is_correct":false,"explanation":"x"}"#,
+            #"{"spoken_text":"Here.","task_state":"providing_solution","is_correct":false,"solution_code":"func f() {}","explanation":"ok"}"#
+        ])
+        let service = OpenAIChatService(httpClient: mock)
+        
+        let response = try await service.sendMessageWithCode(
+            messages: [TranscriptMessage(role: .user, text: "write it for me", timestamp: Date())],
+            codeContext: makeCodeContext(),
+            topic: makeTopic(),
+            level: .junior,
+            language: .english,
+            mode: .codeTasks,
+            llmMode: .assistHelp(.fullSolution),
+            apiKey: "test",
+            context: "Task: sample"
+        )
+        
+        XCTAssertEqual(response.taskState, .providingSolution)
+        XCTAssertNotNil(response.solutionCode)
+    }
+    
+    func testHelpHintOnlyKeepsProvidingHint() async throws {
+        let mock = MockHTTPClient(responses: [
+            #"{"spoken_text":"Hint.","task_state":"providing_hint","is_correct":false,"hint":"Try a loop"}"#
+        ])
+        let service = OpenAIChatService(httpClient: mock)
+        
+        let response = try await service.sendMessageWithCode(
+            messages: [TranscriptMessage(role: .user, text: "give me a hint", timestamp: Date())],
+            codeContext: makeCodeContext(),
+            topic: makeTopic(),
+            level: .junior,
+            language: .english,
+            mode: .codeTasks,
+            llmMode: .assistHelp(.hintOnly),
+            apiKey: "test",
+            context: "Task: sample"
+        )
+        
+        XCTAssertEqual(response.taskState, .providingHint)
+        XCTAssertNil(response.solutionCode)
+    }
 }

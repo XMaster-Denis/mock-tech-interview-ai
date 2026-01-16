@@ -13,6 +13,7 @@ enum TaskState: String, Codable {
     case taskPresented = "task_presented"
     case checkingSolution = "checking_solution"
     case providingHint = "providing_hint"
+    case providingSolution = "providing_solution"
     case showingSolution = "showing_solution"
     case waitingForUnderstanding = "waiting_for_understanding"
 }
@@ -34,6 +35,12 @@ struct AIResponse: Codable {
     /// Partial code solution as hint (optional)
     let hintCode: String?
     
+    /// Full solution code for assistance (optional)
+    let solutionCode: String?
+    
+    /// Explanation for full solution (optional)
+    let explanation: String?
+    
     /// Complete correct solution (optional)
     let correctCode: String?
     
@@ -48,6 +55,8 @@ struct AIResponse: Codable {
         case taskState = "task_state"
         case hint
         case hintCode = "hint_code"
+        case solutionCode = "solution_code"
+        case explanation
         case correctCode = "correct_code"
         case isCorrect = "is_correct"
     }
@@ -58,6 +67,8 @@ struct AIResponse: Codable {
         taskState: TaskState? = nil,
         hint: String? = nil,
         hintCode: String? = nil,
+        solutionCode: String? = nil,
+        explanation: String? = nil,
         correctCode: String? = nil,
         isCorrect: Bool? = nil
     ) {
@@ -66,6 +77,8 @@ struct AIResponse: Codable {
         self.taskState = taskState
         self.hint = hint
         self.hintCode = hintCode
+        self.solutionCode = solutionCode
+        self.explanation = explanation
         self.correctCode = correctCode
         self.isCorrect = isCorrect
     }

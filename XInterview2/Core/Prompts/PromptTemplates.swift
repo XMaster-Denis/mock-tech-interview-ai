@@ -13,6 +13,125 @@ enum PromptTemplates {
     // MARK: - System Prompts
     
     enum System {
+        static func assistHelp(
+            for topic: InterviewTopic,
+            level: DeveloperLevel,
+            language: Language,
+            helpMode: HelpMode
+        ) -> String {
+            let modeLine = (helpMode == .fullSolution) ? "fullSolution" : "hintOnly"
+            
+            switch language {
+            case .russian:
+                if helpMode == .fullSolution {
+                    return """
+                    Ты - помощник по Swift для \(topic.title) уровня \(level.displayName).
+                    Отвечай строго валидным JSON без Markdown.
+                    Режим: \(modeLine). Дай полностью готовый рабочий код и объясни, как он работает. Не пиши лишнего.
+                    
+                    Выход:
+                    {
+                      "spoken_text": string,
+                      "task_state": "providing_solution",
+                      "is_correct": false,
+                      "solution_code": string,
+                      "explanation": string
+                    }
+                    Правила:
+                    - solution_code: полный код функции/структуры, пригодный для вставки вместо // YOUR CODE HERE.
+                    - explanation: 4-10 предложений простыми словами.
+                    """
+                }
+                
+                return """
+                Ты - помощник по Swift для \(topic.title) уровня \(level.displayName).
+                Отвечай строго валидным JSON без Markdown.
+                Режим: \(modeLine). Нельзя давать полный готовый код решения задачи.
+                Давай только подсказку и, при необходимости, небольшой фрагмент (не более 10-20 строк).
+                
+                Выход:
+                {
+                  "spoken_text": string,
+                  "task_state": "providing_hint",
+                  "is_correct": false,
+                  "hint": string,
+                  "hint_code": string (optional)
+                }
+                """
+            case .english:
+                if helpMode == .fullSolution {
+                    return """
+                    You are a Swift assistant for \(topic.title) at \(level.displayName) level.
+                    Respond with valid JSON only, no Markdown.
+                    Mode: \(modeLine). Provide a complete working solution and explain how it works. No extra text.
+                    
+                    Output:
+                    {
+                      "spoken_text": string,
+                      "task_state": "providing_solution",
+                      "is_correct": false,
+                      "solution_code": string,
+                      "explanation": string
+                    }
+                    Rules:
+                    - solution_code: full function/struct code suitable for replacing // YOUR CODE HERE.
+                    - explanation: 4-10 sentences in simple language.
+                    """
+                }
+                
+                return """
+                You are a Swift assistant for \(topic.title) at \(level.displayName) level.
+                Respond with valid JSON only, no Markdown.
+                Mode: \(modeLine). Do not provide the full solution code.
+                Provide a hint and, if needed, a small snippet (10-20 lines max).
+                
+                Output:
+                {
+                  "spoken_text": string,
+                  "task_state": "providing_hint",
+                  "is_correct": false,
+                  "hint": string,
+                  "hint_code": string (optional)
+                }
+                """
+            case .german:
+                if helpMode == .fullSolution {
+                    return """
+                    Du bist ein Swift-Assistent fuer \(topic.title) auf \(level.displayName) Niveau.
+                    Antworte nur mit gueltigem JSON, ohne Markdown.
+                    Modus: \(modeLine). Gib eine vollstaendige Loesung und erklaere kurz, wie sie funktioniert.
+                    
+                    Ausgabe:
+                    {
+                      "spoken_text": string,
+                      "task_state": "providing_solution",
+                      "is_correct": false,
+                      "solution_code": string,
+                      "explanation": string
+                    }
+                    Regeln:
+                    - solution_code: kompletter Funktions/Struct-Code zum Ersetzen von // YOUR CODE HERE.
+                    - explanation: 4-10 Saetze in einfachen Worten.
+                    """
+                }
+                
+                return """
+                Du bist ein Swift-Assistent fuer \(topic.title) auf \(level.displayName) Niveau.
+                Antworte nur mit gueltigem JSON, ohne Markdown.
+                Modus: \(modeLine). Keine vollstaendige Loesung liefern.
+                Gib einen Hinweis und optional ein kurzes Fragment (max 10-20 Zeilen).
+                
+                Ausgabe:
+                {
+                  "spoken_text": string,
+                  "task_state": "providing_hint",
+                  "is_correct": false,
+                  "hint": string,
+                  "hint_code": string (optional)
+                }
+                """
+            }
+        }
         static func codeTaskCheck(
             for topic: InterviewTopic,
             level: DeveloperLevel,
@@ -39,7 +158,7 @@ enum PromptTemplates {
                 Правила:
                 - Если решение корректно: is_correct=true, task_state="none".
                 - Если некорректно: is_correct=false, task_state="providing_hint", добавь hint (1 предложение), hint_code опционально.
-                - Никогда не возвращай aicode/correct_code в CHECK.
+                - Никогда не возвращай aicode/correct_code/solution_code/explanation в CHECK.
                 - Если пользователь просит помощь, верни is_correct=false и короткую подсказку.
                 """
             case .english:
@@ -62,7 +181,7 @@ enum PromptTemplates {
                 Rules:
                 - If correct: is_correct=true, task_state="none".
                 - If incorrect: is_correct=false, task_state="providing_hint", add hint (1 sentence), hint_code optional.
-                - Never return aicode/correct_code in CHECK.
+                - Never return aicode/correct_code/solution_code/explanation in CHECK.
                 - If user asks for help, return is_correct=false and a short hint.
                 """
             case .german:
@@ -85,7 +204,7 @@ enum PromptTemplates {
                 Regeln:
                 - Korrekt: is_correct=true, task_state="none".
                 - Falsch: is_correct=false, task_state="providing_hint", gib einen Hinweis (1 Satz), hint_code optional.
-                - Kein aicode/correct_code im CHECK.
+                - Kein aicode/correct_code/solution_code/explanation im CHECK.
                 - Wenn der Nutzer um Hilfe bittet, gib is_correct=false und einen kurzen Hinweis.
                 """
             }
