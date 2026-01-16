@@ -199,6 +199,31 @@ struct MainView: View {
                 }
                 .help("Toggle audio level debug info")
                 
+                // Task control buttons (only show when task is active)
+                if case .taskPresented = viewModel.taskState {
+                    // Help button
+                    Button(action: { viewModel.requestHelp() }) {
+                        Label("Help", systemImage: "questionmark.circle.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Get a hint for the current task")
+                    
+                    // Done button
+                    Button(action: { viewModel.confirmTaskCompletion() }) {
+                        Label("Done", systemImage: "checkmark.circle.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help("Submit your solution for review")
+                } else if case .waitingForUserConfirmation = viewModel.taskState {
+                    // Understanding confirmation button
+                    Button(action: { viewModel.confirmUnderstanding() }) {
+                        Label("I Understand", systemImage: "checkmark.circle.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help("Confirm you understand the solution")
+                }
+                
+                // Start/Stop interview button
                 Button(action: { viewModel.toggleRecording() }) {
                     Label(
                         viewModel.session.isActive ? "Stop Interview" : "Start Interview",

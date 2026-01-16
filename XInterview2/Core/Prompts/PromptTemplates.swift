@@ -23,6 +23,7 @@ enum PromptTemplates {
         ) -> String {
             let modeInstructions = ModeInstructions.forMode(mode, language: language)
             let topicInstructions = topicInstructions(for: topic, language: language)
+            let flowControlInstructions = FlowControlInstructions.forLanguage(language: language)
             let hintInstructions = HintInstructions.forLanguage(language: language)
             let contextInstructions = context.isEmpty ? "" : """
             
@@ -51,6 +52,9 @@ enum PromptTemplates {
             
             \(contextInstructions)
             
+            # Interview Flow Control
+            \(flowControlInstructions)
+            
             # Hint Detection
             \(hintInstructions)
             
@@ -60,7 +64,20 @@ enum PromptTemplates {
             
             Required fields:
             - spoken_text: Text to be spoken by TTS (string, required)
-            - aicode: Code to display in editor (string, optional, only for code tasks)
+            
+            Optional fields (use when appropriate):
+            - aicode: Code to display in editor (string, only for code tasks)
+            - task_state: Current state of the task (string)
+              - "none": No active task, normal conversation
+              - "task_presented": Code task presented, waiting for user solution
+              - "checking_solution": Analyzing user's solution
+              - "providing_hint": Giving a hint to help user
+              - "showing_solution": Showing complete correct solution
+              - "waiting_for_understanding": Waiting for user to confirm understanding
+            - hint: Text hint to help user (string, only when providing hint)
+            - hint_code: Partial code solution as hint (string, only when providing hint)
+            - correct_code: Complete correct solution (string, only when showing solution)
+            - is_correct: Whether user's solution is correct (boolean, only when checking solution)
             
             IMPORTANT: 
             - Never use markdown code blocks (triple backticks) in your response
@@ -424,6 +441,126 @@ enum PromptTemplates {
         }
     }
     
+    // MARK: - Flow Control Instructions
+    
+    enum FlowControlInstructions {
+        /// Get flow control instructions for a specific language
+        static func forLanguage(language: Language) -> String {
+            switch language {
+            case .english:
+                return """
+                ## Interview Flow Control
+                
+                When presenting a code task:
+                - Set task_state to "task_presented"
+                - Provide aicode with incomplete template (NOT full solution)
+                - Keep spoken_text extremely short (1-2 sentences describing the task)
+                - DO NOT move to next question until user confirms completion
+                
+                When user says they completed the task ("I'm done", "Finished", "Ready", "That's it"):
+                - Set task_state to "checking_solution"
+                - Analyze the current code in the editor
+                - Set is_correct to true or false based on analysis
+                - If correct: spoken_text should say "Yes, that's correct! Let's move to the next question." and set task_state to "none"
+                - CRITICAL: After confirming a correct solution, IMMEDIATELY present the next question or task with aicode. DO NOT repeat the confirmation message.
+                - If incorrect: spoken_text should give a brief hint and set task_state to "providing_hint"
+                
+                When providing a hint:
+                - Set task_state to "providing_hint"
+                - Provide hint field with a helpful suggestion (1 sentence max)
+                - Optionally provide hint_code with partial solution (NOT full solution)
+                - DO NOT overwrite the user's code completely
+                - Keep spoken_text encouraging and brief
+                
+                When user asks for help ("I don't know", "Help me", "Can't do it", "How do I do this"):
+                - Set task_state to "showing_solution"
+                - Provide correct_code with the complete solution
+                - spoken_text should say: "Here's how to do it correctly. Look and remember how this works."
+                - Then wait for user to confirm understanding
+                
+                When user confirms understanding ("I understand", "Got it", "Ready", "Understood"):
+                - Set task_state to "none"
+                - spoken_text should say: "Great! Let's move to the next question."
+                - Present the next question or task
+                """
+                
+            case .russian:
+                return """
+                ## Контроль потока интервью
+                
+                При представлении задачи по коду:
+                - Установи task_state в "task_presented"
+                - Предоставь aicode с неполным шаблоном (НЕ полное решение)
+                - Держи spoken_text максимально коротким (1-2 предложения с описанием задачи)
+                - НЕ переходи к следующему вопросу, пока пользователь не подтвердит завершение
+                
+                Когда пользователь говорит, что закончил задачу ("Готов", "Сделал", "Всё", "Закончил", "Готово"):
+                - Установи task_state в "checking_solution"
+                - Проанализируй текущий код в редакторе
+                - Установи is_correct в true или false на основе анализа
+                - Если правильно: spoken_text должен сказать "Да, всё верно! Перейдём к следующему вопросу." и установить task_state в "none"
+                - КРИТИЧНО: После подтверждения правильного решения НЕМЕДЛЕННО представь следующий вопрос или задачу с кодом. НЕ повторяй сообщение подтверждения.
+                - Если неправильно: spoken_text должен дать краткую подсказку и установить task_state в "providing_hint"
+                
+                При предоставлении подсказки:
+                - Установи task_state в "providing_hint"
+                - Предоставь поле hint с полезным предложением (максимум 1 предложение)
+                - Опционально предоставь hint_code с частичным решением (НЕ полное решение)
+                - НЕ перезаписывай код пользователя полностью
+                - Держи spoken_text ободряющим и кратким
+                
+                Когда пользователь просит помощи ("Не знаю", "Помоги", "Не могу", "Как сделать", "Подскажи"):
+                - Установи task_state в "showing_solution"
+                - Предоставь correct_code с полным решением
+                - spoken_text должен сказать: "Вот как это делается правильно. Посмотри и запомни, как это работает."
+                - Затем жди подтверждения понимания от пользователя
+                
+                Когда пользователь подтверждает понимание ("Понял", "Всё понятно", "Готов", "Понятно"):
+                - Установи task_state в "none"
+                - spoken_text должен сказать: "Отлично! Перейдём к следующему вопросу."
+                - Представь следующий вопрос или задачу
+                """
+                
+            case .german:
+                return """
+                ## Interview-Fluss-Kontrolle
+                
+                Bei Präsentation einer Code-Aufgabe:
+                - Setze task_state auf "task_presented"
+                - Stelle aicode mit unvollständiger Vorlage bereit (KEINE vollständige Lösung)
+                - Halte spoken_text extrem kurz (1-2 Sätze mit Aufgabenbeschreibung)
+                - GEH NICHT zur nächsten Frage über, bis Benutzer Bestätigung gibt
+                
+                Wenn Benutzer sagt, dass er fertig ist ("Fertig", "Erledigt", "Bereit", "Das ist es", "Geschafft"):
+                - Setze task_state auf "checking_solution"
+                - Analysiere den aktuellen Code im Editor
+                - Setze is_correct auf true oder false basierend auf Analyse
+                - Wenn korrekt: spoken_text sollte sagen "Ja, das ist korrekt! Lass uns zur nächsten Frage gehen." und task_state auf "none" setzen
+                - KRITISCH: Nach Bestätigung einer korrekten Lösung SOFORT die nächste Frage oder Aufgabe mit aicode präsentieren. Bestätigungsnachricht NICHT wiederholen.
+                - Wenn inkorrekt: spoken_text sollte einen kurzen Hinweis geben und task_state auf "providing_hint" setzen
+                
+                Bei Bereitstellung eines Hinweises:
+                - Setze task_state auf "providing_hint"
+                - Stelle Feld hint mit hilfreichem Vorschlag bereit (max 1 Satz)
+                - Optional stelle hint_code mit teilweiser Lösung bereit (KEINE vollständige Lösung)
+                - ÜBERSCHREIBE NIEMALS den Benutzercode vollständig
+                - Halte spoken_text ermutigend und kurz
+                
+                Wenn Benutzer um Hilfe bittet ("Ich weiß nicht", "Hilf mir", "Kann ich nicht", "Wie mache ich das", "Hinweis"):
+                - Setze task_state auf "showing_solution"
+                - Stelle correct_code mit vollständiger Lösung bereit
+                - spoken_text sollte sagen: "So macht man es richtig. Schau dir an und merke dir, wie es funktioniert."
+                - Warte dann auf Bestätigung des Verständnisses durch Benutzer
+                
+                Wenn Benutzer Verständnis bestätigt ("Ich verstehe", "Alles klar", "Bereit", "Verstanden"):
+                - Setze task_state auf "none"
+                - spoken_text sollte sagen: "Super! Lass uns zur nächsten Frage gehen."
+                - Stelle die nächste Frage oder Aufgabe vor
+                """
+            }
+        }
+    }
+    
     // MARK: - Hint Instructions
     
     enum HintInstructions {
@@ -436,12 +573,17 @@ enum PromptTemplates {
                 When user is stuck and says phrases like "I don't know", "Not sure", "Help me", "How do I do this?":
                 
                 For code hints:
-                - Provide aicode with exact code solution
-                - Keep spoken_text extremely short (direct hint)
+                - Set task_state to "providing_hint"
+                - Provide hint field with a guiding suggestion (1 sentence max)
+                - Optionally provide hint_code with partial solution (NOT full solution)
+                - DO NOT overwrite user's code completely
+                - Keep spoken_text encouraging and brief
                 
-                For text hints (no code):
-                - Keep spoken_text as a guiding hint
-                - Do not include aicode field
+                For showing complete solution:
+                - Set task_state to "showing_solution"
+                - Provide correct_code with the complete solution
+                - spoken_text should say: "Here's how to do it correctly. Look and remember how this works."
+                - Then wait for user to confirm understanding
                 """
                 
             case .russian:
@@ -449,13 +591,18 @@ enum PromptTemplates {
                 ## Предоставление подсказок
                 Когда пользователь застрял и говорит "Не знаю", "Не уверен", "Помоги", "Как это сделать?":
                 
-                Для подсказок с кодом:
-                - Предоставь aicode с точным решением
-                - Держи spoken_text максимально коротким (прямая подсказка)
+                Для подсказок по коду:
+                - Установи task_state в "providing_hint"
+                - Предоставь поле hint с направляющим предложением (максимум 1 предложение)
+                - Опционально предоставь hint_code с частичным решением (НЕ полное решение)
+                - НЕ перезаписывай код пользователя полностью
+                - Держи spoken_text ободряющим и кратким
                 
-                Для текстовых подсказок (без кода):
-                - Держи spoken_text как направляющую подсказку
-                - Не включай поле aicode
+                Для показа полного решения:
+                - Установи task_state в "showing_solution"
+                - Предоставь correct_code с полным решением
+                - spoken_text должен сказать: "Вот как это делается правильно. Посмотри и запомни, как это работает."
+                - Затем жди подтверждения понимания от пользователя
                 """
                 
             case .german:
@@ -464,12 +611,17 @@ enum PromptTemplates {
                 Wenn Benutzer feststeckt und sagt "Ich weiß nicht", "Nicht sicher", "Hilf mir", "Wie mache ich das?":
                 
                 Für Code-Hinweise:
-                - Stelle aicode mit exakter Lösung bereit
-                - Halte spoken_text extrem kurz (direkter Hinweis)
+                - Setze task_state auf "providing_hint"
+                    - Stelle Feld hint mit leitendem Vorschlag bereit (max 1 Satz)
+                - Optional stelle hint_code mit teilweiser Lösung bereit (KEINE vollständige Lösung)
+                - ÜBERSCHREIBE NIEMALS den Benutzercode vollständig
+                - Halte spoken_text ermutigend und kurz
                 
-                Für Text-Hinweise (kein Code):
-                - Halte spoken_text als leitenden Hinweis
-                - Füge kein aicode Feld hinzu
+                Für Anzeige der vollständigen Lösung:
+                - Setze task_state auf "showing_solution"
+                - Stelle correct_code mit vollständiger Lösung bereit
+                - spoken_text sollte sagen: "So macht man es richtig. Schau dir an und merke dir, wie es funktioniert."
+                - Warte dann auf Bestätigung des Verständnisses durch Benutzer
                 """
             }
         }

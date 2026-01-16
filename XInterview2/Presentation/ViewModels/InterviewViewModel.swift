@@ -24,6 +24,7 @@ class InterviewViewModel: ObservableObject {
     @Published var topicToEdit: InterviewTopic?
     @Published var textInput: String = ""
     @Published var isSendingTextMessage: Bool = false
+    @Published var taskState: InterviewTaskState = .noTask
     
     // MARK: - Components
     
@@ -86,6 +87,10 @@ class InterviewViewModel: ObservableObject {
         // Bind audio level
         conversationManager.$audioLevel
             .assign(to: &$audioLevel)
+        
+        // Bind task state
+        conversationManager.$taskState
+            .assign(to: &$taskState)
         
         // Bind voice threshold from settings
         voiceThreshold = settingsRepository.loadSettings().voiceThreshold
@@ -291,6 +296,44 @@ class InterviewViewModel: ObservableObject {
                 textInput = ""
                 isSendingTextMessage = false
             }
+        }
+    }
+    
+    // MARK: - Task Control Methods
+    
+    /// Confirm task completion from UI button
+    func confirmTaskCompletion() {
+        guard session.isActive else {
+            Logger.warning("Cannot confirm task - interview is not active")
+            return
+        }
+        
+        Task {
+            await conversationManager.confirmTaskCompletion()
+        }
+    }
+    
+    /// Request help from UI button
+    func requestHelp() {
+        guard session.isActive else {
+            Logger.warning("Cannot request help - interview is not active")
+            return
+        }
+        
+        Task {
+            await conversationManager.requestHelpFromUI()
+        }
+    }
+    
+    /// Confirm understanding from UI button
+    func confirmUnderstanding() {
+        guard session.isActive else {
+            Logger.warning("Cannot confirm understanding - interview is not active")
+            return
+        }
+        
+        Task {
+            await conversationManager.confirmUnderstanding()
         }
     }
     

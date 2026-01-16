@@ -17,6 +17,14 @@ enum ConversationState {
     case speaking
 }
 
+// MARK: - Interview Task State
+
+enum InterviewTaskState {
+    case noTask
+    case taskPresented(expectedSolution: String?)
+    case waitingForUserConfirmation
+}
+
 // MARK: - Conversation Manager
 
 @MainActor
@@ -26,6 +34,7 @@ class ConversationManager: ObservableObject {
     @Published var conversationState: ConversationState = .idle
     @Published var audioLevel: Float = 0.0
     @Published var isProcessing: Bool = false
+    @Published var taskState: InterviewTaskState = .noTask
     
     // MARK: - Components
     
@@ -38,6 +47,10 @@ class ConversationManager: ObservableObject {
     // Code Editor Integration
     private var currentCodeContext: CodeContext = CodeContext(currentCode: "", language: .swift, recentChanges: [])
     private var currentLevel: DeveloperLevel = .junior
+    
+    // Task State Management
+    private var currentTaskState: InterviewTaskState = .noTask
+    private var currentTaskCode: String = ""
     
     // MARK: - Properties
     
@@ -58,6 +71,7 @@ class ConversationManager: ObservableObject {
     var onAIMessage: ((String) -> Void)?
     var onError: ((String) -> Void)?
     var onCodeUpdate: ((String) -> Void)?
+    var onTaskStateChanged: ((InterviewTaskState) -> Void)?
     
     // MARK: - Initialization
     
@@ -248,16 +262,6 @@ class ConversationManager: ObservableObject {
             Logger.info("AIResponse received - spokenText: \(aiResponse.spokenText.prefix(50))...")
             Logger.info("AIResponse - hasAicode: \(aiResponse.aicode != nil)")
             
-            let response = aiResponse.spokenText
-            
-            // Apply code if present
-            if let aicode = aiResponse.aicode, !aicode.isEmpty {
-                onCodeUpdate?(aicode)
-                Logger.success("Code set in editor: \(aicode.prefix(50))...")
-            }
-            
-
-            
             // Check if stopping before proceeding
             guard !isStopping else {
                 Logger.warning("sendOpeningMessage() cancelled after getting response - isStopping=true")
@@ -265,13 +269,10 @@ class ConversationManager: ObservableObject {
             }
             
             // Add to conversation history
-            addMessage(role: TranscriptMessage.MessageRole.assistant, content: response)
+            addMessage(role: TranscriptMessage.MessageRole.assistant, content: aiResponse.spokenText)
             
-            // Notify UI
-            onAIMessage?(response)
-            
-            // Convert to speech (opening message - skip speech check to allow playback)
-            await speakResponse(response, language: language, apiKey: apiKey, skipSpeechCheck: true)
+            // Handle AI response with task state logic
+            await handleAIResponse(aiResponse, language: language, apiKey: apiKey)
             
         } catch {
             // Only handle error if not stopping
@@ -344,6 +345,61 @@ class ConversationManager: ObservableObject {
             }
             
             
+            // Check task state before processing
+            switch currentTaskState {
+            case .taskPresented:
+                // User is responding to a task
+                let language = settings.selectedLanguage
+                
+                if isCompletionPhrase(userText, language: language) {
+                    // User says they completed the task
+                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                    onUserMessage?(userText)
+                    await checkUserSolution()
+                    return
+                }
+                
+                if isHelpRequest(userText, language: language) {
+                    // User asks for help
+                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                    onUserMessage?(userText)
+                    await requestHelp()
+                    return
+                }
+                
+                // Any other text is treated as an attempt at solution
+                // Add user message to history
+                addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                onUserMessage?(userText)
+                
+                // Check the solution
+                await checkUserSolution()
+                return
+                
+            case .waitingForUserConfirmation:
+                // User is confirming understanding
+                let language = settings.selectedLanguage
+                
+                if isUnderstandingConfirmation(userText, language: language) {
+                    // User confirms understanding - move to next question
+                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                    onUserMessage?(userText)
+                    updateTaskState(.noTask)
+                    
+                    // Continue with next question
+                    // Fall through to normal processing
+                } else {
+                    // User didn't confirm understanding - ask again
+                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                    onUserMessage?(userText)
+                    return
+                }
+                
+            case .noTask:
+                // Normal conversation - no active task
+                break
+            }
+            
             // Add user message to history BEFORE calling API
             // This ensures AI has context of what user just said
             addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
@@ -375,32 +431,7 @@ class ConversationManager: ObservableObject {
                 context: contextSummary
             )
             
-            let response = aiResponse.spokenText
-            
-            // Apply code if present
-            if let aicode = aiResponse.aicode, !aicode.isEmpty {
-                onCodeUpdate?(aicode)
-                Logger.success("Code set in editor: \(aicode.prefix(50))...")
-            }
-            
-
-            
-
-            
-
-            
-            // Check if stopping after getting AI response
-            guard !isStopping else {
-                Logger.warning("processUserSpeech() cancelled after AI response - isStopping=true")
-                return
-            }
-            
-            Logger.state("AI message: '\(response)'")
-            onAIMessage?(response)
-            
-            // Convert to speech
-            Logger.state("Converting AI response to speech")
-            await speakResponse(response, language: settings.selectedLanguage, apiKey: apiKey)
+            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
             
         } catch HTTPError.requestCancelled {
             // Request was cancelled due to user speech - this is expected
@@ -564,26 +595,14 @@ class ConversationManager: ObservableObject {
                 context: contextSummary
             )
             
-            let response = aiResponse.spokenText
-            
-            // Применяем код если есть
-            if let aicode = aiResponse.aicode, !aicode.isEmpty {
-                onCodeUpdate?(aicode)
-                Logger.success("Code set in editor: \(aicode.prefix(50))...")
-            }
-            
             // Проверка флага isStopping
             guard !isStopping else {
                 Logger.warning("sendTextMessage() cancelled after AI response - isStopping=true")
                 return
             }
             
-            Logger.state("AI message: '\(response)'")
-            onAIMessage?(response)
-            
-            // Конвертируем в речь
-            Logger.state("Converting AI response to speech")
-            await speakResponse(response, language: settings.selectedLanguage, apiKey: apiKey)
+            // Handle AI response with task state logic
+            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
             
         } catch {
             guard !isStopping else {
@@ -599,6 +618,279 @@ class ConversationManager: ObservableObject {
             let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             onError?(errorMessage)
         }
+    }
+    
+    // MARK: - Task State Management
+    
+    private func updateTaskState(_ newState: InterviewTaskState) {
+        currentTaskState = newState
+        taskState = newState
+        onTaskStateChanged?(newState)
+        Logger.info("Task state updated: \(newState)")
+    }
+    
+    /// Confirm task completion from UI button
+    func confirmTaskCompletion() async {
+        Logger.info("confirmTaskCompletion() called from UI")
+        await checkUserSolution()
+    }
+    
+    /// Request help from UI button
+    func requestHelpFromUI() async {
+        Logger.info("requestHelpFromUI() called from UI")
+        await requestHelp()
+    }
+    
+    /// Confirm understanding from UI button
+    func confirmUnderstanding() async {
+        Logger.info("confirmUnderstanding() called from UI")
+        updateTaskState(.noTask)
+        
+        // Trigger next question
+        guard let topic = currentTopic else {
+            Logger.error("No current topic available")
+            return
+        }
+        
+        let settings = settingsRepository.loadSettings()
+        let apiKey = settings.apiKey
+        let contextSummary = currentContext?.getContextSummary() ?? ""
+        
+        do {
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
+            let aiResponse = try await chatService.sendMessageWithCode(
+                messages: conversationHistory,
+                codeContext: currentCodeContext,
+                topic: topic,
+                level: currentLevel,
+                language: settings.selectedLanguage,
+                mode: currentMode,
+                apiKey: apiKey,
+                context: contextSummary
+            )
+            
+            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
+            
+        } catch {
+            Logger.error("Failed to get next question", error: error)
+            onError?(error.localizedDescription)
+        }
+    }
+    
+    /// Check if text contains completion phrases
+    private func isCompletionPhrase(_ text: String, language: Language) -> Bool {
+        let lowercasedText = text.lowercased()
+        
+        switch language {
+        case .english:
+            let completionPhrases = ["done", "finished", "ready", "completed", "that's it", "that is it", "all done"]
+            return completionPhrases.contains { lowercasedText.contains($0) }
+            
+        case .russian:
+            let completionPhrases = ["готов", "сделал", "всё", "готово", "закончил", "все", "готова", "готовы"]
+            return completionPhrases.contains { lowercasedText.contains($0) }
+            
+        case .german:
+            let completionPhrases = ["fertig", "erledigt", "bereit", "geschafft", "das ist es", "alles fertig"]
+            return completionPhrases.contains { lowercasedText.contains($0) }
+        }
+    }
+    
+    /// Check if text contains help request phrases
+    private func isHelpRequest(_ text: String, language: Language) -> Bool {
+        let lowercasedText = text.lowercased()
+        
+        switch language {
+        case .english:
+            let helpPhrases = ["i don't know", "help me", "can't do it", "how do i do this", "hint", "don't know", "help"]
+            return helpPhrases.contains { lowercasedText.contains($0) }
+            
+        case .russian:
+            let helpPhrases = ["не знаю", "помоги", "не могу", "как сделать", "подскажи", "помощь"]
+            return helpPhrases.contains { lowercasedText.contains($0) }
+            
+        case .german:
+            let helpPhrases = ["ich weiß nicht", "hilf mir", "kann ich nicht", "wie mache ich das", "hinweis", "hilfe"]
+            return helpPhrases.contains { lowercasedText.contains($0) }
+        }
+    }
+    
+    /// Check if text contains understanding confirmation phrases
+    private func isUnderstandingConfirmation(_ text: String, language: Language) -> Bool {
+        let lowercasedText = text.lowercased()
+        
+        switch language {
+        case .english:
+            let confirmationPhrases = ["i understand", "got it", "ready", "understood", "i got it"]
+            return confirmationPhrases.contains { lowercasedText.contains($0) }
+            
+        case .russian:
+            let confirmationPhrases = ["понял", "всё понятно", "готов", "понятно", "все понятно"]
+            return confirmationPhrases.contains { lowercasedText.contains($0) }
+            
+        case .german:
+            let confirmationPhrases = ["ich verstehe", "alles klar", "bereit", "verstanden"]
+            return confirmationPhrases.contains { lowercasedText.contains($0) }
+        }
+    }
+    
+    /// Check user's solution
+    private func checkUserSolution() async {
+        Logger.info("checkUserSolution() called")
+        
+        guard let topic = currentTopic else {
+            Logger.error("No current topic available")
+            return
+        }
+        
+        let settings = settingsRepository.loadSettings()
+        let apiKey = settings.apiKey
+        
+        guard !apiKey.isEmpty else {
+            onError?("API key is not configured")
+            return
+        }
+        
+        do {
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
+            let contextSummary = currentContext?.getContextSummary() ?? ""
+            
+            // Add a system message indicating user is ready for solution check
+            let checkMessage = TranscriptMessage(
+                role: .user,
+                text: "I'm done with the task. Please check my solution.",
+                timestamp: Date()
+            )
+            conversationHistory.append(checkMessage)
+            
+            let aiResponse = try await chatService.sendMessageWithCode(
+                messages: conversationHistory,
+                codeContext: currentCodeContext,
+                topic: topic,
+                level: currentLevel,
+                language: settings.selectedLanguage,
+                mode: currentMode,
+                apiKey: apiKey,
+                context: contextSummary
+            )
+            
+            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
+            
+        } catch {
+            Logger.error("Failed to check solution", error: error)
+            onError?(error.localizedDescription)
+        }
+    }
+    
+    /// Request help from AI
+    private func requestHelp() async {
+        Logger.info("requestHelp() called")
+        
+        guard let topic = currentTopic else {
+            Logger.error("No current topic available")
+            return
+        }
+        
+        let settings = settingsRepository.loadSettings()
+        let apiKey = settings.apiKey
+        
+        guard !apiKey.isEmpty else {
+            onError?("API key is not configured")
+            return
+        }
+        
+        do {
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
+            let contextSummary = currentContext?.getContextSummary() ?? ""
+            
+            // Add a system message indicating user needs help
+            let helpMessage = TranscriptMessage(
+                role: .user,
+                text: "I need help with this task.",
+                timestamp: Date()
+            )
+            conversationHistory.append(helpMessage)
+            
+            let aiResponse = try await chatService.sendMessageWithCode(
+                messages: conversationHistory,
+                codeContext: currentCodeContext,
+                topic: topic,
+                level: currentLevel,
+                language: settings.selectedLanguage,
+                mode: currentMode,
+                apiKey: apiKey,
+                context: contextSummary
+            )
+            
+            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
+            
+        } catch {
+            Logger.error("Failed to request help", error: error)
+            onError?(error.localizedDescription)
+        }
+    }
+    
+    /// Handle AI response with task state logic
+    private func handleAIResponse(_ aiResponse: AIResponse, language: Language, apiKey: String) async {
+        Logger.info("handleAIResponse() - taskState: \(aiResponse.taskState?.rawValue ?? "nil"), isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
+        
+        // Update task state based on AI response
+        if let taskState = aiResponse.taskState {
+            switch taskState {
+            case .taskPresented:
+                updateTaskState(.taskPresented(expectedSolution: aiResponse.aicode))
+                currentTaskCode = aiResponse.aicode ?? ""
+                
+            case .checkingSolution:
+                // AI is checking user's solution
+                if let isCorrect = aiResponse.isCorrect {
+                    if isCorrect {
+                        updateTaskState(.noTask)
+                    } else {
+                        updateTaskState(.taskPresented(expectedSolution: nil))
+                    }
+                }
+                
+            case .providingHint:
+                // AI is giving a hint - stay in task presented state
+                updateTaskState(.taskPresented(expectedSolution: nil))
+                
+            case .showingSolution:
+                // AI is showing solution - wait for user confirmation
+                updateTaskState(.waitingForUserConfirmation)
+                
+            case .waitingForUnderstanding:
+                updateTaskState(.waitingForUserConfirmation)
+                
+            case .none:
+                updateTaskState(.noTask)
+            }
+        }
+        
+        // Apply code in editor based on state
+        if let aicode = aiResponse.aicode {
+            // If this is a hint (hintCode), don't overwrite entire code
+            if aiResponse.taskState == .providingHint {
+                // For hints, we might add logic to partially update code
+                // For now, we'll show the hint in spoken_text and keep current code
+                Logger.info("Hint provided, not overwriting user's code")
+            } else {
+                onCodeUpdate?(aicode)
+                Logger.success("Code set in editor: \(aicode.prefix(50))...")
+            }
+        }
+        
+        // Notify UI of AI message
+        onAIMessage?(aiResponse.spokenText)
+        
+        // Speak the response
+        await speakResponse(aiResponse.spokenText, language: language, apiKey: apiKey)
     }
     
     // MARK: - Helpers
