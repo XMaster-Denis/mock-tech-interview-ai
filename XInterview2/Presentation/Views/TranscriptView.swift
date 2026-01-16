@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TranscriptView: View {
     @ObservedObject var viewModel: InterviewViewModel
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -46,9 +47,69 @@ struct TranscriptView: View {
                     }
                 }
             }
+            
+            // Text Input Area
+            Divider()
+            messageInputArea
         }
         .frame(minWidth: 250)
         .background(Color(nsColor: .textBackgroundColor))
+    }
+    
+    // MARK: - Message Input Area
+    
+    private var messageInputArea: some View {
+        VStack(spacing: 8) {
+            // Text Input Field
+            TextEditor(text: $viewModel.textInput)
+                .font(.body)
+                .frame(minHeight: 44, maxHeight: 88) // 2-3 lines
+                .scrollContentBackground(.hidden)
+                .background(Color(nsColor: .textBackgroundColor))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+                .focused($isTextFieldFocused)
+                .disabled(!viewModel.session.isActive || viewModel.isSendingTextMessage)
+            
+            // Send Button
+            HStack {
+                Spacer()
+                
+                Button(action: {
+                    viewModel.sendTextMessage()
+                    isTextFieldFocused = true
+                }) {
+                    HStack(spacing: 6) {
+                        if viewModel.isSendingTextMessage {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                        }
+                        Text(viewModel.isSendingTextMessage ? "Sending..." : "Send")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(canSendMessage ? Color.accentColor : Color.gray)
+                    .cornerRadius(8)
+                }
+                .disabled(!canSendMessage)
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+        }
+        .padding(12)
+    }
+    
+    private var canSendMessage: Bool {
+        !viewModel.textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        viewModel.session.isActive &&
+        !viewModel.isSendingTextMessage
     }
 }
 

@@ -491,6 +491,86 @@ class ConversationManager: ObservableObject {
     
 
     
+    // MARK: - Text Message Handling
+    
+    /// Отправляет текстовое сообщение пользователя минуя транскрибацию аудио
+    /// - Parameter text: Текст сообщения пользователя
+    func sendTextMessage(_ text: String) async {
+        Logger.state("sendTextMessage() START - text: '\(text)'")
+        
+        // Проверка флага isStopping
+        guard !isStopping else {
+            Logger.warning("sendTextMessage() cancelled - isStopping=true")
+            return
+        }
+        
+        let settings = settingsRepository.loadSettings()
+        let apiKey = settings.apiKey
+        
+        guard !apiKey.isEmpty else {
+            Logger.error("API key is not configured")
+            onError?("API key is not configured")
+            return
+        }
+        
+        do {
+            // Добавляем сообщение пользователя в историю
+            Logger.state("Adding user message to history")
+            addMessage(role: TranscriptMessage.MessageRole.user, content: text)
+            onUserMessage?(text)
+            
+            // Получаем ответ от AI
+            guard let topic = currentTopic else {
+                Logger.error("No current topic available")
+                return
+            }
+            
+            let contextSummary = currentContext?.getContextSummary() ?? ""
+            
+            let aiResponse = try await chatService.sendMessageWithCode(
+                messages: conversationHistory,
+                codeContext: currentCodeContext,
+                topic: topic,
+                level: currentLevel,
+                language: settings.selectedLanguage,
+                mode: currentMode,
+                apiKey: apiKey,
+                context: contextSummary
+            )
+            
+            let response = aiResponse.spokenText
+            
+            // Применяем код если есть
+            if let aicode = aiResponse.aicode, !aicode.isEmpty {
+                onCodeUpdate?(aicode)
+                Logger.success("Code set in editor: \(aicode.prefix(50))...")
+            }
+            
+            // Проверка флага isStopping
+            guard !isStopping else {
+                Logger.warning("sendTextMessage() cancelled after AI response - isStopping=true")
+                return
+            }
+            
+            Logger.state("AI message: '\(response)'")
+            onAIMessage?(response)
+            
+            // Конвертируем в речь
+            Logger.state("Converting AI response to speech")
+            await speakResponse(response, language: settings.selectedLanguage, apiKey: apiKey)
+            
+        } catch {
+            guard !isStopping else {
+                Logger.warning("sendTextMessage() error cancelled due to stop")
+                return
+            }
+            
+            Logger.error("Failed to send text message", error: error)
+            let errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            onError?(errorMessage)
+        }
+    }
+    
     // MARK: - Helpers
     
     private func addMessage(role: TranscriptMessage.MessageRole, content: String) {

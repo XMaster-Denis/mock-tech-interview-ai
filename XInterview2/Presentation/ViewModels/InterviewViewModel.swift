@@ -22,6 +22,8 @@ class InterviewViewModel: ObservableObject {
     @Published var topics: [InterviewTopic] = []
     @Published var isEditingTopic = false
     @Published var topicToEdit: InterviewTopic?
+    @Published var textInput: String = ""
+    @Published var isSendingTextMessage: Bool = false
     
     // MARK: - Components
     
@@ -263,6 +265,34 @@ class InterviewViewModel: ObservableObject {
             timestamp: Date()
         )
         session.transcript.append(message)
+    }
+    
+    // MARK: - Text Message Handling
+    
+    /// Отправляет текстовое сообщение пользователя
+    func sendTextMessage() {
+        let text = textInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !text.isEmpty else {
+            Logger.warning("Cannot send empty text message")
+            return
+        }
+        
+        guard session.isActive else {
+            errorMessage = "Please start the interview first"
+            Logger.warning("Cannot send message - interview is not active")
+            return
+        }
+        
+        isSendingTextMessage = true
+        
+        Task {
+            await conversationManager.sendTextMessage(text)
+            await MainActor.run {
+                textInput = ""
+                isSendingTextMessage = false
+            }
+        }
     }
     
     // MARK: - Computed Properties
