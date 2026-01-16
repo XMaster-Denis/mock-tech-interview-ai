@@ -905,11 +905,12 @@ class ConversationManager: ObservableObject {
         
         // Check if this is a correct solution confirmation (we need to request next question after TTS)
         // Only rely on is_correct flag, ignore task_state completely
-        if aiResponse.isCorrect == true {
+        // But prevent infinite loop when we're already requesting next question
+        if aiResponse.isCorrect == true && !isRequestingNextQuestion {
             Logger.info("Correct solution detected - will request next question after TTS")
             shouldRequestNextQuestion = true
         } else {
-            Logger.info("NOT requesting next question - isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
+            Logger.info("NOT requesting next question - isCorrect: \(aiResponse.isCorrect?.description ?? "nil"), isRequestingNextQuestion: \(isRequestingNextQuestion)")
         }
         
         // Update task state based on AI response
