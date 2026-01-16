@@ -84,7 +84,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         Logger.network("Conversation history count: \(messages.count)")
         Logger.network("Context length: \(context.count) chars")
         
-        let systemPrompt = HybridInterviewPrompt.generate(
+        let systemPrompt = PromptTemplates.System.hybridInterview(
             for: topic,
             level: level,
             language: language,
@@ -307,49 +307,18 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         topic: InterviewTopic,
         level: DeveloperLevel
     ) -> String {
-        return """
-        Analyze this Swift code for errors and issues.
-        
-        Topic: \(topic.title)
-        Level: \(level.displayName)
-        
-        Code:
-        ```
-        \(code)
-        ```
-        
-        Return JSON in this format:
-        {
-            "errors": [
-                {
-                    "range": {"location": start_index, "length": length},
-                    "message": "error message",
-                    "severity": "error|warning",
-                    "line": line_number
-                }
-            ]
-        }
-        """
+        return PromptTemplates.CodeAnalysis.analyzeErrors(
+            code: code,
+            topic: topic,
+            level: level
+        )
     }
     
     private func buildEvaluationPrompt(code: String, context: CodeContext) -> String {
-        return """
-        Evaluate this code submission.
-        
-        Current code:
-        ```
-        \(code)
-        ```
-        
-        Return JSON in this format:
-        {
-            "is_correct": true|false,
-            "feedback": "Brief feedback (1 sentence)",
-            "suggestions": ["hint 1", "hint 2"],
-            "severity": "info|warning|error",
-            "issue_lines": [1, 2, 3]
-        }
-        """
+        return PromptTemplates.CodeEvaluation.evaluateCode(
+            code: code,
+            context: context
+        )
     }
     
     private func parseCodeErrors(_ json: String, code: String) -> [CodeError] {

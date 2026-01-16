@@ -301,7 +301,7 @@ class ConversationManager: ObservableObject {
         
         do {
             // Transcribe audio with technical prompt and temperature
-            let prompt = WhisperPrompts.prompt(for: settings.selectedLanguage)
+            let prompt = PromptTemplates.Whisper.prompt(for: settings.selectedLanguage)
             Logger.state("Calling whisperService.transcribe() with prompt and temperature")
             let userText = try await whisperService.transcribe(
                 audioData: audioData,
