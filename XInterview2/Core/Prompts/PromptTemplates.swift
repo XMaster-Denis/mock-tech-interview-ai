@@ -461,9 +461,14 @@ enum PromptTemplates {
                 - Set task_state to "checking_solution"
                 - Analyze the current code in the editor
                 - Set is_correct to true or false based on analysis
-                - If correct: spoken_text should say "Yes, that's correct! Let's move to the next question." and set task_state to "none"
-                - CRITICAL: After confirming a correct solution, IMMEDIATELY present the next question or task with aicode. DO NOT repeat the confirmation message.
-                - If incorrect: spoken_text should give a brief hint and set task_state to "providing_hint"
+                - If correct:
+                  - Set task_state to "none"
+                  - Set is_correct to true
+                  - spoken_text should contain a diverse confirmation phrase (use different variations: "Excellent!", "Great job!", "That's correct!", "Perfect!", "Well done!", "Right!", "Spot on!", "Nice work!", etc.)
+                  - DO NOT include the next question in this response - the system will request the next question automatically
+                - If incorrect:
+                  - Set task_state to "providing_hint"
+                  - spoken_text should give a brief hint
                 
                 When providing a hint:
                 - Set task_state to "providing_hint"
@@ -498,9 +503,14 @@ enum PromptTemplates {
                 - Установи task_state в "checking_solution"
                 - Проанализируй текущий код в редакторе
                 - Установи is_correct в true или false на основе анализа
-                - Если правильно: spoken_text должен сказать "Да, всё верно! Перейдём к следующему вопросу." и установить task_state в "none"
-                - КРИТИЧНО: После подтверждения правильного решения НЕМЕДЛЕННО представь следующий вопрос или задачу с кодом. НЕ повторяй сообщение подтверждения.
-                - Если неправильно: spoken_text должен дать краткую подсказку и установить task_state в "providing_hint"
+                - Если правильно:
+                  - Установи task_state в "none"
+                  - Установи is_correct в true
+                  - spoken_text должен содержать разнообразную фразу подтверждения (используй разные варианты: "Отлично!", "Молодец!", "Правильно!", "Супер!", "Всё верно!", "Так держать!", "Хорошая работа!", "Точно!", "Отличная работа!" и т.д.)
+                  - НЕ включай следующий вопрос в этот ответ - система сама запросит следующий вопрос
+                - Если неправильно:
+                  - Установи task_state в "providing_hint"
+                  - spoken_text должен дать краткую подсказку
                 
                 При предоставлении подсказки:
                 - Установи task_state в "providing_hint"
@@ -535,9 +545,14 @@ enum PromptTemplates {
                 - Setze task_state auf "checking_solution"
                 - Analysiere den aktuellen Code im Editor
                 - Setze is_correct auf true oder false basierend auf Analyse
-                - Wenn korrekt: spoken_text sollte sagen "Ja, das ist korrekt! Lass uns zur nächsten Frage gehen." und task_state auf "none" setzen
-                - KRITISCH: Nach Bestätigung einer korrekten Lösung SOFORT die nächste Frage oder Aufgabe mit aicode präsentieren. Bestätigungsnachricht NICHT wiederholen.
-                - Wenn inkorrekt: spoken_text sollte einen kurzen Hinweis geben und task_state auf "providing_hint" setzen
+                - Wenn korrekt:
+                  - Setze task_state auf "none"
+                  - Setze is_correct auf true
+                  - spoken_text sollte eine vielfältige Bestätigungsphrase enthalten (verwende verschiedene Variationen: "Ausgezeichnet!", "Gut gemacht!", "Das ist korrekt!", "Perfekt!", "Weiter so!", "Richtig!", "Treffer!", "Gute Arbeit!" usw.)
+                  - SCHLIESSE die nächste Frage NICHT in diese Antwort ein - das System wird die nächste Frage automatisch anfordern
+                - Wenn inkorrekt:
+                  - Setze task_state auf "providing_hint"
+                  - spoken_text sollte einen kurzen Hinweis geben
                 
                 Bei Bereitstellung eines Hinweises:
                 - Setze task_state auf "providing_hint"

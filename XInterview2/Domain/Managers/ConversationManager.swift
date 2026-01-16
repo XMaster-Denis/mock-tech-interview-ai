@@ -65,6 +65,9 @@ class ConversationManager: ObservableObject {
     // This prevents cancelling requests mid-flight when user starts speaking
     private var isProcessingChatRequest: Bool = false
     
+    // Flag to track if we need to request the next question after TTS completes
+    private var shouldRequestNextQuestion: Bool = false
+    
     // MARK: - Callbacks
     
     var onUserMessage: ((String) -> Void)?
@@ -211,12 +214,22 @@ class ConversationManager: ObservableObject {
     private func handleTTSCancelled() {
         Logger.state("TTS was cancelled by user")
         conversationState = .listening
+        shouldRequestNextQuestion = false
     }
     
     private func handleTTSCompleted() {
         Logger.state("TTS completed")
         conversationState = .listening
         isProcessing = false
+        
+        // Check if we need to request the next question
+        if shouldRequestNextQuestion {
+            Logger.state("Requesting next question after TTS completion")
+            shouldRequestNextQuestion = false
+            Task {
+                await requestNextQuestion()
+            }
+        }
     }
     
     // MARK: - Message Processing
@@ -786,6 +799,42 @@ class ConversationManager: ObservableObject {
         }
     }
     
+    /// Request next question after correct solution
+    private func requestNextQuestion() async {
+        Logger.info("requestNextQuestion() called")
+        
+        guard let topic = currentTopic else {
+            Logger.error("No current topic available")
+            return
+        }
+        
+        let settings = settingsRepository.loadSettings()
+        let apiKey = settings.apiKey
+        let contextSummary = currentContext?.getContextSummary() ?? ""
+        
+        do {
+            isProcessingChatRequest = true
+            defer { isProcessingChatRequest = false }
+            
+            let aiResponse = try await chatService.sendMessageWithCode(
+                messages: conversationHistory,
+                codeContext: currentCodeContext,
+                topic: topic,
+                level: currentLevel,
+                language: settings.selectedLanguage,
+                mode: currentMode,
+                apiKey: apiKey,
+                context: contextSummary
+            )
+            
+            await handleAIResponse(aiResponse, language: settings.selectedLanguage, apiKey: apiKey)
+            
+        } catch {
+            Logger.error("Failed to get next question", error: error)
+            onError?(error.localizedDescription)
+        }
+    }
+    
     /// Request help from AI
     private func requestHelp() async {
         Logger.info("requestHelp() called")
@@ -839,6 +888,12 @@ class ConversationManager: ObservableObject {
     /// Handle AI response with task state logic
     private func handleAIResponse(_ aiResponse: AIResponse, language: Language, apiKey: String) async {
         Logger.info("handleAIResponse() - taskState: \(aiResponse.taskState?.rawValue ?? "nil"), isCorrect: \(aiResponse.isCorrect?.description ?? "nil")")
+        
+        // Check if this is a correct solution confirmation (we need to request next question after TTS)
+        if aiResponse.isCorrect == true && aiResponse.taskState == TaskState.none {
+            Logger.info("Correct solution detected - will request next question after TTS")
+            shouldRequestNextQuestion = true
+        }
         
         // Update task state based on AI response
         if let taskState = aiResponse.taskState {

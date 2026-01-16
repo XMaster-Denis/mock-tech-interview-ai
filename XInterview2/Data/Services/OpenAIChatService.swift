@@ -63,8 +63,47 @@ struct ChatResponse: Codable {
 class OpenAIChatService: OpenAIChatServiceProtocol {
     private let httpClient: HTTPClient
     
+    // Cache for system prompt to save tokens
+    private var cachedSystemPrompt: String?
+    private var cachedPromptKey: String?
+    
     init(httpClient: HTTPClient = DefaultHTTPClient()) {
         self.httpClient = httpClient
+    }
+    
+    /// Get system prompt with caching to save tokens
+    private func getSystemPrompt(
+        topic: InterviewTopic,
+        level: DeveloperLevel,
+        language: Language,
+        mode: InterviewMode,
+        context: String
+    ) -> String {
+        // Create a unique key for the prompt configuration
+        let promptKey = "\(topic.id.uuidString)-\(level.rawValue)-\(language.rawValue)-\(mode.rawValue)-\(context.hashValue)"
+        
+        // Return cached prompt if available and key matches
+        if let cachedKey = cachedPromptKey,
+           cachedKey == promptKey,
+           let cachedPrompt = cachedSystemPrompt {
+            Logger.debug("Using cached system prompt")
+            return cachedPrompt
+        }
+        
+        // Generate new prompt and cache it
+        Logger.debug("Generating new system prompt")
+        let newPrompt = PromptTemplates.System.hybridInterview(
+            for: topic,
+            level: level,
+            language: language,
+            mode: mode,
+            context: context
+        )
+        
+        cachedPromptKey = promptKey
+        cachedSystemPrompt = newPrompt
+        
+        return newPrompt
     }
     
     // MARK: - OpenAIChatServiceProtocol Implementation
@@ -80,8 +119,9 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         context: String
     ) async throws -> AIResponse {
         
-        let systemPrompt = PromptTemplates.System.hybridInterview(
-            for: topic,
+        // Use cached system prompt to save tokens
+        let systemPrompt = getSystemPrompt(
+            topic: topic,
             level: level,
             language: language,
             mode: mode,
