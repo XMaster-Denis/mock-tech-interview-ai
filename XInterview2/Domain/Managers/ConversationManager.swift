@@ -827,6 +827,14 @@ class ConversationManager: ObservableObject {
                 isRequestingNextQuestion = false
             }
             
+            // Add a message to indicate we want the next question
+            let nextQuestionMessage = TranscriptMessage(
+                role: .user,
+                text: "Please provide the next question.",
+                timestamp: Date()
+            )
+            conversationHistory.append(nextQuestionMessage)
+            
             let aiResponse = try await chatService.sendMessageWithCode(
                 messages: conversationHistory,
                 codeContext: currentCodeContext,
