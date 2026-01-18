@@ -82,6 +82,18 @@ class ContextRepository {
         }
     }
     
+    func getLatestContext(topicId: UUID, level: DeveloperLevel, language: Language) -> InterviewContext? {
+        switch loadAllContexts() {
+        case .success(let contexts):
+            return contexts
+                .filter { $0.topicId == topicId && $0.levelRaw == level.rawValue && $0.languageRaw == language.rawValue }
+                .sorted { $0.lastUpdated > $1.lastUpdated }
+                .first
+        case .failure:
+            return nil
+        }
+    }
+    
     func saveContext(_ context: InterviewContext) -> Result<Void, ContextRepositoryError> {
         switch loadAllContexts() {
         case .success(var contexts):

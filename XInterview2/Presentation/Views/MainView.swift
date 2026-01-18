@@ -47,6 +47,10 @@ struct MainView: View {
                     
                     CodeEditorView(
                         code: $viewModel.code,
+                        hintText: viewModel.hintText,
+                        hintCode: viewModel.hintCode,
+                        solutionCode: viewModel.solutionCode,
+                        solutionExplanation: viewModel.solutionExplanation,
                         language: .swift,
                         isEditable: true
                     )

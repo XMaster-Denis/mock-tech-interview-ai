@@ -25,6 +25,10 @@ class InterviewViewModel: ObservableObject {
     @Published var textInput: String = ""
     @Published var isSendingTextMessage: Bool = false
     @Published var taskState: InterviewTaskState = .noTask
+    @Published var hintText: String?
+    @Published var hintCode: String?
+    @Published var solutionCode: String?
+    @Published var solutionExplanation: String?
     
     // MARK: - Components
     
@@ -34,6 +38,7 @@ class InterviewViewModel: ObservableObject {
     private let ttsService: OpenAITTSServiceProtocol
     private let settingsRepository: SettingsRepositoryProtocol
     private let topicsRepository: TopicsRepository
+    private let contextRepository: ContextRepository
     
     // MARK: - Properties
     
@@ -65,6 +70,7 @@ class InterviewViewModel: ObservableObject {
         self.ttsService = ttsService
         self.settingsRepository = settingsRepository
         self.topicsRepository = topicsRepository
+        self.contextRepository = ContextRepository()
         
         // Initialize ConversationManager on MainActor
         self.conversationManager = ConversationManager(
@@ -111,6 +117,24 @@ class InterviewViewModel: ObservableObject {
         // Setup code update callback
         conversationManager.onCodeUpdate = { [weak self] newCode in
             self?.code = newCode
+        }
+        
+        conversationManager.onHintUpdate = { [weak self] hint, hintCode in
+            self?.hintText = hint
+            self?.hintCode = hintCode
+            self?.solutionCode = nil
+            self?.solutionExplanation = nil
+        }
+        
+        conversationManager.onSolutionUpdate = { [weak self] solutionCode, explanation in
+            self?.solutionCode = solutionCode
+            self?.solutionExplanation = explanation
+            self?.hintText = nil
+            self?.hintCode = nil
+        }
+        
+        conversationManager.onContextUpdated = { [weak self] context in
+            _ = self?.contextRepository.saveContext(context)
         }
         
         // Sync code changes to ConversationManager
@@ -199,14 +223,31 @@ class InterviewViewModel: ObservableObject {
         // Update mode in conversation manager before starting
         conversationManager.updateInterviewMode(session.topic.interviewMode)
         
-        // Initialize context if not present
-        if session.context == nil {
-            session.context = InterviewContext(sessionId: session.id)
+        // Initialize or load context
+        let language = settings.selectedLanguage
+        let topicId = session.topic.id
+        if let previousContext = contextRepository.getLatestContext(
+            topicId: topicId,
+            level: session.topic.level,
+            language: language
+        ) {
+            session.context = previousContext
+        } else if session.context == nil {
+            session.context = InterviewContext(
+                sessionId: session.id,
+                topicId: topicId,
+                levelRaw: session.topic.level.rawValue,
+                languageRaw: language.rawValue
+            )
         }
         
         session.isActive = true
         session.startTime = Date()
-        conversationManager.startConversation(topic: session.topic, language: settings.selectedLanguage)
+        conversationManager.startConversation(
+            topic: session.topic,
+            language: settings.selectedLanguage,
+            context: session.context
+        )
     }
     
     func stopInterview() {

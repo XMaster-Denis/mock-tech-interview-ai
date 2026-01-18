@@ -54,6 +54,8 @@ class ConversationManager: ObservableObject {
     private var currentTaskText: String = ""
     private var recentTopics: [String] = []
     private let maxRecentTopics = 5
+    private var cachedNextTaskResponse: AIResponse?
+    private var isPrefetchingNextTask: Bool = false
     
     // MARK: - Properties
     
@@ -83,6 +85,9 @@ class ConversationManager: ObservableObject {
     var onError: ((String) -> Void)?
     var onCodeUpdate: ((String) -> Void)?
     var onTaskStateChanged: ((InterviewTaskState) -> Void)?
+    var onHintUpdate: ((String?, String?) -> Void)?
+    var onSolutionUpdate: ((String?, String?) -> Void)?
+    var onContextUpdated: ((InterviewContext) -> Void)?
     
     // MARK: - Initialization
     
@@ -138,6 +143,18 @@ class ConversationManager: ObservableObject {
         conversationState = .listening
         currentTopic = topic
         currentContext = context
+        cachedNextTaskResponse = nil
+        isPrefetchingNextTask = false
+        recentTopics = context?.recentTopics ?? []
+        if currentContext?.topicId == nil {
+            currentContext?.topicId = topic.id
+        }
+        if currentContext?.levelRaw == nil {
+            currentContext?.levelRaw = currentLevel.rawValue
+        }
+        if currentContext?.languageRaw == nil {
+            currentContext?.languageRaw = language.rawValue
+        }
         
         // Load settings and update voice threshold, silence timeout, and min speech level
         let settings = settingsRepository.loadSettings()
@@ -159,6 +176,8 @@ class ConversationManager: ObservableObject {
         conversationState = .idle
         currentTopic = nil
         currentContext = nil
+        cachedNextTaskResponse = nil
+        isPrefetchingNextTask = false
         
         audioManager.stopListening()
         audioManager.stopPlayback()
@@ -213,7 +232,16 @@ class ConversationManager: ObservableObject {
             shouldRequestNextQuestion = false
             Logger.debug("🚀 Calling requestNextQuestion()")
             Task {
-                await requestNextQuestion()
+                if let cached = cachedNextTaskResponse {
+                    cachedNextTaskResponse = nil
+                    isRequestingNextQuestion = true
+                    let settings = settingsRepository.loadSettings()
+                    await Task.yield()
+                    await handleAIResponse(cached, language: settings.selectedLanguage, apiKey: settings.apiKey)
+                    isRequestingNextQuestion = false
+                } else {
+                    await requestNextQuestion()
+                }
             }
         } else {
             Logger.debug("⏭️ Not requesting next question (shouldRequestNextQuestion=false)")
@@ -469,6 +497,11 @@ class ConversationManager: ObservableObject {
             conversationState = .speaking
             try await audioManager.speak(audioData, canBeInterrupted: true, skipSpeechCheck: skipSpeechCheck)
             
+            if !audioManager.isSpeaking {
+                conversationState = .listening
+                isProcessing = false
+            }
+            
         } catch let error as NSError where error.code == NSURLErrorCancelled || (error.domain == "AudioManager" && error.code == -1) {
             // TTS was cancelled due to user speech - this is expected
             // Reset state without showing error
@@ -721,6 +754,15 @@ class ConversationManager: ObservableObject {
             return
         }
         
+        if let cached = cachedNextTaskResponse {
+            cachedNextTaskResponse = nil
+            isRequestingNextQuestion = true
+            let settings = settingsRepository.loadSettings()
+            await handleAIResponse(cached, language: settings.selectedLanguage, apiKey: settings.apiKey)
+            isRequestingNextQuestion = false
+            return
+        }
+        
         let settings = settingsRepository.loadSettings()
         let apiKey = settings.apiKey
         let contextSummary = buildGenContext(language: settings.selectedLanguage)
@@ -752,6 +794,39 @@ class ConversationManager: ObservableObject {
         } catch {
             Logger.error("Failed to get next question", error: error)
             onError?(error.localizedDescription)
+        }
+    }
+    
+    private func prefetchNextTask() {
+        guard !isPrefetchingNextTask else { return }
+        guard cachedNextTaskResponse == nil else { return }
+        guard let topic = currentTopic else { return }
+        
+        let settings = settingsRepository.loadSettings()
+        let apiKey = settings.apiKey
+        if apiKey.isEmpty { return }
+        
+        isPrefetchingNextTask = true
+        let contextSummary = buildGenContext(language: settings.selectedLanguage)
+        
+        Task {
+            do {
+                let response = try await chatService.sendMessageWithCode(
+                    messages: [],
+                    codeContext: currentCodeContext,
+                    topic: topic,
+                    level: currentLevel,
+                    language: settings.selectedLanguage,
+                    mode: currentMode,
+                    llmMode: .generateTask,
+                    apiKey: apiKey,
+                    context: contextSummary
+                )
+                cachedNextTaskResponse = response
+            } catch {
+                Logger.error("Prefetch next task failed", error: error)
+            }
+            isPrefetchingNextTask = false
         }
     }
     
@@ -804,6 +879,7 @@ class ConversationManager: ObservableObject {
         if lastLLMMode?.isCheckSolution == true, aiResponse.isCorrect == true, !isRequestingNextQuestion {
             shouldRequestNextQuestion = true
             Logger.debug("✅ Set shouldRequestNextQuestion=true because isCorrect=true")
+            prefetchNextTask()
         }
         
         // Update task state based on AI response
@@ -813,6 +889,8 @@ class ConversationManager: ObservableObject {
                 updateTaskState(.taskPresented(expectedSolution: aiResponse.aicode))
                 currentTaskCode = aiResponse.aicode ?? ""
                 currentTaskText = aiResponse.spokenText
+                onHintUpdate?(nil, nil)
+                onSolutionUpdate?(nil, nil)
                 if recentTopics.last != aiResponse.spokenText {
                     recentTopics.append(aiResponse.spokenText)
                 }
@@ -820,6 +898,9 @@ class ConversationManager: ObservableObject {
                     recentTopics = Array(recentTopics.suffix(maxRecentTopics))
                 }
                 currentContext?.updateRecentTask(taskText: aiResponse.spokenText, maxTopics: maxRecentTopics)
+                if let context = currentContext {
+                    onContextUpdated?(context)
+                }
                 
             case .checkingSolution:
                 // AI is checking user's solution
@@ -834,10 +915,12 @@ class ConversationManager: ObservableObject {
             case .providingHint:
                 // AI is giving a hint - stay in task presented state
                 updateTaskState(.taskPresented(expectedSolution: nil))
+                onHintUpdate?(aiResponse.hint, aiResponse.hintCode)
                 
             case .providingSolution:
                 // AI is providing full solution - keep task active
                 updateTaskState(.taskPresented(expectedSolution: nil))
+                onSolutionUpdate?(aiResponse.solutionCode, aiResponse.explanation)
                 
             case .showingSolution:
                 // AI is showing solution - wait for user confirmation
@@ -856,9 +939,7 @@ class ConversationManager: ObservableObject {
         }
         
         // Apply code in editor based on state
-        if let solutionCode = aiResponse.solutionCode, aiResponse.taskState == .providingSolution {
-            onCodeUpdate?(solutionCode)
-        } else if let aicode = aiResponse.aicode {
+        if let aicode = aiResponse.aicode {
             // If this is a hint (hintCode), don't overwrite entire code
             if aiResponse.taskState == .providingHint {
                 // For hints, we might add logic to partially update code
@@ -960,13 +1041,13 @@ class ConversationManager: ObservableObject {
     private func buildGenContext(language: Language) -> String {
         let recent = recentTopics.suffix(maxRecentTopics)
         let recentLine = recent.isEmpty ? "recent_topics: none" : "recent_topics: \(recent.joined(separator: "; "))"
-        let avoidLine = "avoid: none"
+        let avoidLine = recent.isEmpty ? "avoid: none" : "avoid: \(recent.joined(separator: "; "))"
         
         switch language {
         case .russian:
             return """
             recent_topics: \(recent.isEmpty ? "none" : recent.joined(separator: "; "))
-            avoid: none
+            \(avoidLine)
             """
         case .english:
             return """

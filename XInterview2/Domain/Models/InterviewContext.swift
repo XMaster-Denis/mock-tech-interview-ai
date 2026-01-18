@@ -85,6 +85,9 @@ struct Mistake: Identifiable, Codable {
 /// Overall context of an interview session for AI continuation
 struct InterviewContext: Codable {
     let sessionId: UUID
+    var topicId: UUID?
+    var levelRaw: String?
+    var languageRaw: String?
     var discussionPoints: [DiscussionPoint]
     var completedTasks: [CompletedTask]
     var mistakes: [Mistake]
@@ -97,6 +100,9 @@ struct InterviewContext: Codable {
     
     init(
         sessionId: UUID = UUID(),
+        topicId: UUID? = nil,
+        levelRaw: String? = nil,
+        languageRaw: String? = nil,
         discussionPoints: [DiscussionPoint] = [],
         completedTasks: [CompletedTask] = [],
         mistakes: [Mistake] = [],
@@ -108,6 +114,9 @@ struct InterviewContext: Codable {
         lastUpdated: Date = Date()
     ) {
         self.sessionId = sessionId
+        self.topicId = topicId
+        self.levelRaw = levelRaw
+        self.languageRaw = languageRaw
         self.discussionPoints = discussionPoints
         self.completedTasks = completedTasks
         self.mistakes = mistakes
