@@ -67,10 +67,10 @@ class VoiceDetector: NSObject, ObservableObject {
     private var silenceTimeout: TimeInterval
     
     /// Минимальная длительность речи для валидации (фильтрация коротких шумов)
-    private let minSpeechDuration: TimeInterval = 0.2
+    private let minSpeechDuration: TimeInterval = 0.5
     
     /// Минимальный средний уровень аудио для валидации речи (фильтрация тихих шумов)
-    private var minSpeechLevel: Float = 0.04
+    private var minSpeechLevel: Float = 0.1//0.04
     
     /// Максимальная длительность записи (защита от бесконечной записи)
     private let maxRecordingDuration: TimeInterval = 30.0

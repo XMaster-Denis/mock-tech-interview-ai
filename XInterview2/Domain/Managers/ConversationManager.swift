@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import AVFoundation
 
 // MARK: - Conversation State
 
@@ -208,7 +209,7 @@ class ConversationManager: ObservableObject {
     }
     
     private func handleUserSpeechEnded(audioData: Data) {
-        guard conversationState != .speaking else {
+        guard conversationState == .listening else {
             return
         }
         
@@ -338,6 +339,15 @@ class ConversationManager: ObservableObject {
         }
         
         do {
+            let minDuration: TimeInterval = 0.35
+            let minLevel = settings.minSpeechLevel
+            if !shouldTranscribe(audioData: audioData, minDuration: minDuration, minLevel: minLevel) {
+                Logger.warning("Speech ignored: too short or too quiet (minDuration=\(minDuration), minLevel=\(minLevel))")
+                conversationState = .listening
+                isProcessing = false
+                return
+            }
+            
             // Transcribe audio with technical prompt and temperature
             let prompt = PromptTemplates.Whisper.prompt(for: settings.selectedLanguage)
             let userText = try await whisperService.transcribe(
@@ -359,7 +369,6 @@ class ConversationManager: ObservableObject {
                 isProcessing = false
                 return
             }
-            
             
             // Check task state before processing
             switch currentTaskState {
@@ -985,6 +994,68 @@ class ConversationManager: ObservableObject {
             timestamp: Date()
         )
         conversationHistory.append(message)
+    }
+    
+    
+    private func shouldTranscribe(audioData: Data, minDuration: TimeInterval, minLevel: Float) -> Bool {
+        guard !audioData.isEmpty else {
+            return false
+        }
+        
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("speech-\(UUID().uuidString)")
+            .appendingPathExtension("wav")
+        
+        do {
+            try audioData.write(to: tempURL)
+            defer { try? FileManager.default.removeItem(at: tempURL) }
+            
+            let audioFile = try AVAudioFile(forReading: tempURL)
+            let format = audioFile.processingFormat
+            let duration = Double(audioFile.length) / format.sampleRate
+            if duration < minDuration {
+                Logger.warning("Speech too short: \(duration)s < \(minDuration)s")
+                return false
+            }
+            
+            let frameCount = AVAudioFrameCount(audioFile.length)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+                return true
+            }
+            try audioFile.read(into: buffer)
+            
+            guard let channelData = buffer.floatChannelData else {
+                return true
+            }
+            
+            let channelCount = Int(format.channelCount)
+            let frameLength = Int(buffer.frameLength)
+            if frameLength == 0 {
+                return false
+            }
+            
+            var sumSquares: Double = 0
+            var totalSamples = 0
+            for channel in 0..<channelCount {
+                let data = channelData[channel]
+                for i in 0..<frameLength {
+                    let sample = Double(data[i])
+                    sumSquares += sample * sample
+                }
+                totalSamples += frameLength
+            }
+            
+            let rms = sqrt(sumSquares / Double(totalSamples))
+            if Float(rms) < minLevel {
+                Logger.warning("Speech too quiet: rms=\(rms) < \(minLevel)")
+                return false
+            }
+            
+            return true
+        } catch {
+            Logger.warning("Speech validation failed, letting it pass: \(error.localizedDescription)")
+            return true
+        }
     }
     
     private func buildCheckContext(language: Language, isHelpRequest: Bool) -> String {
