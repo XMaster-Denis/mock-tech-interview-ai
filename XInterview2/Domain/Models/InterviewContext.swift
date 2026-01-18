@@ -93,6 +93,7 @@ struct InterviewContext: Codable {
     var mistakes: [Mistake]
     var strengths: [String]
     var weaknesses: [String]
+    var recentQuestions: [String]
     var lastTaskId: UUID?
     var lastTaskText: String
     var recentTopics: [String]
@@ -108,6 +109,7 @@ struct InterviewContext: Codable {
         mistakes: [Mistake] = [],
         strengths: [String] = [],
         weaknesses: [String] = [],
+        recentQuestions: [String] = [],
         lastTaskId: UUID? = nil,
         lastTaskText: String = "",
         recentTopics: [String] = [],
@@ -122,6 +124,7 @@ struct InterviewContext: Codable {
         self.mistakes = mistakes
         self.strengths = strengths
         self.weaknesses = weaknesses
+        self.recentQuestions = recentQuestions
         self.lastTaskId = lastTaskId
         self.lastTaskText = lastTaskText
         self.recentTopics = recentTopics
@@ -248,6 +251,20 @@ struct InterviewContext: Codable {
             recentTopics.append(trimmed)
             if recentTopics.count > maxTopics {
                 recentTopics = Array(recentTopics.suffix(maxTopics))
+            }
+        }
+        
+        touch()
+    }
+    
+    mutating func updateRecentQuestion(_ question: String, maxQuestions: Int = 10) {
+        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        if recentQuestions.last != trimmed {
+            recentQuestions.append(trimmed)
+            if recentQuestions.count > maxQuestions {
+                recentQuestions = Array(recentQuestions.suffix(maxQuestions))
             }
         }
         

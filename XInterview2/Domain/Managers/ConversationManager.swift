@@ -54,6 +54,8 @@ class ConversationManager: ObservableObject {
     private var currentTaskText: String = ""
     private var recentTopics: [String] = []
     private let maxRecentTopics = 5
+    private var recentQuestions: [String] = []
+    private let maxRecentQuestions = 10
     private var cachedNextTaskResponse: AIResponse?
     private var isPrefetchingNextTask: Bool = false
     
@@ -146,6 +148,7 @@ class ConversationManager: ObservableObject {
         cachedNextTaskResponse = nil
         isPrefetchingNextTask = false
         recentTopics = context?.recentTopics ?? []
+        recentQuestions = context?.recentQuestions ?? []
         if currentContext?.topicId == nil {
             currentContext?.topicId = topic.id
         }
@@ -267,7 +270,7 @@ class ConversationManager: ObservableObject {
         
         do {
             // Get AI response (empty messages for opening)
-            let contextSummary = buildGenContext(language: language)
+            let contextSummary = buildConversationContext(language: language)
             
             // Set flag to prevent cancellation during Chat API request
             isProcessingChatRequest = true
@@ -426,7 +429,7 @@ class ConversationManager: ObservableObject {
             }
             
             // Include context if available for follow-up questions
-            let contextSummary = buildGenContext(language: settings.selectedLanguage)
+            let contextSummary = buildConversationContext(language: settings.selectedLanguage)
             
             // Set flag to prevent cancellation during Chat API request
             isProcessingChatRequest = true
@@ -587,7 +590,7 @@ class ConversationManager: ObservableObject {
                 return
             }
             
-            let contextSummary = buildGenContext(language: settings.selectedLanguage)
+            let contextSummary = buildConversationContext(language: settings.selectedLanguage)
             
             // Set flag to prevent cancellation during Chat API request
             isProcessingChatRequest = true
@@ -938,6 +941,20 @@ class ConversationManager: ObservableObject {
             updateTaskState(.noTask)
         }
         
+        if currentMode != .codeTasks,
+           aiResponse.taskState == .none,
+           aiResponse.aicode == nil,
+           lastLLMMode?.isCheckSolution != true {
+            recentQuestions.append(aiResponse.spokenText)
+            if recentQuestions.count > maxRecentQuestions {
+                recentQuestions = Array(recentQuestions.suffix(maxRecentQuestions))
+            }
+            currentContext?.updateRecentQuestion(aiResponse.spokenText, maxQuestions: maxRecentQuestions)
+            if let context = currentContext {
+                onContextUpdated?(context)
+            }
+        }
+        
         // Apply code in editor based on state
         if let aicode = aiResponse.aicode {
             // If this is a hint (hintCode), don't overwrite entire code
@@ -1060,6 +1077,37 @@ class ConversationManager: ObservableObject {
             \(avoidLine)
             """
         }
+    }
+    
+    private func buildQuestionContext(language: Language) -> String {
+        let recent = recentQuestions.suffix(maxRecentQuestions)
+        let recentLine = recent.isEmpty ? "recent_questions: none" : "recent_questions: \(recent.joined(separator: "; "))"
+        let avoidLine = recent.isEmpty ? "avoid: none" : "avoid: \(recent.joined(separator: "; "))"
+        
+        switch language {
+        case .russian:
+            return """
+            recent_questions: \(recent.isEmpty ? "none" : recent.joined(separator: "; "))
+            \(avoidLine)
+            """
+        case .english:
+            return """
+            \(recentLine)
+            \(avoidLine)
+            """
+        case .german:
+            return """
+            \(recentLine)
+            \(avoidLine)
+            """
+        }
+    }
+    
+    private func buildConversationContext(language: Language) -> String {
+        if currentMode == .codeTasks {
+            return buildGenContext(language: language)
+        }
+        return buildQuestionContext(language: language)
     }
     
     // MARK: - Properties

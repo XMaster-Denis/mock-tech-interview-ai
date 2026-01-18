@@ -294,6 +294,7 @@ enum PromptTemplates {
             
             Use this context to:
             - Avoid repeating topics user has already mastered
+            - Avoid repeating questions listed in recent_questions/avoid
             - Focus follow-up questions on areas where user made mistakes
             - Build upon user's demonstrated strengths
             - Adapt difficulty based on their performance
