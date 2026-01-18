@@ -145,6 +145,20 @@ struct SettingsView: View {
                 
                 Divider()
                 
+                // TTS Interruption
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("TTS Interruption")
+                        .font(.headline)
+                    
+                    Text("Allow microphone noise to interrupt AI speech")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Toggle("Allow interruption", isOn: $viewModel.allowTTSInterruption)
+                }
+                
+                Divider()
+                
                 // Voice Threshold (Microphone Sensitivity)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Voice Threshold")

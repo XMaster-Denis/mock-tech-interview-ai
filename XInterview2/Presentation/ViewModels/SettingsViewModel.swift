@@ -19,6 +19,7 @@ class SettingsViewModel: ObservableObject {
     @Published var silenceTimeout: Double = 1.5
     @Published var minSpeechLevel: Float = 0.04
     @Published var calibratedNoiseLevel: Float? = nil
+    @Published var allowTTSInterruption: Bool = true
     @Published var isCalibrating: Bool = false
     @Published var calibrationProgress: Double = 0.0
     
@@ -51,6 +52,7 @@ class SettingsViewModel: ObservableObject {
         silenceTimeout = settings.silenceTimeout
         minSpeechLevel = settings.minSpeechLevel
         calibratedNoiseLevel = settings.calibratedNoiseThreshold
+        allowTTSInterruption = settings.allowTTSInterruption
     }
     
     func saveSettings() {
@@ -61,7 +63,8 @@ class SettingsViewModel: ObservableObject {
             voiceThreshold: voiceThreshold,
             silenceTimeout: silenceTimeout,
             minSpeechLevel: minSpeechLevel,
-            calibratedNoiseThreshold: calibratedNoiseLevel
+            calibratedNoiseThreshold: calibratedNoiseLevel,
+            allowTTSInterruption: allowTTSInterruption
         )
         settingsRepository.saveSettings(settings)
     }

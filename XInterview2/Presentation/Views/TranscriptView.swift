@@ -6,10 +6,13 @@
 //
 
 import SwiftUI
+import AVFoundation
+import Combine
 
 struct TranscriptView: View {
     @ObservedObject var viewModel: InterviewViewModel
     @FocusState private var isTextFieldFocused: Bool
+    @StateObject private var audioPlayer = TranscriptAudioPlayer()
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -33,7 +36,16 @@ struct TranscriptView: View {
                                 .padding(.vertical, 40)
                         } else {
                             ForEach(viewModel.session.transcript) { message in
-                                MessageRowView(message: message)
+                                MessageRowView(
+                                    message: message,
+                                    onPlayAudio: { audioMessage in
+                                        guard let fileName = audioMessage.audioFileName else {
+                                            return
+                                        }
+                                        let fileURL = TTSAudioCache.audioFileURL(for: fileName)
+                                        audioPlayer.play(fileURL)
+                                    }
+                                )
                             }
                         }
                     }
@@ -115,6 +127,7 @@ struct TranscriptView: View {
 
 struct MessageRowView: View {
     let message: TranscriptMessage
+    let onPlayAudio: (TranscriptMessage) -> Void
     
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 2) {
@@ -133,6 +146,15 @@ struct MessageRowView: View {
                 Text(formatTime(message.timestamp))
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                
+                if message.role == .assistant, message.audioFileName != nil {
+                    Button("Прослушать") {
+                        onPlayAudio(message)
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.accentColor)
+                    .buttonStyle(.plain)
+                }
             }
             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
             
@@ -150,6 +172,28 @@ struct MessageRowView: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+final class TranscriptAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    let objectWillChange = ObservableObjectPublisher()
+    private var audioPlayer: AVAudioPlayer?
+    
+    func play(_ fileURL: URL) {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            Logger.error("TTS audio file missing at \(fileURL.lastPathComponent)")
+            return
+        }
+        
+        do {
+            audioPlayer?.stop()
+            audioPlayer = try AVAudioPlayer(contentsOf: fileURL)
+            audioPlayer?.delegate = self
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.play()
+        } catch {
+            Logger.error("Failed to play TTS audio", error: error)
+        }
     }
 }
 

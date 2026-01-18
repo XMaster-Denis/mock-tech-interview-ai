@@ -59,6 +59,7 @@ class ConversationManager: ObservableObject {
     private let maxRecentQuestions = 10
     private var cachedNextTaskResponse: AIResponse?
     private var isPrefetchingNextTask: Bool = false
+    private let ttsAudioCache = TTSAudioCache()
     
     // MARK: - Properties
     
@@ -85,6 +86,7 @@ class ConversationManager: ObservableObject {
     
     var onUserMessage: ((String) -> Void)?
     var onAIMessage: ((String) -> Void)?
+    var onAIAudioAvailable: ((String, String) -> Void)?
     var onError: ((String) -> Void)?
     var onCodeUpdate: ((String) -> Void)?
     var onTaskStateChanged: ((InterviewTaskState) -> Void)?
@@ -523,6 +525,9 @@ class ConversationManager: ObservableObject {
                 voice: settings.selectedVoice,
                 apiKey: apiKey
             )
+            if let fileName = ttsAudioCache.saveAudio(audioData) {
+                onAIAudioAvailable?(text, fileName)
+            }
             
             // Check if stopping after generating speech
             guard !isStopping else {
@@ -531,7 +536,11 @@ class ConversationManager: ObservableObject {
             
             // Play (interruptible)
             conversationState = .speaking
-            try await audioManager.speak(audioData, canBeInterrupted: true, skipSpeechCheck: skipSpeechCheck)
+            try await audioManager.speak(
+                audioData,
+                canBeInterrupted: settings.allowTTSInterruption,
+                skipSpeechCheck: skipSpeechCheck
+            )
             
             if !audioManager.isSpeaking {
                 conversationState = .listening
@@ -1289,5 +1298,9 @@ class ConversationManager: ObservableObject {
     
     var isSpeaking: Bool {
         audioManager.isSpeaking
+    }
+
+    func clearTTSAudioCache() {
+        ttsAudioCache.clear()
     }
 }

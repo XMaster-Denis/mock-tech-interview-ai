@@ -36,4 +36,5 @@ enum UserDefaultsKeys {
     static let voiceThreshold = "voice_threshold"
     static let silenceTimeout = "silence_timeout"
     static let minSpeechLevel = "min_speech_level"
+    static let allowTTSInterruption = "allow_tts_interruption"
 }

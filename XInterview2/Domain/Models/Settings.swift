@@ -15,6 +15,7 @@ struct Settings: Codable {
     var silenceTimeout: Double  // Seconds of silence to detect end of speech (0.5 - 5.0)
     var minSpeechLevel: Float  // Minimum audio level to validate speech (0.01 - 0.1)
     var calibratedNoiseThreshold: Float?  // Last calibrated noise threshold (optional)
+    var allowTTSInterruption: Bool  // Allow microphone noise to interrupt TTS playback
     
     init(
         apiKey: String = "",
@@ -23,7 +24,8 @@ struct Settings: Codable {
         voiceThreshold: Float = 0.2,
         silenceTimeout: Double = 1.5,
         minSpeechLevel: Float = 0.04,
-        calibratedNoiseThreshold: Float? = nil
+        calibratedNoiseThreshold: Float? = nil,
+        allowTTSInterruption: Bool = true
     ) {
         self.apiKey = apiKey
         self.selectedLanguage = selectedLanguage
@@ -32,6 +34,7 @@ struct Settings: Codable {
         self.silenceTimeout = silenceTimeout
         self.minSpeechLevel = minSpeechLevel
         self.calibratedNoiseThreshold = calibratedNoiseThreshold
+        self.allowTTSInterruption = allowTTSInterruption
     }
     
     var hasValidAPIKey: Bool {

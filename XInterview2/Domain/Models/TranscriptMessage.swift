@@ -12,6 +12,7 @@ struct TranscriptMessage: Identifiable, Codable, Equatable {
     let role: MessageRole
     let text: String
     let timestamp: Date
+    let audioFileName: String?
     
     enum MessageRole: String, Codable {
         case system
@@ -19,10 +20,17 @@ struct TranscriptMessage: Identifiable, Codable, Equatable {
         case assistant
     }
     
-    init(id: UUID = UUID(), role: MessageRole, text: String, timestamp: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        role: MessageRole,
+        text: String,
+        timestamp: Date = Date(),
+        audioFileName: String? = nil
+    ) {
         self.id = id
         self.role = role
         self.text = text
         self.timestamp = timestamp
+        self.audioFileName = audioFileName
     }
 }

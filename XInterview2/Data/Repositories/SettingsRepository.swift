@@ -26,6 +26,7 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         let voiceThreshold = userDefaults.float(forKey: UserDefaultsKeys.voiceThreshold)
         let silenceTimeout = userDefaults.double(forKey: UserDefaultsKeys.silenceTimeout)
         let minSpeechLevel = userDefaults.float(forKey: UserDefaultsKeys.minSpeechLevel)
+        let allowInterruption = userDefaults.object(forKey: UserDefaultsKeys.allowTTSInterruption) as? Bool ?? true
         
         let language = Language(rawValue: languageRaw) ?? .english
         
@@ -44,7 +45,8 @@ final class SettingsRepository: SettingsRepositoryProtocol {
             selectedVoice: voice,
             voiceThreshold: threshold,
             silenceTimeout: timeout,
-            minSpeechLevel: speechLevel
+            minSpeechLevel: speechLevel,
+            allowTTSInterruption: allowInterruption
         )
     }
     
@@ -55,5 +57,6 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         userDefaults.set(settings.voiceThreshold, forKey: UserDefaultsKeys.voiceThreshold)
         userDefaults.set(settings.silenceTimeout, forKey: UserDefaultsKeys.silenceTimeout)
         userDefaults.set(settings.minSpeechLevel, forKey: UserDefaultsKeys.minSpeechLevel)
+        userDefaults.set(settings.allowTTSInterruption, forKey: UserDefaultsKeys.allowTTSInterruption)
     }
 }
