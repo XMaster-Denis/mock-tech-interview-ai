@@ -24,7 +24,7 @@ struct TranscriptView: View {
             // Messages
             ScrollView {
                 ScrollViewReader { proxy in
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         if viewModel.session.transcript.isEmpty {
                             Text("No messages yet")
                                 .font(.subheadline)
@@ -117,8 +117,8 @@ struct MessageRowView: View {
     let message: TranscriptMessage
     
     var body: some View {
-        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-            HStack(spacing: 4) {
+        VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 2) {
+            HStack(spacing: 6) {
                 if message.role == .assistant {
                     Image(systemName: "sparkles")
                         .font(.caption)
@@ -129,20 +129,20 @@ struct MessageRowView: View {
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.secondary)
+                
+                Text(formatTime(message.timestamp))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
             
             Text(message.text)
                 .font(.body)
                 .textSelection(.enabled)
-                .padding(10)
+                .padding(8)
                 .background(message.role == .user ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor))
                 .cornerRadius(8)
                 .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
-            
-            Text(formatTime(message.timestamp))
-                .font(.caption2)
-                .foregroundColor(Color.secondary)
         }
     }
     

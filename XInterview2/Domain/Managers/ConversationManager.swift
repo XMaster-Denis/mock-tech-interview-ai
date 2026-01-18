@@ -370,9 +370,28 @@ class ConversationManager: ObservableObject {
                 return
             }
             
+            var didAddUserMessage = false
+            if currentMode != .codeTasks, case .noTask = currentTaskState {
+                addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                onUserMessage?(userText)
+                didAddUserMessage = true
+            }
+            
+            if shouldCoachLanguage(for: settings.selectedLanguage) && currentMode != .codeTasks {
+                _ = await runLanguageCoach(
+                    userText: userText,
+                    language: settings.selectedLanguage,
+                    apiKey: apiKey
+                )
+            }
+            
             // Check task state before processing
             switch currentTaskState {
             case .taskPresented:
+                if currentMode == .questionsOnly {
+                    updateTaskState(.noTask)
+                    break
+                }
                 // User is responding to a task
                 let language = settings.selectedLanguage
                 
@@ -402,6 +421,10 @@ class ConversationManager: ObservableObject {
                 return
                 
             case .waitingForUserConfirmation:
+                if currentMode == .questionsOnly {
+                    updateTaskState(.noTask)
+                    break
+                }
                 // User is confirming understanding
                 let language = settings.selectedLanguage
                 
@@ -427,9 +450,10 @@ class ConversationManager: ObservableObject {
             
             // Add user message to history BEFORE calling API
             // This ensures AI has context of what user just said
-            addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-            
-            onUserMessage?(userText)
+            if !didAddUserMessage {
+                addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
+                onUserMessage?(userText)
+            }
             
             // Get AI response
             guard let topic = currentTopic else {
@@ -896,7 +920,10 @@ class ConversationManager: ObservableObject {
         
         // Update task state based on AI response
         if let taskState = aiResponse.taskState {
-            switch taskState {
+            if currentMode == .questionsOnly {
+                updateTaskState(.noTask)
+            } else {
+                switch taskState {
             case .taskPresented:
                 updateTaskState(.taskPresented(expectedSolution: aiResponse.aicode))
                 currentTaskCode = aiResponse.aicode ?? ""
@@ -937,6 +964,7 @@ class ConversationManager: ObservableObject {
             case .showingSolution:
                 // AI is showing solution - wait for user confirmation
                 updateTaskState(.waitingForUserConfirmation)
+                onSolutionUpdate?(aiResponse.correctCode, nil)
                 
             case .waitingForUnderstanding:
                 updateTaskState(.waitingForUserConfirmation)
@@ -944,28 +972,41 @@ class ConversationManager: ObservableObject {
             case .none:
                 updateTaskState(.noTask)
             }
+            }
         }
         
         if lastLLMMode?.isCheckSolution == true, aiResponse.isCorrect == true {
             updateTaskState(.noTask)
         }
         
-        if currentMode != .codeTasks,
-           aiResponse.taskState == .none,
-           aiResponse.aicode == nil,
-           lastLLMMode?.isCheckSolution != true {
-            recentQuestions.append(aiResponse.spokenText)
-            if recentQuestions.count > maxRecentQuestions {
-                recentQuestions = Array(recentQuestions.suffix(maxRecentQuestions))
-            }
-            currentContext?.updateRecentQuestion(aiResponse.spokenText, maxQuestions: maxRecentQuestions)
-            if let context = currentContext {
-                onContextUpdated?(context)
+        let shouldRecordQuestion: Bool
+        if currentMode == .questionsOnly {
+            shouldRecordQuestion = aiResponse.taskState == nil &&
+                aiResponse.aicode == nil &&
+                lastLLMMode?.isCheckSolution != true
+        } else {
+            shouldRecordQuestion = currentMode != .codeTasks &&
+                aiResponse.taskState == .some(.none) &&
+                aiResponse.aicode == nil &&
+                lastLLMMode?.isCheckSolution != true
+        }
+        
+        if shouldRecordQuestion {
+            let question = aiResponse.spokenText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !question.isEmpty, recentQuestions.last != question {
+                recentQuestions.append(question)
+                if recentQuestions.count > maxRecentQuestions {
+                    recentQuestions = Array(recentQuestions.suffix(maxRecentQuestions))
+                }
+                currentContext?.updateRecentQuestion(question, maxQuestions: maxRecentQuestions)
+                if let context = currentContext {
+                    onContextUpdated?(context)
+                }
             }
         }
         
         // Apply code in editor based on state
-        if let aicode = aiResponse.aicode {
+        if let aicode = aiResponse.aicode, currentMode != .questionsOnly {
             // If this is a hint (hintCode), don't overwrite entire code
             if aiResponse.taskState == .providingHint {
                 // For hints, we might add logic to partially update code
@@ -994,6 +1035,65 @@ class ConversationManager: ObservableObject {
             timestamp: Date()
         )
         conversationHistory.append(message)
+    }
+    
+    private func shouldCoachLanguage(for language: Language) -> Bool {
+        switch language {
+        case .english, .german:
+            return true
+        case .russian:
+            return false
+        }
+    }
+    
+    private func runLanguageCoach(userText: String, language: Language, apiKey: String) async -> Bool {
+        guard let topic = currentTopic else {
+            return false
+        }
+        
+        do {
+            let response = try await chatService.sendMessageWithCode(
+                messages: [TranscriptMessage(role: .user, text: userText, timestamp: Date())],
+                codeContext: currentCodeContext,
+                topic: topic,
+                level: currentLevel,
+                language: language,
+                mode: currentMode,
+                llmMode: .languageCoach,
+                apiKey: apiKey,
+                context: ""
+            )
+            
+            if response.needsCorrection == true {
+                let correction = response.correction?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let correctionMessage = makeCoachCorrectionMessage(correction: correction, language: language)
+                let messageToSpeak = correctionMessage.isEmpty ? response.spokenText : correctionMessage
+                if !messageToSpeak.isEmpty {
+                    onAIMessage?(messageToSpeak)
+                    await speakResponse(messageToSpeak, language: language, apiKey: apiKey)
+                }
+                return response.requestRepeat ?? false
+            }
+        } catch {
+            Logger.error("Language coach failed", error: error)
+        }
+        
+        return false
+    }
+
+    private func makeCoachCorrectionMessage(correction: String, language: Language) -> String {
+        guard !correction.isEmpty else {
+            return ""
+        }
+        
+        switch language {
+        case .russian:
+            return "Вернее будет сказать: \(correction)"
+        case .english:
+            return "A better way to say it is: \(correction)"
+        case .german:
+            return "Besser wäre: \(correction)"
+        }
     }
     
     

@@ -73,7 +73,7 @@ class VoiceDetector: NSObject, ObservableObject {
     private var minSpeechLevel: Float = 0.1//0.04
     
     /// Максимальная длительность записи (защита от бесконечной записи)
-    private let maxRecordingDuration: TimeInterval = 30.0
+    private let maxRecordingDuration: TimeInterval = 600.0
     
     // MARK: - Properties
     // MARK: - Свойства

@@ -184,6 +184,22 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         return newPrompt
     }
     
+    private func getLanguageCoachSystemPrompt(language: Language) -> String {
+        let promptKey = "coach-\(language.rawValue)"
+        
+        if let cachedKey = cachedPromptKey,
+           cachedKey == promptKey,
+           let cachedPrompt = cachedSystemPrompt {
+            return cachedPrompt
+        }
+        
+        let newPrompt = PromptTemplates.System.languageCoach(language: language)
+        cachedPromptKey = promptKey
+        cachedSystemPrompt = newPrompt
+        
+        return newPrompt
+    }
+    
     private func buildCheckUserMessage(context: String, code: String, language: Language) -> String {
         switch language {
         case .russian:
@@ -267,6 +283,17 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             \(code)
             Nutzer: \(userMessage)
             """
+        }
+    }
+    
+    private func buildLanguageCoachUserMessage(userMessage: String, language: Language) -> String {
+        switch language {
+        case .russian:
+            return "Ответ пользователя: \(userMessage)"
+        case .english:
+            return "User answer: \(userMessage)"
+        case .german:
+            return "Antwort des Nutzers: \(userMessage)"
         }
     }
     
@@ -372,10 +399,29 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                     isCorrect: response.isCorrect
                 )
             }
+        case .languageCoach:
+            return AIResponse(
+                spokenText: response.spokenText,
+                aicode: nil,
+                taskState: nil,
+                hint: nil,
+                hintCode: nil,
+                solutionCode: nil,
+                explanation: nil,
+                correctCode: nil,
+                isCorrect: nil,
+                needsCorrection: response.needsCorrection,
+                correction: response.correction,
+                requestRepeat: response.requestRepeat
+            )
         }
     }
     
-    private func isValidResponse(_ response: AIResponse, mode: LLMMode) -> Bool {
+    private func isValidResponse(
+        _ response: AIResponse,
+        mode: LLMMode,
+        interviewMode: InterviewMode
+    ) -> Bool {
         let spokenText = response.spokenText.trimmingCharacters(in: .whitespacesAndNewlines)
         if spokenText.isEmpty {
             return false
@@ -402,6 +448,21 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             return !hintText.isEmpty
             
         case .generateTask:
+            if interviewMode == .questionsOnly {
+                if response.taskState != nil || response.aicode != nil {
+                    return false
+                }
+                if response.hint != nil || response.hintCode != nil {
+                    return false
+                }
+                if response.correctCode != nil || response.solutionCode != nil {
+                    return false
+                }
+                if response.isCorrect != nil {
+                    return false
+                }
+                return spokenText.hasSuffix("?")
+            }
             guard response.taskState == .taskPresented else {
                 return false
             }
@@ -429,10 +490,23 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 let explanationText = response.explanation?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return !solutionText.isEmpty && !explanationText.isEmpty
             }
+        case .languageCoach:
+            guard let needsCorrection = response.needsCorrection else {
+                return false
+            }
+            if needsCorrection {
+                let correction = response.correction?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return !correction.isEmpty
+            }
+            return true
         }
     }
     
-    private func retryInstruction(for mode: LLMMode, language: Language) -> String {
+    private func retryInstruction(
+        for mode: LLMMode,
+        language: Language,
+        interviewMode: InterviewMode
+    ) -> String {
         switch (mode, language) {
         case (.checkSolution, .russian):
             return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON по схеме CHECK с is_correct и task_state."
@@ -441,10 +515,19 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         case (.checkSolution, .german):
             return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nach CHECK-Schema mit is_correct und task_state."
         case (.generateTask, .russian):
+            if interviewMode == .questionsOnly {
+                return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON только со spoken_text, который заканчивается вопросительным знаком."
+            }
             return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON по схеме GEN_TASK с task_state=task_presented и aicode."
         case (.generateTask, .english):
+            if interviewMode == .questionsOnly {
+                return "Previous response missed required fields. Return JSON with spoken_text only, and it must end with a question mark."
+            }
             return "Previous response missed required fields. Return JSON per GEN_TASK schema with task_state=task_presented and aicode."
         case (.generateTask, .german):
+            if interviewMode == .questionsOnly {
+                return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nur mit spoken_text, das mit einem Fragezeichen endet."
+            }
             return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nach GEN_TASK-Schema mit task_state=task_presented und aicode."
         case (.assistHelp(.hintOnly), .russian):
             return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON по схеме hintOnly с task_state=providing_hint и hint."
@@ -458,10 +541,20 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             return "Previous response missed required fields. Return JSON per fullSolution schema with task_state=providing_solution and solution_code."
         case (.assistHelp(.fullSolution), .german):
             return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON nach fullSolution-Schema mit task_state=providing_solution und solution_code."
+        case (.languageCoach, .russian):
+            return "В предыдущем ответе отсутствовали обязательные поля. Верни JSON с needs_correction и spoken_text."
+        case (.languageCoach, .english):
+            return "Previous response missed required fields. Return JSON with needs_correction and spoken_text."
+        case (.languageCoach, .german):
+            return "Im vorherigen Antwort fehlten Pflichtfelder. Gib JSON mit needs_correction und spoken_text."
         }
     }
     
-    private func fallbackResponse(for mode: LLMMode, language: Language) -> AIResponse {
+    private func fallbackResponse(
+        for mode: LLMMode,
+        language: Language,
+        interviewMode: InterviewMode
+    ) -> AIResponse {
         switch (mode, language) {
         case (.checkSolution, .russian):
             return AIResponse(
@@ -479,12 +572,19 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             )
         case (.checkSolution, .german):
             return AIResponse(
-                spokenText: "Ich konnte nicht automatisch pruefen. Bitte sende den Code erneut.",
+                spokenText: "Ich konnte nicht automatisch prüfen. Bitte sende den Code erneut.",
                 taskState: .providingHint,
-                hint: "Ich konnte nicht automatisch pruefen. Bitte sende den Code erneut.",
+                hint: "Ich konnte nicht automatisch prüfen. Bitte sende den Code erneut.",
                 isCorrect: false
             )
         case (.generateTask, .russian):
+            if interviewMode == .questionsOnly {
+                return AIResponse(
+                    spokenText: "Что такое опционалы в Swift?",
+                    aicode: nil,
+                    taskState: nil
+                )
+            }
             return AIResponse(
                 spokenText: "Напиши функцию, которая возвращает длину строки.",
                 aicode: """
@@ -496,6 +596,13 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 taskState: .taskPresented
             )
         case (.generateTask, .english):
+            if interviewMode == .questionsOnly {
+                return AIResponse(
+                    spokenText: "What are optionals in Swift?",
+                    aicode: nil,
+                    taskState: nil
+                )
+            }
             return AIResponse(
                 spokenText: "Write a function that returns the length of a string.",
                 aicode: """
@@ -507,8 +614,15 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 taskState: .taskPresented
             )
         case (.generateTask, .german):
+            if interviewMode == .questionsOnly {
+                return AIResponse(
+                    spokenText: "Was sind Optionals in Swift?",
+                    aicode: nil,
+                    taskState: nil
+                )
+            }
             return AIResponse(
-                spokenText: "Schreibe eine Funktion, die die Laenge eines Strings zurueckgibt.",
+                spokenText: "Schreibe eine Funktion, die die Länge eines Strings zurückgibt.",
                 aicode: """
                 func stringLength(_ text: String) -> Int {
                     // YOUR CODE HERE
@@ -533,9 +647,9 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             )
         case (.assistHelp(.hintOnly), .german):
             return AIResponse(
-                spokenText: "Starte mit einer einfachen Pruefung und zerlege die Aufgabe.",
+                spokenText: "Starte mit einer einfachen Prüfung und zerlege die Aufgabe.",
                 taskState: .providingHint,
-                hint: "Beginne mit einer Basisbedingung und pruefe Randfaelle.",
+                hint: "Beginne mit einer Basisbedingung und prüfe Randfälle.",
                 isCorrect: false
             )
         case (.assistHelp(.fullSolution), .russian):
@@ -564,15 +678,33 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             )
         case (.assistHelp(.fullSolution), .german):
             return AIResponse(
-                spokenText: "Hier ist eine Loesung und eine kurze Erklaerung.",
+                spokenText: "Hier ist eine Lösung und eine kurze Erklärung.",
                 taskState: .providingSolution,
                 solutionCode: """
                 func solve(_ value: Int) -> Int {
                     return value
                 }
                 """,
-                explanation: "Die Funktion nimmt einen Wert und gibt ihn unveraendert zurueck. Das ist eine minimale Platzhalter-Loesung. Ersetze den Rumpf fuer deine Aufgabe. Uebliche Loesungen kombinieren Pruefungen und Berechnungen. Randfaelle beachten.",
+                explanation: "Die Funktion nimmt einen Wert und gibt ihn unverändert zurück. Das ist eine minimale Platzhalter-Lösung. Ersetze den Rumpf für deine Aufgabe. Übliche Lösungen kombinieren Prüfungen und Berechnungen. Randfälle beachten.",
                 isCorrect: false
+            )
+        case (.languageCoach, .russian):
+            return AIResponse(
+                spokenText: "Хорошо. Продолжай.",
+                needsCorrection: false,
+                requestRepeat: false
+            )
+        case (.languageCoach, .english):
+            return AIResponse(
+                spokenText: "Got it. Go on.",
+                needsCorrection: false,
+                requestRepeat: false
+            )
+        case (.languageCoach, .german):
+            return AIResponse(
+                spokenText: "Verstanden. Mach weiter.",
+                needsCorrection: false,
+                requestRepeat: false
             )
         }
     }
@@ -598,6 +730,8 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             temperature = 0.7
         case .assistHelp:
             temperature = 0.3
+        case .languageCoach:
+            temperature = 0.2
         }
         
         var chatMessages: [ChatMessage]
@@ -650,6 +784,16 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
                 ChatMessage(role: "system", content: systemPrompt),
                 ChatMessage(role: "user", content: userContent)
             ]
+        } else if case .languageCoach = llmMode {
+            let systemPrompt = getLanguageCoachSystemPrompt(language: language)
+            let userContent = buildLanguageCoachUserMessage(
+                userMessage: messages.last?.text ?? "",
+                language: language
+            )
+            chatMessages = [
+                ChatMessage(role: "system", content: systemPrompt),
+                ChatMessage(role: "user", content: userContent)
+            ]
         } else {
             let systemPrompt = getHybridSystemPrompt(
                 topic: topic,
@@ -675,10 +819,10 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         
         let shouldValidate: Bool
         switch llmMode {
-        case .checkSolution, .assistHelp:
+        case .checkSolution, .assistHelp, .languageCoach:
             shouldValidate = true
         case .generateTask:
-            shouldValidate = (mode == .codeTasks)
+            shouldValidate = (mode == .codeTasks || mode == .questionsOnly)
         }
         
         do {
@@ -705,14 +849,14 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             
             if let decoded = decodeAIResponse(assistantMessage) {
                 let normalized = normalizeResponse(decoded, mode: llmMode)
-                if isValidResponse(normalized, mode: llmMode) {
+                if isValidResponse(normalized, mode: llmMode, interviewMode: mode) {
                     return normalized
                 }
             }
             
             let retryMessage = ChatMessage(
                 role: "system",
-                content: retryInstruction(for: llmMode, language: language)
+                content: retryInstruction(for: llmMode, language: language, interviewMode: mode)
             )
             let retryMessages = chatMessages + [retryMessage]
             
@@ -724,16 +868,16 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             
             if let decoded = decodeAIResponse(retryResponse) {
                 let normalized = normalizeResponse(decoded, mode: llmMode)
-                if isValidResponse(normalized, mode: llmMode) {
+                if isValidResponse(normalized, mode: llmMode, interviewMode: mode) {
                     return normalized
                 }
             }
             
             Logger.error("LLM response validation failed after retry - using fallback")
-            return fallbackResponse(for: llmMode, language: language)
+            return fallbackResponse(for: llmMode, language: language, interviewMode: mode)
         } catch {
             Logger.error("LLM request failed", error: error)
-            return fallbackResponse(for: llmMode, language: language)
+            return fallbackResponse(for: llmMode, language: language, interviewMode: mode)
         }
     }
     

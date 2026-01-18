@@ -55,6 +55,10 @@ class ContextRepository {
             let contexts = try JSONDecoder().decode([InterviewContext].self, from: data)
             return .success(contexts)
         } catch {
+            let nsError = error as NSError
+            if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFileNoSuchFileError {
+                return .success([])
+            }
             Logger.error("Failed to load contexts: \(error.localizedDescription)")
             return .failure(.invalidData)
         }

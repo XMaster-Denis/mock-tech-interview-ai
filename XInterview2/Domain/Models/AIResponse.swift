@@ -47,6 +47,15 @@ struct AIResponse: Codable {
     /// Whether user's solution is correct (optional)
     let isCorrect: Bool?
     
+    /// Whether the user's language needs correction (optional)
+    let needsCorrection: Bool?
+    
+    /// Corrected phrase for language coaching (optional)
+    let correction: String?
+    
+    /// Whether the user should повторить ответ (optional)
+    let requestRepeat: Bool?
+    
     // MARK: - Coding Keys for snake_case JSON
     
     enum CodingKeys: String, CodingKey {
@@ -59,6 +68,9 @@ struct AIResponse: Codable {
         case explanation
         case correctCode = "correct_code"
         case isCorrect = "is_correct"
+        case needsCorrection = "needs_correction"
+        case correction
+        case requestRepeat = "request_repeat"
     }
     
     init(
@@ -70,7 +82,10 @@ struct AIResponse: Codable {
         solutionCode: String? = nil,
         explanation: String? = nil,
         correctCode: String? = nil,
-        isCorrect: Bool? = nil
+        isCorrect: Bool? = nil,
+        needsCorrection: Bool? = nil,
+        correction: String? = nil,
+        requestRepeat: Bool? = nil
     ) {
         self.spokenText = spokenText
         self.aicode = aicode
@@ -81,5 +96,8 @@ struct AIResponse: Codable {
         self.explanation = explanation
         self.correctCode = correctCode
         self.isCorrect = isCorrect
+        self.needsCorrection = needsCorrection
+        self.correction = correction
+        self.requestRepeat = requestRepeat
     }
 }
