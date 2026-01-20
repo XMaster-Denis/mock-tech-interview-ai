@@ -6,7 +6,7 @@
 
 ## ConversationManager
 
-**Расположение:** [`XInterview2/Domain/Managers/ConversationManager.swift`](ConversationManager.swift:23)
+**Расположение:** [`MockTechInterviewAI/Domain/Managers/ConversationManager.swift`](ConversationManager.swift:23)
 
 **Описание:** Менеджер для управления полнодуплексным разговором между пользователем и AI.
 
@@ -28,7 +28,7 @@
 
 ## Состояния разговора (ConversationState)
 
-**Расположение:** [`XInterview2/Domain/Managers/ConversationManager.swift`](ConversationManager.swift:13)
+**Расположение:** [`MockTechInterviewAI/Domain/Managers/ConversationManager.swift`](ConversationManager.swift:13)
 
 | Состояние | Описание |
 |-----------|-----------|

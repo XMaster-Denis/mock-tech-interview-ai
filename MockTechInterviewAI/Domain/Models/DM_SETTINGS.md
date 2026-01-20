@@ -7,7 +7,7 @@
 ## Модель Settings
 
 ### Расположение
-`XInterview2/Domain/Models/Settings.swift`
+`MockTechInterviewAI/Domain/Models/Settings.swift`
 
 ### Описание
 
@@ -90,7 +90,7 @@ if avgLevel < minSpeechLevel {
 
 ### UserDefaultsKeys
 
-**Расположение:** [`XInterview2/Core/Constants/APIConstants.swift`](../../Core/Constants/APIConstants.swift:32)
+**Расположение:** [`MockTechInterviewAI/Core/Constants/APIConstants.swift`](../../Core/Constants/APIConstants.swift:32)
 
 | Ключ | Значение | Описание |
 |------|-----------|-----------|
@@ -103,7 +103,7 @@ if avgLevel < minSpeechLevel {
 
 ### SettingsRepository
 
-**Расположение:** [`XInterview2/Data/Repositories/SettingsRepository.swift`](../../Data/Repositories/SettingsRepository.swift:10)
+**Расположение:** [`MockTechInterviewAI/Data/Repositories/SettingsRepository.swift`](../../Data/Repositories/SettingsRepository.swift:10)
 
 **Описание:** Репозиторий для сохранения и загрузки настроек в UserDefaults.
 
@@ -114,7 +114,7 @@ if avgLevel < minSpeechLevel {
 
 ## SettingsViewModel
 
-**Расположение:** [`XInterview2/Presentation/ViewModels/SettingsViewModel.swift`](../../Presentation/ViewModels/SettingsViewModel.swift:12)
+**Расположение:** [`MockTechInterviewAI/Presentation/ViewModels/SettingsViewModel.swift`](../../Presentation/ViewModels/SettingsViewModel.swift:12)
 
 **Описание:** ViewModel для управления настройками в UI.
 
@@ -140,7 +140,7 @@ if avgLevel < minSpeechLevel {
 
 ## SettingsView
 
-**Расположение:** [`XInterview2/Presentation/Views/SettingsView.swift`](../../Presentation/Views/SettingsView.swift:11)
+**Расположение:** [`MockTechInterviewAI/Presentation/Views/SettingsView.swift`](../../Presentation/Views/SettingsView.swift:11)
 
 **Описание:** UI для настройки параметров приложения.
 

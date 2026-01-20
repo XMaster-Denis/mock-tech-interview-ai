@@ -30,7 +30,7 @@ flowchart TD
 
 ### 1. FullDuplexAudioManager
 
-**Расположение:** [`XInterview2/Data/Audio/FullDuplexAudioManager.swift`](../../Data/Audio/FullDuplexAudioManager.swift:24)
+**Расположение:** [`MockTechInterviewAI/Data/Audio/FullDuplexAudioManager.swift`](../../Data/Audio/FullDuplexAudioManager.swift:24)
 
 **Описание:** Менеджер для управления полнодуплексным аудио - одновременное прослушивание микрофона и прерываемое воспроизведение TTS.
 
@@ -77,7 +77,7 @@ flowchart TD
 
 ### 2. VoiceDetector
 
-**Расположение:** [`XInterview2/Data/Audio/VoiceDetector.swift`](../../Data/Audio/VoiceDetector.swift:35)
+**Расположение:** [`MockTechInterviewAI/Data/Audio/VoiceDetector.swift`](../../Data/Audio/VoiceDetector.swift:35)
 
 **Описание:** Детектор голосовой активности (VAD - Voice Activity Detection) для непрерывного распознавания речи.
 
@@ -149,7 +149,7 @@ flowchart TD
 
 ### 3. AudioCalibrationManager
 
-**Расположение:** [`XInterview2/Data/Audio/AudioCalibrationManager.swift`](../../Data/Audio/AudioCalibrationManager.swift)
+**Расположение:** [`MockTechInterviewAI/Data/Audio/AudioCalibrationManager.swift`](../../Data/Audio/AudioCalibrationManager.swift)
 
 **Описание:** Менеджер для автоматической калибровки уровня шума микрофона.
 
@@ -166,7 +166,7 @@ flowchart TD
 
 ### 4. NoiseAnalyzer
 
-**Расположение:** [`XInterview2/Data/Audio/NoiseAnalyzer.swift`](../../Data/Audio/NoiseAnalyzer.swift)
+**Расположение:** [`MockTechInterviewAI/Data/Audio/NoiseAnalyzer.swift`](../../Data/Audio/NoiseAnalyzer.swift)
 
 **Описание:** Анализатор уровня шума для оценки качества аудио.
 

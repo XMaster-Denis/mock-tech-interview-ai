@@ -6,7 +6,7 @@
 
 ## VoiceDetector
 
-**Расположение:** [`XInterview2/Data/Audio/VoiceDetector.swift`](../../Data/Audio/VoiceDetector.swift:35)
+**Расположение:** [`MockTechInterviewAI/Data/Audio/VoiceDetector.swift`](../../Data/Audio/VoiceDetector.swift:35)
 
 **Описание:** Детектор голосовой активности для непрерывного распознавания речи. Использует фиксированный порог из настроек для надежного обнаружения речи.
 
@@ -40,7 +40,7 @@
 
 ## События голосовой активности (VoiceEvent)
 
-**Расположение:** [`XInterview2/Data/Audio/VoiceDetector.swift`](../../Data/Audio/VoiceDetector.swift:21)
+**Расположение:** [`MockTechInterviewAI/Data/Audio/VoiceDetector.swift`](../../Data/Audio/VoiceDetector.swift:21)
 
 | Событие | Тип | Описание |
 |---------|------|-----------|

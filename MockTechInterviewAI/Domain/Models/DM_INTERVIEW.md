@@ -8,7 +8,7 @@
 
 ### 1. InterviewSession
 
-**Расположение:** [`XInterview2/Domain/Models/InterviewSession.swift`](InterviewSession.swift:10)
+**Расположение:** [`MockTechInterviewAI/Domain/Models/InterviewSession.swift`](InterviewSession.swift:10)
 
 **Описание:** Модель сессии интервью, содержащая информацию о текущем интервью.
 
@@ -32,7 +32,7 @@
 
 ### 2. InterviewTopic
 
-**Расположение:** [`XInterview2/Domain/Models/InterviewTopic.swift`](InterviewTopic.swift:10)
+**Расположение:** [`MockTechInterviewAI/Domain/Models/InterviewTopic.swift`](InterviewTopic.swift:10)
 
 **Описание:** Модель темы интервью с вопросами и настройками.
 
@@ -55,7 +55,7 @@
 
 ### 3. InterviewContext
 
-**Расположение:** [`XInterview2/Domain/Models/InterviewContext.swift`](InterviewContext.swift:10)
+**Расположение:** [`MockTechInterviewAI/Domain/Models/InterviewContext.swift`](InterviewContext.swift:10)
 
 **Описание:** Модель контекста интервью для сохранения состояния между сообщениями.
 
@@ -80,7 +80,7 @@
 
 ### 4. InterviewMode
 
-**Расположение:** [`XInterview2/Domain/Models/InterviewMode.swift`](InterviewMode.swift:10)
+**Расположение:** [`MockTechInterviewAI/Domain/Models/InterviewMode.swift`](InterviewMode.swift:10)
 
 **Описание:** Перечисление режимов интервью.
 
@@ -100,7 +100,7 @@
 
 ### 5. TranscriptMessage
 
-**Расположение:** [`XInterview2/Domain/Models/TranscriptMessage.swift`](TranscriptMessage.swift:10)
+**Расположение:** [`MockTechInterviewAI/Domain/Models/TranscriptMessage.swift`](TranscriptMessage.swift:10)
 
 **Описание:** Модель сообщения в истории интервью.
 
@@ -122,7 +122,7 @@
 
 ## InterviewViewModel
 
-**Расположение:** [`XInterview2/Presentation/ViewModels/InterviewViewModel.swift`](../../Presentation/ViewModels/InterviewViewModel.swift:12)
+**Расположение:** [`MockTechInterviewAI/Presentation/ViewModels/InterviewViewModel.swift`](../../Presentation/ViewModels/InterviewViewModel.swift:12)
 
 **Описание:** ViewModel для управления сессией интервью и UI.
 
@@ -165,7 +165,7 @@
 
 ## TopicsRepository
 
-**Расположение:** [`XInterview2/Data/Repositories/TopicsRepository.swift`](../../Data/Repositories/TopicsRepository.swift)
+**Расположение:** [`MockTechInterviewAI/Data/Repositories/TopicsRepository.swift`](../../Data/Repositories/TopicsRepository.swift)
 
 **Описание:** Репозиторий для управления темами интервью.
 

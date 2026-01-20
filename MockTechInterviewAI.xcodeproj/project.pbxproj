@@ -11,13 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		E2A5A99D2F13EDA700BBB0A0 /* XInterview2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = XInterview2.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E2A5A99D2F13EDA700BBB0A0 /* MockInterview AI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MockInterview AI.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		E2A5A99F2F13EDA700BBB0A0 /* XInterview2 */ = {
+		E2A5A99F2F13EDA700BBB0A0 /* MockTechInterviewAI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = XInterview2;
+			path = MockTechInterviewAI;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,7 +37,7 @@
 		E2A5A9942F13EDA700BBB0A0 = {
 			isa = PBXGroup;
 			children = (
-				E2A5A99F2F13EDA700BBB0A0 /* XInterview2 */,
+				E2A5A99F2F13EDA700BBB0A0 /* MockTechInterviewAI */,
 				E2A5A99E2F13EDA700BBB0A0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,7 +45,7 @@
 		E2A5A99E2F13EDA700BBB0A0 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				E2A5A99D2F13EDA700BBB0A0 /* XInterview2.app */,
+				E2A5A99D2F13EDA700BBB0A0 /* MockInterview AI.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,9 +53,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E2A5A99C2F13EDA700BBB0A0 /* XInterview2 */ = {
+		E2A5A99C2F13EDA700BBB0A0 /* MockInterview AI */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E2A5A9A82F13EDA800BBB0A0 /* Build configuration list for PBXNativeTarget "XInterview2" */;
+			buildConfigurationList = E2A5A9A82F13EDA800BBB0A0 /* Build configuration list for PBXNativeTarget "MockInterview AI" */;
 			buildPhases = (
 				E2A5A9992F13EDA700BBB0A0 /* Sources */,
 				E2A5A99A2F13EDA700BBB0A0 /* Frameworks */,
@@ -66,14 +66,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				E2A5A99F2F13EDA700BBB0A0 /* XInterview2 */,
+				E2A5A99F2F13EDA700BBB0A0 /* MockTechInterviewAI */,
 			);
-			name = XInterview2;
+			name = "MockInterview AI";
 			packageProductDependencies = (
 				E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */,
 			);
-			productName = XInterview2;
-			productReference = E2A5A99D2F13EDA700BBB0A0 /* XInterview2.app */;
+			productName = "MockInterview AI";
+			productReference = E2A5A99D2F13EDA700BBB0A0 /* MockInterview AI.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -91,7 +91,7 @@
 					};
 				};
 			};
-			buildConfigurationList = E2A5A9982F13EDA700BBB0A0 /* Build configuration list for PBXProject "XInterview2" */;
+			buildConfigurationList = E2A5A9982F13EDA700BBB0A0 /* Build configuration list for PBXProject "MockTechInterview AI" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -110,7 +110,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				E2A5A99C2F13EDA700BBB0A0 /* XInterview2 */,
+				E2A5A99C2F13EDA700BBB0A0 /* MockInterview AI */,
 			);
 		};
 /* End PBXProject section */
@@ -282,6 +282,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "MockInterview AI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "App needs access to your microphone to transcribe your speech during the interview.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -334,6 +335,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "MockInterview AI";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "App needs access to your microphone to transcribe your speech during the interview.";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -363,7 +365,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		E2A5A9982F13EDA700BBB0A0 /* Build configuration list for PBXProject "XInterview2" */ = {
+		E2A5A9982F13EDA700BBB0A0 /* Build configuration list for PBXProject "MockTechInterview AI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				E2A5A9A62F13EDA800BBB0A0 /* Debug */,
@@ -372,7 +374,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		E2A5A9A82F13EDA800BBB0A0 /* Build configuration list for PBXNativeTarget "XInterview2" */ = {
+		E2A5A9A82F13EDA800BBB0A0 /* Build configuration list for PBXNativeTarget "MockInterview AI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				E2A5A9A92F13EDA800BBB0A0 /* Debug */,

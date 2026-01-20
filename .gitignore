@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserdatad/
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.swp
+*.tmp
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods / Carthage / Accio
+Pods/
+Carthage/Build/
+.accio/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Logs
+*.log
+
+# Code coverage
+*.gcda
+*.gcno
+*.gcov
+
+# Playground
+timeline.xctimeline
+playground.xcworkspace
+
+# App bundles
+*.app

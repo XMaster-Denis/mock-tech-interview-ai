@@ -1,19 +1,19 @@
 # Known Issues
 
-This document tracks known issues and limitations in XInterview2 version 0.1.0-baseline.
+This document tracks known issues and limitations in MockTechInterview AI version 0.1.0-baseline.
 
 ## Non-Blocking Issues
 
 ### Swift 6 Sendable Warnings
 
-**Location:** `XInterview2/Data/Networking/DefaultHTTPClient.swift`  
+**Location:** `MockTechInterviewAI/Data/Networking/DefaultHTTPClient.swift`  
 **Severity:** Low (warning only, doesn't affect functionality)  
 **Description:**  
 The HTTPClient protocol's `request` method has a Swift 6 Sendable warning for the `responseType` parameter (generic type `T.Type`). This is because generic type parameters are not automatically Sendable.
 
 **Example warning:**
 ```
-/Users/xmaster/Developer/iOS/XInterview2/XInterview2/Data/Networking/DefaultHTTPClient.swift:17:10: warning: non-Sendable parameter type 'T.Type' cannot be sent from caller of protocol requirement 'request(endpoint:method:body:headers:responseType:)' into main actor-isolated implementation; this is an error in the Swift 6 language mode
+/Users/xmaster/Developer/iOS/MockTechInterview/MockTechInterviewAI/Data/Networking/DefaultHTTPClient.swift:17:10: warning: non-Sendable parameter type 'T.Type' cannot be sent from caller of protocol requirement 'request(endpoint:method:body:headers:responseType:)' into main actor-isolated implementation; this is an error in the Swift 6 language mode
 ```
 
 **Impact:** None - Build succeeds, app runs correctly.
@@ -26,7 +26,7 @@ The HTTPClient protocol's `request` method has a Swift 6 Sendable warning for th
 
 ### Voice Detection Sensitivity
 
-**Location:** `XInterview2/Data/Audio/VoiceDetector.swift`  
+**Location:** `MockTechInterviewAI/Data/Audio/VoiceDetector.swift`  
 **Severity:** Low (configurable workaround exists)  
 **Description:**  
 Voice activity detection may have varying accuracy depending on:
@@ -140,7 +140,7 @@ The following issues have been resolved in v0.1.0-baseline:
 
 When reporting new issues, please include:
 1. macOS version
-2. XInterview2 version (git tag or commit hash)
+2. MockTechInterview AI version (git tag or commit hash)
 3. Steps to reproduce
 4. Expected behavior
 5. Actual behavior
