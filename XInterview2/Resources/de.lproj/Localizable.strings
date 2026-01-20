@@ -30,6 +30,7 @@
 "topics.add" = "Neues Thema";
 "topics.settings" = "Einstellungen";
 "topics.edit" = "Thema bearbeiten";
+"topics.clear_history" = "Interview-Verlauf löschen";
 "topics.delete" = "Thema löschen";
 
 "topic_edit.info" = "Themeninfo";
@@ -61,6 +62,7 @@
 "error.add_topic" = "Thema konnte nicht hinzugefügt werden: %@";
 "error.update_topic" = "Thema konnte nicht aktualisiert werden: %@";
 "error.delete_topic" = "Thema konnte nicht gelöscht werden: %@";
+"error.clear_history_failed" = "Interview-Verlauf konnte nicht gelöscht werden";
 "error.api_key_required" = "Bitte zuerst den OpenAI API Key in den Einstellungen setzen";
 "error.start_interview_first" = "Bitte starte zuerst das Interview";
 

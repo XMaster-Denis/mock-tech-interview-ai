@@ -30,6 +30,7 @@
 "topics.add" = "Add new topic";
 "topics.settings" = "Settings";
 "topics.edit" = "Edit topic";
+"topics.clear_history" = "Clear interview history";
 "topics.delete" = "Delete topic";
 
 "topic_edit.info" = "Topic Information";
@@ -61,6 +62,7 @@
 "error.add_topic" = "Failed to add topic: %@";
 "error.update_topic" = "Failed to update topic: %@";
 "error.delete_topic" = "Failed to delete topic: %@";
+"error.clear_history_failed" = "Failed to clear interview history";
 "error.api_key_required" = "Please configure your OpenAI API key in Settings first";
 "error.start_interview_first" = "Please start the interview first";
 

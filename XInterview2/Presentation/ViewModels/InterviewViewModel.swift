@@ -209,6 +209,23 @@ class InterviewViewModel: ObservableObject {
         }
     }
     
+    func clearInterviewHistory(for topic: InterviewTopic) {
+        let settings = settingsRepository.loadSettings()
+        let result = contextRepository.deleteContexts(topicId: topic.id, language: settings.selectedLanguage)
+        
+        if case .failure = result {
+            errorMessage = L10n.text("error.clear_history_failed")
+        }
+        
+        if session.topic.id == topic.id {
+            session.context = nil
+            session.transcript = []
+            if session.isActive {
+                stopInterview()
+            }
+        }
+    }
+    
     func startEditingTopic(_ topic: InterviewTopic) {
         topicToEdit = topic
         isEditingTopic = true

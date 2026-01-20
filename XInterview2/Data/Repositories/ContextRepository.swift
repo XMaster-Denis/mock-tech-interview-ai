@@ -47,20 +47,27 @@ class ContextRepository {
     
     func loadAllContexts() -> Result<[InterviewContext], ContextRepositoryError> {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            _ = saveContexts([])
             return .success([])
         }
         
         do {
             let data = try Data(contentsOf: fileURL)
+            if data.isEmpty {
+                return .success([])
+            }
             let contexts = try JSONDecoder().decode([InterviewContext].self, from: data)
             return .success(contexts)
         } catch {
             let nsError = error as NSError
             if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFileNoSuchFileError {
+                _ = saveContexts([])
                 return .success([])
             }
             Logger.error("Failed to load contexts: \(error.localizedDescription)")
-            return .failure(.invalidData)
+            _ = backupCorruptFile()
+            _ = saveContexts([])
+            return .success([])
         }
     }
     
@@ -107,8 +114,8 @@ class ContextRepository {
                 contexts.append(context)
             }
             return saveContexts(contexts)
-        case .failure(let error):
-            return .failure(error)
+        case .failure:
+            return saveContexts([context])
         }
     }
     
@@ -130,10 +137,54 @@ class ContextRepository {
     
     func deleteAllContexts() -> Result<Void, ContextRepositoryError> {
         do {
+            guard FileManager.default.fileExists(atPath: fileURL.path) else {
+                return .success(())
+            }
             try FileManager.default.removeItem(at: fileURL)
             return .success(())
         } catch {
             Logger.error("Failed to delete all contexts: \(error.localizedDescription)")
+            return .failure(.writeFailed)
+        }
+    }
+    
+    func deleteContexts(topicId: UUID, language: Language? = nil) -> Result<Void, ContextRepositoryError> {
+        switch loadAllContexts() {
+        case .success(var contexts):
+            let initialCount = contexts.count
+            contexts.removeAll { context in
+                guard context.topicId == topicId else {
+                    return false
+                }
+                if let language {
+                    return context.languageRaw == language.rawValue
+                }
+                return true
+            }
+            
+            if contexts.count < initialCount {
+                return saveContexts(contexts)
+            }
+            return .success(())
+        case .failure(let error):
+            return .failure(error)
+        }
+    }
+    
+    private func backupCorruptFile() -> Result<Void, ContextRepositoryError> {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return .success(())
+        }
+        
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let backupURL = fileURL.deletingLastPathComponent()
+            .appendingPathComponent("interview_contexts_corrupt_\(timestamp).json")
+        
+        do {
+            try FileManager.default.moveItem(at: fileURL, to: backupURL)
+            return .success(())
+        } catch {
+            Logger.error("Failed to back up contexts: \(error.localizedDescription)")
             return .failure(.writeFailed)
         }
     }

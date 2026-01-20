@@ -59,6 +59,8 @@ struct TopicsSidebarView: View {
                             viewModel.selectTopic(topic)
                         } onEdit: {
                             viewModel.startEditingTopic(topic)
+                        } onClearHistory: {
+                            viewModel.clearInterviewHistory(for: topic)
                         } onDelete: {
                             viewModel.deleteTopic(id: topic.id)
                         }
@@ -96,6 +98,7 @@ struct TopicRowView: View {
     let isSelected: Bool
     let onTap: () -> Void
     let onEdit: () -> Void
+    let onClearHistory: () -> Void
     let onDelete: () -> Void
     
     var body: some View {
@@ -160,6 +163,14 @@ struct TopicRowView: View {
                 }
                 .buttonStyle(.plain)
                 .help("topics.edit")
+                
+                Button(action: onClearHistory) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                .buttonStyle(.plain)
+                .help("topics.clear_history")
                 
                 Button(action: onDelete) {
                     Image(systemName: "trash")

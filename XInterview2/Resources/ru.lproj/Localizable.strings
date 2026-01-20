@@ -30,6 +30,7 @@
 "topics.add" = "Добавить тему";
 "topics.settings" = "Настройки";
 "topics.edit" = "Редактировать тему";
+"topics.clear_history" = "Очистить историю интервью";
 "topics.delete" = "Удалить тему";
 
 "topic_edit.info" = "Информация о теме";
@@ -61,6 +62,7 @@
 "error.add_topic" = "Не удалось добавить тему: %@";
 "error.update_topic" = "Не удалось обновить тему: %@";
 "error.delete_topic" = "Не удалось удалить тему: %@";
+"error.clear_history_failed" = "Не удалось очистить историю интервью";
 "error.api_key_required" = "Сначала укажите OpenAI API Key в настройках";
 "error.start_interview_first" = "Сначала запустите интервью";
 
