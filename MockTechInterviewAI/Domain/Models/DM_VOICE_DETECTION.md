@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Документация детектора голосовой активности (Voice Activity Detection - VAD) приложения XInterview2.
+Документация детектора голосовой активности (Voice Activity Detection - VAD) приложения MockTechInterview AI.
 
 ## VoiceDetector
 

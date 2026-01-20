@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Документация модели [`Settings`](Settings.swift:10) и системы настроек приложения XInterview2.
+Документация модели [`Settings`](Settings.swift:10) и системы настроек приложения MockTechInterview AI.
 
 ## Модель Settings
 
