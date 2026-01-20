@@ -12,6 +12,7 @@ struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @StateObject private var audioTestViewModel = AudioTestViewModel()
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(UserDefaultsKeys.selectedInterfaceLanguage) private var interfaceLanguageRaw = Language.english.rawValue
     
     init() {
         // Initialize on MainActor
@@ -33,13 +34,13 @@ struct SettingsView: View {
             
             HStack {
                 Spacer()
-                Button("Save") {
+                Button("settings.save") {
                     viewModel.saveSettings()
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
                 
-                Button("Cancel") {
+                Button("settings.cancel") {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -48,24 +49,25 @@ struct SettingsView: View {
             .padding(.vertical, 16)
         }
         .frame(width: 860, height: 800)
+        .environment(\.locale, interfaceLanguage.locale)
     }
     
     private var leftColumn: some View {
         VStack(alignment: .leading, spacing: 20) {
             // API Key Section
             VStack(alignment: .leading, spacing: 8) {
-                Text("OpenAI API Key")
+                Text("settings.api_key")
                     .font(.headline)
                 
-                SecureField("Enter your API key", text: $viewModel.apiKey)
+                SecureField("settings.api_key_placeholder", text: $viewModel.apiKey)
                     .textFieldStyle(.roundedBorder)
                 
                 if viewModel.hasValidAPIKey {
-                    Text("API key is valid ✓")
+                    Text("settings.api_key_valid")
                         .font(.caption)
                         .foregroundColor(.green)
                 } else {
-                    Text("API key is required - Get one at platform.openai.com")
+                    Text("settings.api_key_required")
                         .font(.caption)
                         .foregroundColor(.orange)
                 }
@@ -75,10 +77,24 @@ struct SettingsView: View {
             
             // Language Selection
             VStack(alignment: .leading, spacing: 8) {
-                Text("Interview Language")
+                Text("settings.interview_language")
                     .font(.headline)
                 
-                Picker("Language", selection: $viewModel.selectedLanguage) {
+                Picker("settings.language_label", selection: $viewModel.selectedLanguage) {
+                    ForEach(Language.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("settings.interface_language")
+                    .font(.headline)
+                
+                Picker("settings.language_label", selection: interfaceLanguageBinding) {
                     ForEach(Language.allCases) { language in
                         Text(language.displayName).tag(language)
                     }
@@ -90,24 +106,24 @@ struct SettingsView: View {
             
             // AI Models
             VStack(alignment: .leading, spacing: 8) {
-                Text("AI Models")
+                Text("settings.ai_models")
                     .font(.headline)
                 
-                Picker("Chat Model", selection: $viewModel.selectedChatModel) {
+                Picker("settings.chat_model", selection: $viewModel.selectedChatModel) {
                     ForEach(viewModel.availableChatModels, id: \.self) { model in
                         Text(model).tag(model)
                     }
                 }
                 .pickerStyle(.menu)
                 
-                Picker("Whisper Model", selection: $viewModel.selectedWhisperModel) {
+                Picker("settings.whisper_model", selection: $viewModel.selectedWhisperModel) {
                     ForEach(viewModel.availableWhisperModels, id: \.self) { model in
                         Text(model).tag(model)
                     }
                 }
                 .pickerStyle(.menu)
                 
-                Picker("TTS Model", selection: $viewModel.selectedTTSModel) {
+                Picker("settings.tts_model", selection: $viewModel.selectedTTSModel) {
                     ForEach(viewModel.availableTTSModels, id: \.self) { model in
                         Text(model).tag(model)
                     }
@@ -119,10 +135,10 @@ struct SettingsView: View {
             
             // Voice Selection
             VStack(alignment: .leading, spacing: 8) {
-                Text("AI Voice")
+                Text("settings.ai_voice")
                     .font(.headline)
                 
-                Picker("Voice", selection: $viewModel.selectedVoice) {
+                Picker("settings.voice_label", selection: $viewModel.selectedVoice) {
                     ForEach(viewModel.availableVoices, id: \.self) { voice in
                         Text(voice.capitalized).tag(voice)
                     }
@@ -134,27 +150,43 @@ struct SettingsView: View {
             
             // TTS Interruption
             VStack(alignment: .leading, spacing: 8) {
-                Text("TTS Interruption")
+                Text("settings.tts_interruption")
                     .font(.headline)
                 
-                Text("Allow microphone noise to interrupt AI speech")
+                Text("settings.tts_interruption_desc")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Toggle("Allow interruption", isOn: $viewModel.allowTTSInterruption)
+                Toggle("settings.allow_interruption", isOn: $viewModel.allowTTSInterruption)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var interfaceLanguage: Language {
+        Language(rawValue: interfaceLanguageRaw) ?? .english
+    }
+    
+    private var interfaceLanguageBinding: Binding<Language> {
+        Binding(
+            get: { interfaceLanguage },
+            set: { newValue in
+                interfaceLanguageRaw = newValue.rawValue
+                DispatchQueue.main.async {
+                    viewModel.selectedInterfaceLanguage = newValue
+                }
+            }
+        )
     }
     
     private var rightColumn: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Audio Test Section
             VStack(alignment: .leading, spacing: 12) {
-                Text("Audio System Test")
+                Text("settings.audio_test")
                     .font(.headline)
                 
-                Text("Test your microphone to ensure voice recognition works properly")
+                Text("settings.audio_test_desc")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
@@ -169,7 +201,7 @@ struct SettingsView: View {
                             await audioTestViewModel.startTest()
                         }
                     }) {
-                        Label("Test Microphone (5s)", systemImage: "mic.fill")
+                        Label("settings.test_microphone", systemImage: "mic.fill")
                     }
                     .disabled(audioTestViewModel.isRecording)
                     .buttonStyle(.bordered)
@@ -179,7 +211,7 @@ struct SettingsView: View {
                             await audioTestViewModel.stopTest()
                         }
                     }) {
-                        Label("Stop", systemImage: "stop.fill")
+                        Label("settings.stop", systemImage: "stop.fill")
                     }
                     .disabled(!audioTestViewModel.isRecording)
                 }
@@ -191,7 +223,7 @@ struct SettingsView: View {
                 Button(action: {
                     audioTestViewModel.clearLogs()
                 }) {
-                    Label("Clear Logs", systemImage: "trash")
+                    Label("settings.clear_logs", systemImage: "trash")
                 }
                 .font(.caption)
                 
@@ -216,27 +248,27 @@ struct SettingsView: View {
             
             // Voice Threshold (Microphone Sensitivity)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Voice Threshold")
+                Text("settings.voice_threshold")
                     .font(.headline)
                 
-                Text("Microphone sensitivity for voice detection")
+                Text("settings.voice_threshold_desc")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 HStack(spacing: 16) {
-                    Text("Less Sensitive")
+                    Text("settings.less_sensitive")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Slider(value: $viewModel.voiceThreshold, in: 0.05...0.5, step: 0.01)
                     
-                    Text("More Sensitive")
+                    Text("settings.more_sensitive")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
                 HStack {
-                    Text("Current threshold:")
+                    Text("settings.current_threshold")
                         .font(.caption)
                     Text(String(format: "%.2f", viewModel.voiceThreshold))
                         .font(.caption)
@@ -246,19 +278,19 @@ struct SettingsView: View {
                     Spacer()
                     
                     if viewModel.voiceThreshold < 0.15 {
-                        Label("Very Sensitive", systemImage: "speaker.wave.3.fill")
+                        Label("settings.very_sensitive", systemImage: "speaker.wave.3.fill")
                             .font(.caption)
                             .foregroundColor(.green)
                     } else if viewModel.voiceThreshold < 0.25 {
-                        Label("Sensitive", systemImage: "speaker.wave.2.fill")
+                        Label("settings.sensitive", systemImage: "speaker.wave.2.fill")
                             .font(.caption)
                             .foregroundColor(.blue)
                     } else if viewModel.voiceThreshold < 0.35 {
-                        Label("Normal", systemImage: "speaker.wave.1.fill")
+                        Label("settings.normal", systemImage: "speaker.wave.1.fill")
                             .font(.caption)
                             .foregroundColor(.orange)
                     } else {
-                        Label("Less Sensitive", systemImage: "speaker.slash.fill")
+                        Label("settings.less_sensitive_label", systemImage: "speaker.slash.fill")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
@@ -270,7 +302,7 @@ struct SettingsView: View {
                             await viewModel.calibrateNoiseLevel()
                         }
                     }) {
-                        Label("Calibrate Noise Level (3s)", systemImage: "waveform.path")
+                        Label("settings.calibrate_noise", systemImage: "waveform.path")
                     }
                     .disabled(viewModel.isCalibrating)
                     .buttonStyle(.bordered)
@@ -290,7 +322,7 @@ struct SettingsView: View {
                 
                 if let calibratedThreshold = viewModel.calibratedNoiseLevel {
                     HStack {
-                        Text("Calibrated threshold:")
+                        Text("settings.calibrated_threshold")
                             .font(.caption)
                         Text(String(format: "%.2f", calibratedThreshold))
                             .font(.caption)
@@ -300,7 +332,7 @@ struct SettingsView: View {
                         
                         Spacer()
                         
-                        Label("Applied ✓", systemImage: "checkmark.circle.fill")
+                        Label("settings.applied", systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .foregroundColor(.green)
                     }
@@ -311,29 +343,29 @@ struct SettingsView: View {
             
             // Silence Timeout
             VStack(alignment: .leading, spacing: 8) {
-                Text("Silence Timeout")
+                Text("settings.silence_timeout")
                     .font(.headline)
                 
-                Text("How long to wait for silence after speech ends before processing")
+                Text("settings.silence_timeout_desc")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 HStack(spacing: 16) {
-                    Text("0.5s")
+                    Text("settings.silence_timeout_min")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Slider(value: $viewModel.silenceTimeout, in: 0.5...5.0, step: 0.5)
                     
-                    Text("5.0s")
+                    Text("settings.silence_timeout_max")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
                 HStack {
-                    Text("Current timeout:")
+                    Text("settings.current_timeout")
                         .font(.caption)
-                    Text("\(String(format: "%.1f", viewModel.silenceTimeout)) seconds")
+                    Text(L10n.format("settings.current_timeout_value", viewModel.silenceTimeout))
                         .font(.caption)
                         .fontWeight(.bold)
                         .monospacedDigit()
@@ -341,25 +373,25 @@ struct SettingsView: View {
                     Spacer()
                     
                     if viewModel.silenceTimeout <= 1.0 {
-                        Label("Quick", systemImage: "bolt.fill")
+                        Label("settings.quick", systemImage: "bolt.fill")
                             .font(.caption)
                             .foregroundColor(.green)
                     } else if viewModel.silenceTimeout <= 2.0 {
-                        Label("Normal", systemImage: "clock")
+                        Label("settings.normal", systemImage: "clock")
                             .font(.caption)
                             .foregroundColor(.blue)
                     } else if viewModel.silenceTimeout <= 3.0 {
-                        Label("Slow", systemImage: "clock.fill")
+                        Label("settings.slow", systemImage: "clock.fill")
                             .font(.caption)
                             .foregroundColor(.orange)
                     } else {
-                        Label("Very Slow", systemImage: "hourglass")
+                        Label("settings.very_slow", systemImage: "hourglass")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
                 }
                 
-                Text("⚠️ Shorter timeout = faster but may cut off early speech")
+                Text("settings.shorter_timeout_warning")
                     .font(.caption2)
                     .foregroundColor(.orange)
             }
@@ -368,27 +400,27 @@ struct SettingsView: View {
             
             // Min Speech Level
             VStack(alignment: .leading, spacing: 8) {
-                Text("Min Speech Level")
+                Text("settings.min_speech_level")
                     .font(.headline)
                 
-                Text("Minimum audio level to validate speech (filters quiet noises)")
+                Text("settings.min_speech_desc")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 HStack(spacing: 16) {
-                    Text("Less Strict")
+                    Text("settings.less_strict")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     Slider(value: $viewModel.minSpeechLevel, in: 0.01...0.1, step: 0.005)
                     
-                    Text("More Strict")
+                    Text("settings.more_strict")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
                 HStack {
-                    Text("Current level:")
+                    Text("settings.current_level")
                         .font(.caption)
                     Text(String(format: "%.3f", viewModel.minSpeechLevel))
                         .font(.caption)
@@ -398,25 +430,25 @@ struct SettingsView: View {
                     Spacer()
                     
                     if viewModel.minSpeechLevel < 0.03 {
-                        Label("Very Permissive", systemImage: "speaker.wave.3.fill")
+                        Label("settings.very_permissive", systemImage: "speaker.wave.3.fill")
                             .font(.caption)
                             .foregroundColor(.green)
                     } else if viewModel.minSpeechLevel < 0.05 {
-                        Label("Permissive", systemImage: "speaker.wave.2.fill")
+                        Label("settings.permissive", systemImage: "speaker.wave.2.fill")
                             .font(.caption)
                             .foregroundColor(.blue)
                     } else if viewModel.minSpeechLevel < 0.07 {
-                        Label("Normal", systemImage: "speaker.wave.1.fill")
+                        Label("settings.normal", systemImage: "speaker.wave.1.fill")
                             .font(.caption)
                             .foregroundColor(.orange)
                     } else {
-                        Label("Strict", systemImage: "speaker.slash.fill")
+                        Label("settings.strict", systemImage: "speaker.slash.fill")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
                 }
                 
-                Text("💡 Lower values = more sensitive (may catch quiet speech)")
+                Text("settings.min_speech_tip")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -447,7 +479,7 @@ struct SettingsView: View {
 class AudioTestViewModel: ObservableObject {
     @Published var audioLevel: Float = 0.0
     @Published var isRecording: Bool = false
-    @Published var statusText: String = "Ready to test"
+    @Published var statusText: String = L10n.text("settings.ready_to_test")
     @Published var logs: [String] = []
     
     private let voiceDetector = VoiceDetector()
@@ -468,11 +500,11 @@ class AudioTestViewModel: ObservableObject {
         guard !isRecording else { return }
         
         isRecording = true
-        statusText = "Testing..."
+        statusText = L10n.text("settings.testing")
         logs.removeAll()
         
-        addLog("🎙️ Starting microphone test for \(Int(testDuration)) seconds...")
-        addLog("💡 Speak into your microphone to test voice detection")
+        addLog(L10n.format("settings.starting_mic_test", Int(testDuration)))
+        addLog(L10n.text("settings.speak_to_test"))
         
         voiceDetector.startListening()
         
@@ -490,7 +522,7 @@ class AudioTestViewModel: ObservableObject {
                 // Log audio level periodically
                 if Int(elapsed * 10) % 5 == 0 { // Every 0.5 seconds
                     let levelStr = String(format: "%.3f", audioLevel)
-                    addLog("🎚️ Audio level: \(levelStr)")
+                    addLog(L10n.format("settings.audio_level_log", levelStr))
                 }
                 
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
@@ -504,23 +536,23 @@ class AudioTestViewModel: ObservableObject {
         guard isRecording else { return }
         
         isRecording = false
-        statusText = "Stopped"
+        statusText = L10n.text("settings.stopped")
         
         voiceDetector.stopListening()
         
         testTask?.cancel()
         testTask = nil
         
-        addLog("🛑 Test stopped")
+        addLog(L10n.text("settings.test_stopped"))
         
         await MainActor.run {
-            statusText = "Ready to test"
+            statusText = L10n.text("settings.ready_to_test")
         }
     }
     
     func clearLogs() {
         logs.removeAll()
-        addLog("🗑️ Logs cleared")
+        addLog(L10n.text("settings.logs_cleared"))
     }
     
     private func addLog(_ message: String) {

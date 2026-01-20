@@ -15,7 +15,14 @@ enum InterviewMode: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     
     var displayName: String {
-        rawValue
+        switch self {
+        case .questionsOnly:
+            return "Questions"
+        case .codeTasks:
+            return "Code Tasks"
+        case .hybrid:
+            return "Hybrid"
+        }
     }
     
     var description: String {
@@ -26,6 +33,28 @@ enum InterviewMode: String, Codable, CaseIterable, Identifiable {
             return "Coding challenges with AI evaluation"
         case .hybrid:
             return "Mixed mode with both questions and coding tasks"
+        }
+    }
+    
+    var uiDisplayName: String {
+        switch self {
+        case .questionsOnly:
+            return L10n.text("interview_mode.questions")
+        case .codeTasks:
+            return L10n.text("interview_mode.code_tasks")
+        case .hybrid:
+            return L10n.text("interview_mode.hybrid")
+        }
+    }
+    
+    var uiDescription: String {
+        switch self {
+        case .questionsOnly:
+            return L10n.text("interview_mode.questions_desc")
+        case .codeTasks:
+            return L10n.text("interview_mode.code_tasks_desc")
+        case .hybrid:
+            return L10n.text("interview_mode.hybrid_desc")
         }
     }
 }

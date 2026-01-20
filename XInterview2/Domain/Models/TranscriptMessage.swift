@@ -13,6 +13,8 @@ struct TranscriptMessage: Identifiable, Codable, Equatable {
     let text: String
     let timestamp: Date
     let audioFileName: String?
+    let translationText: String?
+    let translationNotes: String?
     
     enum MessageRole: String, Codable {
         case system
@@ -25,12 +27,16 @@ struct TranscriptMessage: Identifiable, Codable, Equatable {
         role: MessageRole,
         text: String,
         timestamp: Date = Date(),
-        audioFileName: String? = nil
+        audioFileName: String? = nil,
+        translationText: String? = nil,
+        translationNotes: String? = nil
     ) {
         self.id = id
         self.role = role
         self.text = text
         self.timestamp = timestamp
         self.audioFileName = audioFileName
+        self.translationText = translationText
+        self.translationNotes = translationNotes
     }
 }

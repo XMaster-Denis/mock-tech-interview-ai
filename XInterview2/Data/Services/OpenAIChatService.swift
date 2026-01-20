@@ -199,6 +199,21 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         
         return newPrompt
     }
+
+    private func getTranslationSystemPrompt(source: Language, target: Language) -> String {
+        let promptKey = "translate-\(source.rawValue)-\(target.rawValue)"
+        
+        if let cachedKey = cachedPromptKey,
+           cachedKey == promptKey,
+           let cachedPrompt = cachedSystemPrompt {
+            return cachedPrompt
+        }
+        
+        let newPrompt = PromptTemplates.System.translateMessage(source: source, target: target)
+        cachedPromptKey = promptKey
+        cachedSystemPrompt = newPrompt
+        return newPrompt
+    }
     
     private func buildCheckUserMessage(context: String, code: String, language: Language) -> String {
         switch language {
@@ -296,6 +311,17 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             return "Antwort des Nutzers: \(userMessage)"
         }
     }
+
+    private func buildTranslationUserMessage(text: String, source: Language, target: Language) -> String {
+        switch target {
+        case .english:
+            return "Text: \(text)"
+        case .german:
+            return "Text: \(text)"
+        case .russian:
+            return "Текст: \(text)"
+        }
+    }
     
     private func requestChatResponse(
         messages: [ChatMessage],
@@ -345,6 +371,13 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             return nil
         }
         return try? JSONDecoder().decode(AIResponse.self, from: data)
+    }
+
+    private func decodeTranslation(_ content: String) -> TranslationResult? {
+        guard let data = content.data(using: .utf8) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(TranslationResult.self, from: data)
     }
     
     private func normalizeResponse(_ response: AIResponse, mode: LLMMode) -> AIResponse {
@@ -973,6 +1006,35 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         }
         
         return evaluation
+    }
+
+    func translateAssistantMessage(
+        text: String,
+        sourceLanguage: Language,
+        targetLanguage: Language,
+        chatModel: String,
+        apiKey: String
+    ) async throws -> TranslationResult {
+        let systemPrompt = getTranslationSystemPrompt(source: sourceLanguage, target: targetLanguage)
+        let userMessage = buildTranslationUserMessage(text: text, source: sourceLanguage, target: targetLanguage)
+        
+        let messages = [
+            ChatMessage(role: "system", content: systemPrompt),
+            ChatMessage(role: "user", content: userMessage)
+        ]
+        
+        let assistantMessage = try await requestChatResponse(
+            messages: messages,
+            model: chatModel,
+            apiKey: apiKey,
+            temperature: 0.2
+        )
+        
+        if let decoded = decodeTranslation(assistantMessage) {
+            return decoded
+        }
+        
+        throw HTTPError.serverError("Invalid translation response")
     }
     
     // MARK: - Legacy Support

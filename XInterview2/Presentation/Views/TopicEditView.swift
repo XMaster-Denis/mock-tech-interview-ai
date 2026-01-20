@@ -39,8 +39,8 @@ struct TopicEditView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Topic Information")) {
-                    TextField("Title", text: $title)
+                Section(header: Text("topic_edit.info")) {
+                    TextField("topic_edit.title", text: $title)
                         .textFieldStyle(.roundedBorder)
                     
                     TextEditor(text: $prompt)
@@ -51,19 +51,19 @@ struct TopicEditView: View {
                         )
                 }
                 
-                Section(header: Text("Interview Settings")) {
-                    Picker("Programming Language", selection: $codeLanguage) {
+                Section(header: Text("topic_edit.settings")) {
+                    Picker("topic_edit.programming_language", selection: $codeLanguage) {
                         ForEach(CodeLanguageInterview.allCases, id: \.self) { language in
                             Text(language.displayName).tag(language)
                         }
                     }
                     .pickerStyle(.menu)
                     
-                    Picker("Interview Mode", selection: $interviewMode) {
+                    Picker("topic_edit.interview_mode", selection: $interviewMode) {
                         ForEach(InterviewMode.allCases, id: \.self) { mode in
                             VStack(alignment: .leading) {
-                                Text(mode.displayName)
-                                Text(mode.description)
+                                Text(mode.uiDisplayName)
+                                Text(mode.uiDescription)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -72,15 +72,15 @@ struct TopicEditView: View {
                     }
                     .pickerStyle(.menu)
                     
-                    Picker("Developer Level", selection: $level) {
+                    Picker("topic_edit.developer_level", selection: $level) {
                         ForEach(DeveloperLevel.allCases, id: \.self) { level in
-                            Text(level.displayName).tag(level)
+                            Text(level.uiDisplayName).tag(level)
                         }
                     }
                     .pickerStyle(.menu)
                 }
                 
-                Section(header: Text("Preview")) {
+                Section(header: Text("topic_edit.preview")) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
                             Text(codeLanguage.displayName)
@@ -91,7 +91,7 @@ struct TopicEditView: View {
                                 .foregroundColor(.blue)
                                 .cornerRadius(6)
                             
-                            Text(interviewMode.displayName)
+                            Text(interviewMode.uiDisplayName)
                                 .font(.caption2)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -99,7 +99,7 @@ struct TopicEditView: View {
                                 .foregroundColor(.green)
                                 .cornerRadius(6)
                             
-                            Text(level.displayName)
+                            Text(level.uiDisplayName)
                                 .font(.caption2)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -127,17 +127,17 @@ struct TopicEditView: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(topic.title.isEmpty ? "New Topic" : "Edit Topic")
+            .navigationTitle(topic.title.isEmpty ? LocalizedStringKey("topic_edit.new_title") : LocalizedStringKey("topic_edit.edit_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         onCancel()
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("common.save") {
                         saveTopic()
                         dismiss()
                     }

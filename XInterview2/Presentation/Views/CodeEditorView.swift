@@ -143,10 +143,10 @@ struct CodeEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(showSolutionPanel ? "Solution" : "Hint")
+                    Text(showSolutionPanel ? LocalizedStringKey("code_panel.solution") : LocalizedStringKey("code_panel.hint"))
                         .font(.headline)
                     Spacer()
-                    Button(isHelpPanelCollapsed ? "Expand" : "Collapse") {
+                    Button(isHelpPanelCollapsed ? LocalizedStringKey("code_panel.expand") : LocalizedStringKey("code_panel.collapse")) {
                         isHelpPanelCollapsed.toggle()
                     }
                     .buttonStyle(.bordered)
@@ -203,10 +203,10 @@ struct CodeEditorView: View {
     
     private var collapsedHelpBar: some View {
         HStack {
-            Text(showSolutionPanel ? "Solution" : "Hint")
+            Text(showSolutionPanel ? LocalizedStringKey("code_panel.solution") : LocalizedStringKey("code_panel.hint"))
                 .font(.headline)
             Spacer()
-            Button("Expand") {
+            Button(LocalizedStringKey("code_panel.expand")) {
                 isHelpPanelCollapsed = false
             }
             .buttonStyle(.bordered)

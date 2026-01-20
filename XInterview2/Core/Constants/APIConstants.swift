@@ -44,6 +44,7 @@ enum APIConstants {
 enum UserDefaultsKeys {
     static let apiKey = "openai_api_key"
     static let selectedLanguage = "selected_language"
+    static let selectedInterfaceLanguage = "selected_interface_language"
     static let selectedVoice = "selected_voice"
     static let selectedChatModel = "selected_chat_model"
     static let selectedWhisperModel = "selected_whisper_model"

@@ -22,6 +22,7 @@ final class SettingsRepository: SettingsRepositoryProtocol {
     func loadSettings() -> Settings {
         let apiKey = userDefaults.string(forKey: UserDefaultsKeys.apiKey) ?? ""
         let languageRaw = userDefaults.string(forKey: UserDefaultsKeys.selectedLanguage) ?? Language.english.rawValue
+        let interfaceLanguageRaw = userDefaults.string(forKey: UserDefaultsKeys.selectedInterfaceLanguage) ?? Language.english.rawValue
         let voice = userDefaults.string(forKey: UserDefaultsKeys.selectedVoice) ?? APIConstants.Voice.alloy
         let chatModelRaw = userDefaults.string(forKey: UserDefaultsKeys.selectedChatModel) ?? APIConstants.Model.gpt4o
         let whisperModelRaw = userDefaults.string(forKey: UserDefaultsKeys.selectedWhisperModel) ?? APIConstants.Model.whisperMini
@@ -32,6 +33,7 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         let allowInterruption = userDefaults.object(forKey: UserDefaultsKeys.allowTTSInterruption) as? Bool ?? true
         
         let language = Language(rawValue: languageRaw) ?? .english
+        let interfaceLanguage = Language(rawValue: interfaceLanguageRaw) ?? .english
         let resolvedVoice = APIConstants.Voice.all.contains(voice) ? voice : APIConstants.Voice.alloy
         let chatModel = APIConstants.Model.chatModels.contains(chatModelRaw) ? chatModelRaw : APIConstants.Model.gpt4o
         let whisperModel = APIConstants.Model.whisperModels.contains(whisperModelRaw) ? whisperModelRaw : APIConstants.Model.whisperMini
@@ -49,6 +51,7 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         return Settings(
             apiKey: apiKey,
             selectedLanguage: language,
+            selectedInterfaceLanguage: interfaceLanguage,
             selectedVoice: resolvedVoice,
             selectedChatModel: chatModel,
             selectedWhisperModel: whisperModel,
@@ -67,6 +70,7 @@ final class SettingsRepository: SettingsRepositoryProtocol {
         let ttsModel = APIConstants.Model.ttsModels.contains(settings.selectedTTSModel) ? settings.selectedTTSModel : APIConstants.Model.tts
         userDefaults.set(settings.apiKey, forKey: UserDefaultsKeys.apiKey)
         userDefaults.set(settings.selectedLanguage.rawValue, forKey: UserDefaultsKeys.selectedLanguage)
+        userDefaults.set(settings.selectedInterfaceLanguage.rawValue, forKey: UserDefaultsKeys.selectedInterfaceLanguage)
         userDefaults.set(resolvedVoice, forKey: UserDefaultsKeys.selectedVoice)
         userDefaults.set(chatModel, forKey: UserDefaultsKeys.selectedChatModel)
         userDefaults.set(whisperModel, forKey: UserDefaultsKeys.selectedWhisperModel)

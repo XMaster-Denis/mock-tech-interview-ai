@@ -75,6 +75,27 @@ enum PromptTemplates {
                 """
             }
         }
+
+        static func translateMessage(source: Language, target: Language) -> String {
+            let sourceName = source.displayName
+            let targetName = target.displayName
+            return """
+            You are a translator and tutor.
+            Translate from \(sourceName) to \(targetName).
+            Respond with strict JSON only, no Markdown.
+
+            Output:
+            {
+              "translation": string,
+              "notes": string
+            }
+
+            Rules:
+            - "translation" is the full translation in \(targetName).
+            - "notes" has 2-3 short lines about tricky verbs/phrases used, also in \(targetName).
+            - Keep both fields concise.
+            """
+        }
         static func assistHelp(
             for topic: InterviewTopic,
             level: DeveloperLevel,

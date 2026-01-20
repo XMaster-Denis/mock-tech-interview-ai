@@ -166,7 +166,7 @@ class InterviewViewModel: ObservableObject {
                 session.topic = firstTopic
             }
         case .failure(let error):
-            errorMessage = "Failed to load topics: \(error.localizedDescription)"
+            errorMessage = L10n.format("error.load_topics", error.localizedDescription)
             Logger.error("Failed to load topics: \(error.localizedDescription)")
         }
     }
@@ -176,7 +176,7 @@ class InterviewViewModel: ObservableObject {
         case .success:
             loadTopics()
         case .failure(let error):
-            errorMessage = "Failed to add topic: \(error.localizedDescription)"
+            errorMessage = L10n.format("error.add_topic", error.localizedDescription)
             Logger.error("Failed to add topic: \(error.localizedDescription)")
         }
     }
@@ -190,7 +190,7 @@ class InterviewViewModel: ObservableObject {
                 session.topic = topic
             }
         case .failure(let error):
-            errorMessage = "Failed to update topic: \(error.localizedDescription)"
+            errorMessage = L10n.format("error.update_topic", error.localizedDescription)
             Logger.error("Failed to update topic: \(error.localizedDescription)")
         }
     }
@@ -204,7 +204,7 @@ class InterviewViewModel: ObservableObject {
                 session.topic = firstTopic
             }
         case .failure(let error):
-            errorMessage = "Failed to delete topic: \(error.localizedDescription)"
+            errorMessage = L10n.format("error.delete_topic", error.localizedDescription)
             Logger.error("Failed to delete topic: \(error.localizedDescription)")
         }
     }
@@ -225,7 +225,7 @@ class InterviewViewModel: ObservableObject {
         // Check API key
         let settings = settingsRepository.loadSettings()
         guard !settings.apiKey.isEmpty else {
-            errorMessage = "Please configure your OpenAI API key in Settings first"
+            errorMessage = L10n.text("error.api_key_required")
             return
         }
         
@@ -319,6 +319,10 @@ class InterviewViewModel: ObservableObject {
             timestamp: Date()
         )
         session.transcript.append(message)
+        
+        Task {
+            await translateAssistantMessageIfNeeded(messageId: message.id, text: text)
+        }
     }
     
     private func attachAudio(to text: String, role: TranscriptMessage.MessageRole, fileName: String) {
@@ -336,8 +340,51 @@ class InterviewViewModel: ObservableObject {
             role: message.role,
             text: message.text,
             timestamp: message.timestamp,
-            audioFileName: fileName
+            audioFileName: fileName,
+            translationText: message.translationText,
+            translationNotes: message.translationNotes
         )
+    }
+
+    private func translateAssistantMessageIfNeeded(messageId: UUID, text: String) async {
+        let settings = settingsRepository.loadSettings()
+        
+        guard settings.selectedInterfaceLanguage != settings.selectedLanguage else {
+            return
+        }
+        
+        guard !settings.apiKey.isEmpty else {
+            return
+        }
+        
+        do {
+            let result = try await chatService.translateAssistantMessage(
+                text: text,
+                sourceLanguage: settings.selectedLanguage,
+                targetLanguage: settings.selectedInterfaceLanguage,
+                chatModel: settings.selectedChatModel,
+                apiKey: settings.apiKey
+            )
+            
+            await MainActor.run {
+                guard let index = session.transcript.firstIndex(where: { $0.id == messageId }) else {
+                    return
+                }
+                
+                let message = session.transcript[index]
+                session.transcript[index] = TranscriptMessage(
+                    id: message.id,
+                    role: message.role,
+                    text: message.text,
+                    timestamp: message.timestamp,
+                    audioFileName: message.audioFileName,
+                    translationText: result.translation,
+                    translationNotes: result.notes
+                )
+            }
+        } catch {
+            Logger.error("Failed to translate assistant message", error: error)
+        }
     }
     
     // MARK: - Text Message Handling
@@ -351,7 +398,7 @@ class InterviewViewModel: ObservableObject {
         }
         
         guard session.isActive else {
-            errorMessage = "Please start the interview first"
+            errorMessage = L10n.text("error.start_interview_first")
             return
         }
         
@@ -412,19 +459,19 @@ class InterviewViewModel: ObservableObject {
     }
     
     var recordingButtonText: String {
-        isRecording ? "Recording..." : "Speak"
+        isRecording ? L10n.text("status.recording") : L10n.text("action.speak")
     }
     
     var statusText: String {
         switch conversationState {
         case .idle:
-            return "Idle"
+            return L10n.text("status.idle")
         case .listening:
-            return "Listening..."
+            return L10n.text("status.listening")
         case .processing:
-            return "Processing..."
+            return L10n.text("status.processing")
         case .speaking:
-            return "Speaking..."
+            return L10n.text("status.speaking")
         }
     }
 }

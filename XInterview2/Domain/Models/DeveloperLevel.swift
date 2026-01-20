@@ -44,4 +44,30 @@ enum DeveloperLevel: String, Codable, CaseIterable, Identifiable {
             return "System design, trade-offs, team decisions"
         }
     }
+    
+    var uiDisplayName: String {
+        switch self {
+        case .junior:
+            return L10n.text("developer_level.junior")
+        case .middle:
+            return L10n.text("developer_level.middle")
+        case .senior:
+            return L10n.text("developer_level.senior")
+        case .teamLead:
+            return L10n.text("developer_level.team_lead")
+        }
+    }
+    
+    var uiDescription: String {
+        switch self {
+        case .junior:
+            return L10n.text("developer_level.junior_desc")
+        case .middle:
+            return L10n.text("developer_level.middle_desc")
+        case .senior:
+            return L10n.text("developer_level.senior_desc")
+        case .teamLead:
+            return L10n.text("developer_level.team_lead_desc")
+        }
+    }
 }

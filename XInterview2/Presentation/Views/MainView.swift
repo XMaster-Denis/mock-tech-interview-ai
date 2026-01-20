@@ -38,7 +38,7 @@ struct MainView: View {
                 
                 // Center: Code Editor
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Code Editor")
+                    Text("main.code_editor")
                         .font(.headline)
                         .padding(.horizontal, 12)
                         .padding(.top, 12)
@@ -89,8 +89,8 @@ struct MainView: View {
             silenceTimerElapsed = 0.0
             isSilenceTimerActive = false
         }
-        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-            Button("OK") {
+        .alert("main.error_title", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("main.ok") {
                 viewModel.errorMessage = nil
             }
         } message: {
@@ -110,9 +110,9 @@ struct MainView: View {
         HStack(spacing: 20) {
             // Session status
             VStack(alignment: .leading, spacing: 4) {
-                Text(viewModel.session.isActive ? "Interview Active" : "Not Started")
+                Text(viewModel.session.isActive ? LocalizedStringKey("main.interview_active") : LocalizedStringKey("main.not_started"))
                     .font(.headline)
-                Text("Topic: \(viewModel.session.topic.title)")
+                Text(L10n.format("main.topic_label", viewModel.session.topic.title))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -131,7 +131,7 @@ struct MainView: View {
                 if showAudioDebug {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
-                            Text("Lvl:")
+                            Text("main.level_short")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                             Text(String(format: "%.2f", viewModel.audioLevel))
@@ -140,7 +140,7 @@ struct MainView: View {
                                 .foregroundColor(audioLevelColor)
                         }
                         HStack(spacing: 4) {
-                            Text("Thr:")
+                            Text("main.threshold_short")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                             Text(String(format: "%.2f", viewModel.voiceThreshold))
@@ -201,36 +201,36 @@ struct MainView: View {
                 Button(action: { showAudioDebug.toggle() }) {
                     Image(systemName: showAudioDebug ? "waveform.circle.fill" : "waveform.circle")
                 }
-                .help("Toggle audio level debug info")
+                .help("main.audio_debug_toggle")
                 
                 // Task control buttons (only show when task is active)
                 if case .taskPresented = viewModel.taskState {
                     // Help button
                     Button(action: { viewModel.requestHelp() }) {
-                        Label("Help", systemImage: "questionmark.circle.fill")
+                        Label("main.help", systemImage: "questionmark.circle.fill")
                     }
                     .buttonStyle(.bordered)
-                    .help("Get a hint for the current task")
+                    .help("main.help_hint")
                     
                     // Done button
                     Button(action: { viewModel.confirmTaskCompletion() }) {
-                        Label("Done", systemImage: "checkmark.circle.fill")
+                        Label("main.done", systemImage: "checkmark.circle.fill")
                     }
                     .buttonStyle(.borderedProminent)
-                    .help("Submit your solution for review")
+                    .help("main.done_hint")
                 } else if case .waitingForUserConfirmation = viewModel.taskState {
                     // Understanding confirmation button
                     Button(action: { viewModel.confirmUnderstanding() }) {
-                        Label("I Understand", systemImage: "checkmark.circle.fill")
+                        Label("main.understand", systemImage: "checkmark.circle.fill")
                     }
                     .buttonStyle(.borderedProminent)
-                    .help("Confirm you understand the solution")
+                    .help("main.understand_hint")
                 }
                 
                 // Start/Stop interview button
                 Button(action: { viewModel.toggleRecording() }) {
                     Label(
-                        viewModel.session.isActive ? "Stop Interview" : "Start Interview",
+                        viewModel.session.isActive ? LocalizedStringKey("main.stop_interview") : LocalizedStringKey("main.start_interview"),
                         systemImage: viewModel.session.isActive ? "stop.circle.fill" : "play.circle.fill"
                     )
                 }

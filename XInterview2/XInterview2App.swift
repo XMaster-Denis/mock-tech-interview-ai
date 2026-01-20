@@ -15,7 +15,7 @@ struct XInterview2App: App {
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
-                Button("Settings…") {
+                Button("menu.settings") {
                     // Settings will be opened via sheet in MainView
                     NotificationCenter.default.post(name: .openSettings, object: nil)
                 }

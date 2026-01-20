@@ -14,6 +14,7 @@ class SettingsViewModel: ObservableObject {
     
     @Published var apiKey: String = ""
     @Published var selectedLanguage: Language = .english
+    @Published var selectedInterfaceLanguage: Language = .english
     @Published var selectedVoice: String = APIConstants.Voice.alloy
     @Published var selectedChatModel: String = APIConstants.Model.gpt4o
     @Published var selectedWhisperModel: String = APIConstants.Model.whisperMini
@@ -50,6 +51,7 @@ class SettingsViewModel: ObservableObject {
         let settings = settingsRepository.loadSettings()
         apiKey = settings.apiKey
         selectedLanguage = settings.selectedLanguage
+        selectedInterfaceLanguage = settings.selectedInterfaceLanguage
         selectedVoice = settings.selectedVoice
         selectedChatModel = settings.selectedChatModel
         selectedWhisperModel = settings.selectedWhisperModel
@@ -65,6 +67,7 @@ class SettingsViewModel: ObservableObject {
         let settings = Settings(
             apiKey: apiKey,
             selectedLanguage: selectedLanguage,
+            selectedInterfaceLanguage: selectedInterfaceLanguage,
             selectedVoice: selectedVoice,
             selectedChatModel: selectedChatModel,
             selectedWhisperModel: selectedWhisperModel,

@@ -60,6 +60,22 @@ protocol OpenAIChatServiceProtocol {
         context: CodeContext,
         apiKey: String
     ) async throws -> CodeEvaluation
+
+    /// Translate assistant message to interface language with brief notes
+    /// - Parameters:
+    ///   - text: Assistant message text
+    ///   - sourceLanguage: Interview language
+    ///   - targetLanguage: Interface language
+    ///   - chatModel: Model to use for translation
+    ///   - apiKey: OpenAI API key
+    /// - Returns: Translation result with optional notes
+    func translateAssistantMessage(
+        text: String,
+        sourceLanguage: Language,
+        targetLanguage: Language,
+        chatModel: String,
+        apiKey: String
+    ) async throws -> TranslationResult
 }
 
 // MARK: - Code Context

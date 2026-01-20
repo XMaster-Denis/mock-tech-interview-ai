@@ -15,7 +15,7 @@ struct TopicsSidebarView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Header with Add and Settings buttons
             HStack {
-                Text("Topics")
+                Text("topics.title")
                     .font(.headline)
                     .padding(.horizontal, 12)
                     .padding(.top, 12)
@@ -35,7 +35,7 @@ struct TopicsSidebarView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 12)
-                .help("Add new topic")
+                .help("topics.add")
                 
                 Button(action: { isSettingsPresented = true }) {
                     Image(systemName: "gearshape")
@@ -43,7 +43,7 @@ struct TopicsSidebarView: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 12)
                 .padding(.top, 12)
-                .help("Settings")
+                .help("topics.settings")
             }
             
             Divider()
@@ -122,7 +122,7 @@ struct TopicRowView: View {
                             .foregroundColor(.blue)
                             .cornerRadius(3)
                         
-                        Text(topic.interviewMode.displayName)
+                        Text(topic.interviewMode.uiDisplayName)
                             .font(.caption2)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
@@ -130,7 +130,7 @@ struct TopicRowView: View {
                             .foregroundColor(.green)
                             .cornerRadius(3)
                         
-                        Text(topic.level.displayName)
+                        Text(topic.level.uiDisplayName)
                             .font(.caption2)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
@@ -159,7 +159,7 @@ struct TopicRowView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Edit topic")
+                .help("topics.edit")
                 
                 Button(action: onDelete) {
                     Image(systemName: "trash")
@@ -167,7 +167,7 @@ struct TopicRowView: View {
                         .foregroundColor(.red)
                 }
                 .buttonStyle(.plain)
-                .help("Delete topic")
+                .help("topics.delete")
             }
             .padding(.top, 2)
         }

@@ -10,6 +10,7 @@ import Foundation
 struct Settings: Codable {
     var apiKey: String
     var selectedLanguage: Language
+    var selectedInterfaceLanguage: Language
     var selectedVoice: String
     var selectedChatModel: String
     var selectedWhisperModel: String
@@ -23,6 +24,7 @@ struct Settings: Codable {
     init(
         apiKey: String = "",
         selectedLanguage: Language = .english,
+        selectedInterfaceLanguage: Language = .english,
         selectedVoice: String = APIConstants.Voice.alloy,
         selectedChatModel: String = APIConstants.Model.gpt4o,
         selectedWhisperModel: String = APIConstants.Model.whisperMini,
@@ -35,6 +37,7 @@ struct Settings: Codable {
     ) {
         self.apiKey = apiKey
         self.selectedLanguage = selectedLanguage
+        self.selectedInterfaceLanguage = selectedInterfaceLanguage
         self.selectedVoice = selectedVoice
         self.selectedChatModel = selectedChatModel
         self.selectedWhisperModel = selectedWhisperModel

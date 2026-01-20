@@ -17,7 +17,7 @@ struct TranscriptView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
-            Text("Transcript")
+            Text("transcript.title")
                 .font(.headline)
                 .padding(.horizontal, 12)
                 .padding(.top, 12)
@@ -29,7 +29,7 @@ struct TranscriptView: View {
                 ScrollViewReader { proxy in
                     VStack(alignment: .leading, spacing: 8) {
                         if viewModel.session.transcript.isEmpty {
-                            Text("No messages yet")
+                            Text("transcript.empty")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .center)
@@ -109,7 +109,7 @@ struct TranscriptView: View {
                         } else {
                             Image(systemName: "paperplane.fill")
                         }
-                        Text(viewModel.isSendingTextMessage ? "Sending..." : "Send")
+                        Text(viewModel.isSendingTextMessage ? LocalizedStringKey("transcript.sending") : LocalizedStringKey("transcript.send"))
                     }
                     .font(.subheadline)
                     .foregroundColor(.white)
@@ -146,7 +146,7 @@ struct MessageRowView: View {
                         .foregroundColor(.accentColor)
                 }
                 
-                Text(message.role == .user ? "You" : "AI")
+                Text(message.role == .user ? LocalizedStringKey("transcript.you") : LocalizedStringKey("transcript.ai"))
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.secondary)
@@ -156,12 +156,19 @@ struct MessageRowView: View {
                     .foregroundColor(.secondary)
                 
                 if message.role != .system, message.audioFileName != nil {
-                    Button("Прослушать") {
+                    Button("transcript.listen") {
                         onPlayAudio(message)
                     }
                     .font(.caption2)
                     .foregroundColor(.accentColor)
                     .buttonStyle(.plain)
+                }
+                
+                if let tooltip = translationTooltip {
+                    Image(systemName: "globe")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .help(tooltip)
                 }
             }
             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
@@ -180,6 +187,19 @@ struct MessageRowView: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+    
+    private var translationTooltip: String? {
+        guard message.role == .assistant, let translation = message.translationText else {
+            return nil
+        }
+        
+        let notes = message.translationNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let notes, !notes.isEmpty {
+            return "\(translation)\n\n\(notes)"
+        }
+        
+        return translation
     }
 }
 
