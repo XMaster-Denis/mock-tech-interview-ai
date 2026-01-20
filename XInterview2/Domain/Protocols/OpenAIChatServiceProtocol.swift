@@ -30,6 +30,7 @@ protocol OpenAIChatServiceProtocol {
         language: Language,
         mode: InterviewMode,
         llmMode: LLMMode,
+        chatModel: String,
         apiKey: String,
         context: String
     ) async throws -> AIResponse

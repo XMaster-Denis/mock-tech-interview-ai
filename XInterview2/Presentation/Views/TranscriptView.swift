@@ -42,7 +42,15 @@ struct TranscriptView: View {
                                         guard let fileName = audioMessage.audioFileName else {
                                             return
                                         }
-                                        let fileURL = TTSAudioCache.audioFileURL(for: fileName)
+                                        let fileURL: URL
+                                        switch audioMessage.role {
+                                        case .assistant:
+                                            fileURL = TTSAudioCache.audioFileURL(for: fileName)
+                                        case .user:
+                                            fileURL = UserAudioCache.audioFileURL(for: fileName)
+                                        case .system:
+                                            return
+                                        }
                                         audioPlayer.play(fileURL)
                                     }
                                 )
@@ -147,7 +155,7 @@ struct MessageRowView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 
-                if message.role == .assistant, message.audioFileName != nil {
+                if message.role != .system, message.audioFileName != nil {
                     Button("Прослушать") {
                         onPlayAudio(message)
                     }

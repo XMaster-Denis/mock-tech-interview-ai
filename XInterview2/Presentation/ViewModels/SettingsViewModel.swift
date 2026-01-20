@@ -15,6 +15,9 @@ class SettingsViewModel: ObservableObject {
     @Published var apiKey: String = ""
     @Published var selectedLanguage: Language = .english
     @Published var selectedVoice: String = APIConstants.Voice.alloy
+    @Published var selectedChatModel: String = APIConstants.Model.gpt4o
+    @Published var selectedWhisperModel: String = APIConstants.Model.whisperMini
+    @Published var selectedTTSModel: String = APIConstants.Model.tts
     @Published var voiceThreshold: Float = 0.2
     @Published var silenceTimeout: Double = 1.5
     @Published var minSpeechLevel: Float = 0.04
@@ -48,6 +51,9 @@ class SettingsViewModel: ObservableObject {
         apiKey = settings.apiKey
         selectedLanguage = settings.selectedLanguage
         selectedVoice = settings.selectedVoice
+        selectedChatModel = settings.selectedChatModel
+        selectedWhisperModel = settings.selectedWhisperModel
+        selectedTTSModel = settings.selectedTTSModel
         voiceThreshold = settings.voiceThreshold
         silenceTimeout = settings.silenceTimeout
         minSpeechLevel = settings.minSpeechLevel
@@ -60,6 +66,9 @@ class SettingsViewModel: ObservableObject {
             apiKey: apiKey,
             selectedLanguage: selectedLanguage,
             selectedVoice: selectedVoice,
+            selectedChatModel: selectedChatModel,
+            selectedWhisperModel: selectedWhisperModel,
+            selectedTTSModel: selectedTTSModel,
             voiceThreshold: voiceThreshold,
             silenceTimeout: silenceTimeout,
             minSpeechLevel: minSpeechLevel,
@@ -115,6 +124,18 @@ class SettingsViewModel: ObservableObject {
             APIConstants.Voice.nova,
             APIConstants.Voice.shimmer
         ]
+    }
+
+    var availableChatModels: [String] {
+        APIConstants.Model.chatModels
+    }
+
+    var availableWhisperModels: [String] {
+        APIConstants.Model.whisperModels
+    }
+
+    var availableTTSModels: [String] {
+        APIConstants.Model.ttsModels
     }
     
     var voiceDisplayName: String {

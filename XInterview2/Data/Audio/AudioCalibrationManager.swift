@@ -98,10 +98,8 @@ class AudioCalibrationManager: ObservableObject {
         setupAudioSession()
     }
     
-    deinit {
-        Task { @MainActor in
-            stopCalibration()
-        }
+    @MainActor deinit {
+        stopCalibration()
     }
     
     
@@ -211,7 +209,7 @@ class AudioCalibrationManager: ObservableObject {
     private func startSampleCollection(duration: TimeInterval) {
         sampleTimer?.invalidate()
         sampleTimer = Timer.scheduledTimer(withTimeInterval: sampleInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.collectSample()
             }
         }
@@ -231,7 +229,7 @@ class AudioCalibrationManager: ObservableObject {
     private func startProgressTimer(duration: TimeInterval) {
         progressTimer?.invalidate()
         progressTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self = self, let startTime = self.calibrationStartTime else { return }
                 let elapsed = Date().timeIntervalSince(startTime)
                 self.calibrationProgress = min(1.0, elapsed / duration)

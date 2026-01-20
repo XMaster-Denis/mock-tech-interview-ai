@@ -12,7 +12,7 @@ struct WhisperResponse: Codable {
 }
 
 protocol OpenAIWhisperServiceProtocol {
-    func transcribe(audioData: Data, apiKey: String, language: String, prompt: String?, temperature: Float?) async throws -> String
+    func transcribe(audioData: Data, model: String, apiKey: String, language: String, prompt: String?, temperature: Float?) async throws -> String
 }
 
 class OpenAIWhisperService: OpenAIWhisperServiceProtocol {
@@ -22,7 +22,7 @@ class OpenAIWhisperService: OpenAIWhisperServiceProtocol {
         self.httpClient = httpClient
     }
     
-    func transcribe(audioData: Data, apiKey: String, language: String, prompt: String? = nil, temperature: Float? = nil) async throws -> String {
+    func transcribe(audioData: Data, model: String, apiKey: String, language: String, prompt: String? = nil, temperature: Float? = nil) async throws -> String {
         let boundary = "Boundary-\(UUID().uuidString)"
         
         var body = Data()
@@ -37,7 +37,7 @@ class OpenAIWhisperService: OpenAIWhisperServiceProtocol {
         // Add model
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-        body.append(APIConstants.Model.whisper.data(using: .utf8)!)
+        body.append(model.data(using: .utf8)!)
         body.append("\r\n".data(using: .utf8)!)
         
         // Add language parameter

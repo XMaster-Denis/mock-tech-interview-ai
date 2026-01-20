@@ -299,11 +299,12 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
     
     private func requestChatResponse(
         messages: [ChatMessage],
+        model: String,
         apiKey: String,
         temperature: Double
     ) async throws -> String {
         let request = ChatRequest(
-            model: APIConstants.Model.gpt4o,
+            model: model,
             messages: messages,
             responseFormat: .json,
             temperature: temperature
@@ -719,6 +720,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         language: Language,
         mode: InterviewMode,
         llmMode: LLMMode,
+        chatModel: String,
         apiKey: String,
         context: String
     ) async throws -> AIResponse {
@@ -828,6 +830,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
         do {
             let assistantMessage = try await requestChatResponse(
                 messages: chatMessages,
+                model: chatModel,
                 apiKey: apiKey,
                 temperature: temperature
             )
@@ -862,6 +865,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             
             let retryResponse = try await requestChatResponse(
                 messages: retryMessages,
+                model: chatModel,
                 apiKey: apiKey,
                 temperature: temperature
             )
@@ -993,6 +997,7 @@ class OpenAIChatService: OpenAIChatServiceProtocol {
             language: language,
             mode: .questionsOnly,
             llmMode: .generateTask,
+            chatModel: APIConstants.Model.gpt4o,
             apiKey: apiKey,
             context: ""
         )

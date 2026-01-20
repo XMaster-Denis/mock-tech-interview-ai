@@ -20,379 +20,408 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // API Key Section
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("OpenAI API Key")
-                        .font(.headline)
-                    
-                    SecureField("Enter your API key", text: $viewModel.apiKey)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(minWidth: 400)
-                    
-                    if viewModel.hasValidAPIKey {
-                        Text("API key is valid ✓")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    } else {
-                        Text("API key is required - Get one at platform.openai.com")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
+        VStack(spacing: 0) {
+            ScrollView {
+                HStack(alignment: .top, spacing: 24) {
+                    leftColumn
+                    rightColumn
                 }
+                .padding(30)
+            }
+            
+            Divider()
+            
+            HStack {
+                Spacer()
+                Button("Save") {
+                    viewModel.saveSettings()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
                 
-                Divider()
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+        }
+        .frame(width: 860, height: 800)
+    }
+    
+    private var leftColumn: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // API Key Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("OpenAI API Key")
+                    .font(.headline)
                 
-                // Audio Test Section
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Audio System Test")
-                        .font(.headline)
-                    
-                    Text("Test your microphone to ensure voice recognition works properly")
+                SecureField("Enter your API key", text: $viewModel.apiKey)
+                    .textFieldStyle(.roundedBorder)
+                
+                if viewModel.hasValidAPIKey {
+                    Text("API key is valid ✓")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    // Audio level visualizer
-                    AudioLevelView(
-                        audioLevel: audioTestViewModel.audioLevel,
-                        isRecording: audioTestViewModel.isRecording
-                    )
-                    
-                    // Control buttons
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            Task {
-                                await audioTestViewModel.startTest()
-                            }
-                        }) {
-                            Label("Test Microphone (5s)", systemImage: "mic.fill")
-                        }
-                        .disabled(audioTestViewModel.isRecording)
-                        .buttonStyle(.bordered)
-                        
-                        Button(action: {
-                            Task {
-                                await audioTestViewModel.stopTest()
-                            }
-                        }) {
-                            Label("Stop", systemImage: "stop.fill")
-                        }
-                        .disabled(!audioTestViewModel.isRecording)
-                    }
-                    
-                    // Status text
-                    Text(audioTestViewModel.statusText)
+                        .foregroundColor(.green)
+                } else {
+                    Text("API key is required - Get one at platform.openai.com")
                         .font(.caption)
-                        .monospacedDigit()
-                    
-                    // Clear logs button
-                    Button(action: {
-                        audioTestViewModel.clearLogs()
-                    }) {
-                        Label("Clear Logs", systemImage: "trash")
-                    }
-                    .font(.caption)
-                    
-                    // Audio logs display
-                    if !audioTestViewModel.logs.isEmpty {
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 4) {
-                                ForEach(audioTestViewModel.logs, id: \.self) { log in
-                                    Text(log)
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundColor(logColor(for: log))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                        }
-                        .frame(height: 200)
-                        .background(Color(nsColor: .textBackgroundColor))
-                        .cornerRadius(8)
-                    }
-                }
-                
-                Divider()
-                
-                // Language Selection
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Interview Language")
-                        .font(.headline)
-                    
-                    Picker("Language", selection: $viewModel.selectedLanguage) {
-                        ForEach(Language.allCases) { language in
-                            Text(language.displayName).tag(language)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(minWidth: 400)
-                }
-                
-                Divider()
-                
-                // Voice Selection
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("AI Voice")
-                        .font(.headline)
-                    
-                    Picker("Voice", selection: $viewModel.selectedVoice) {
-                        ForEach(viewModel.availableVoices, id: \.self) { voice in
-                            Text(voice.capitalized).tag(voice)
-                        }
-                    }
-                    .frame(minWidth: 400)
-                }
-                
-                Divider()
-                
-                // TTS Interruption
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("TTS Interruption")
-                        .font(.headline)
-                    
-                    Text("Allow microphone noise to interrupt AI speech")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Toggle("Allow interruption", isOn: $viewModel.allowTTSInterruption)
-                }
-                
-                Divider()
-                
-                // Voice Threshold (Microphone Sensitivity)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Voice Threshold")
-                        .font(.headline)
-                    
-                    Text("Microphone sensitivity for voice detection")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 16) {
-                        Text("Less Sensitive")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Slider(value: $viewModel.voiceThreshold, in: 0.05...0.5, step: 0.01)
-                            .frame(minWidth: 200)
-                        
-                        Text("More Sensitive")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Current threshold:")
-                            .font(.caption)
-                        Text(String(format: "%.2f", viewModel.voiceThreshold))
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .monospacedDigit()
-                        
-                        Spacer()
-                        
-                        // Show sensitivity level indicator
-                        if viewModel.voiceThreshold < 0.15 {
-                            Label("Very Sensitive", systemImage: "speaker.wave.3.fill")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                        } else if viewModel.voiceThreshold < 0.25 {
-                            Label("Sensitive", systemImage: "speaker.wave.2.fill")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                        } else if viewModel.voiceThreshold < 0.35 {
-                            Label("Normal", systemImage: "speaker.wave.1.fill")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        } else {
-                            Label("Less Sensitive", systemImage: "speaker.slash.fill")
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
-                    
-                    // Calibration button
-                    HStack(spacing: 12) {
-                        Button(action: {
-                            Task {
-                                await viewModel.calibrateNoiseLevel()
-                            }
-                        }) {
-                            Label("Calibrate Noise Level (3s)", systemImage: "waveform.path")
-                        }
-                        .disabled(viewModel.isCalibrating)
-                        .buttonStyle(.bordered)
-                        
-                        if viewModel.isCalibrating {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        }
-                        
-                        if viewModel.calibrationProgress > 0 {
-                            Text("\(Int(viewModel.calibrationProgress * 100))%")
-                                .font(.caption)
-                                .monospacedDigit()
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    // Show calibration result
-                    if let calibratedThreshold = viewModel.calibratedNoiseLevel {
-                        HStack {
-                            Text("Calibrated threshold:")
-                                .font(.caption)
-                            Text(String(format: "%.2f", calibratedThreshold))
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .monospacedDigit()
-                                .foregroundColor(.green)
-                            
-                            Spacer()
-                            
-                            Label("Applied ✓", systemImage: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                        }
-                    }
-                }
-                
-                Divider()
-                
-                // Silence Timeout
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Silence Timeout")
-                        .font(.headline)
-                    
-                    Text("How long to wait for silence after speech ends before processing")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 16) {
-                        Text("0.5s")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Slider(value: $viewModel.silenceTimeout, in: 0.5...5.0, step: 0.5)
-                            .frame(minWidth: 200)
-                        
-                        Text("5.0s")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Current timeout:")
-                            .font(.caption)
-                        Text("\(String(format: "%.1f", viewModel.silenceTimeout)) seconds")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .monospacedDigit()
-                        
-                        Spacer()
-                        
-                        // Show timeout indicator
-                        if viewModel.silenceTimeout <= 1.0 {
-                            Label("Quick", systemImage: "bolt.fill")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                        } else if viewModel.silenceTimeout <= 2.0 {
-                            Label("Normal", systemImage: "clock")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                        } else if viewModel.silenceTimeout <= 3.0 {
-                            Label("Slow", systemImage: "clock.fill")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        } else {
-                            Label("Very Slow", systemImage: "hourglass")
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
-                    
-                    Text("⚠️ Shorter timeout = faster but may cut off early speech")
-                        .font(.caption2)
                         .foregroundColor(.orange)
                 }
+            }
+            
+            Divider()
+            
+            // Language Selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Interview Language")
+                    .font(.headline)
                 
-                Divider()
+                Picker("Language", selection: $viewModel.selectedLanguage) {
+                    ForEach(Language.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            
+            Divider()
+            
+            // AI Models
+            VStack(alignment: .leading, spacing: 8) {
+                Text("AI Models")
+                    .font(.headline)
                 
-                // Min Speech Level
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Min Speech Level")
-                        .font(.headline)
+                Picker("Chat Model", selection: $viewModel.selectedChatModel) {
+                    ForEach(viewModel.availableChatModels, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Picker("Whisper Model", selection: $viewModel.selectedWhisperModel) {
+                    ForEach(viewModel.availableWhisperModels, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Picker("TTS Model", selection: $viewModel.selectedTTSModel) {
+                    ForEach(viewModel.availableTTSModels, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            
+            Divider()
+            
+            // Voice Selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("AI Voice")
+                    .font(.headline)
+                
+                Picker("Voice", selection: $viewModel.selectedVoice) {
+                    ForEach(viewModel.availableVoices, id: \.self) { voice in
+                        Text(voice.capitalized).tag(voice)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            
+            Divider()
+            
+            // TTS Interruption
+            VStack(alignment: .leading, spacing: 8) {
+                Text("TTS Interruption")
+                    .font(.headline)
+                
+                Text("Allow microphone noise to interrupt AI speech")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Toggle("Allow interruption", isOn: $viewModel.allowTTSInterruption)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var rightColumn: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Audio Test Section
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Audio System Test")
+                    .font(.headline)
+                
+                Text("Test your microphone to ensure voice recognition works properly")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                AudioLevelView(
+                    audioLevel: audioTestViewModel.audioLevel,
+                    isRecording: audioTestViewModel.isRecording
+                )
+                
+                HStack(spacing: 12) {
+                    Button(action: {
+                        Task {
+                            await audioTestViewModel.startTest()
+                        }
+                    }) {
+                        Label("Test Microphone (5s)", systemImage: "mic.fill")
+                    }
+                    .disabled(audioTestViewModel.isRecording)
+                    .buttonStyle(.bordered)
                     
-                    Text("Minimum audio level to validate speech (filters quiet noises)")
+                    Button(action: {
+                        Task {
+                            await audioTestViewModel.stopTest()
+                        }
+                    }) {
+                        Label("Stop", systemImage: "stop.fill")
+                    }
+                    .disabled(!audioTestViewModel.isRecording)
+                }
+                
+                Text(audioTestViewModel.statusText)
+                    .font(.caption)
+                    .monospacedDigit()
+                
+                Button(action: {
+                    audioTestViewModel.clearLogs()
+                }) {
+                    Label("Clear Logs", systemImage: "trash")
+                }
+                .font(.caption)
+                
+                if !audioTestViewModel.logs.isEmpty {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 4) {
+                            ForEach(audioTestViewModel.logs, id: \.self) { log in
+                                Text(log)
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundColor(logColor(for: log))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                    .frame(height: 180)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .cornerRadius(8)
+                }
+            }
+            
+            Divider()
+            
+            // Voice Threshold (Microphone Sensitivity)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Voice Threshold")
+                    .font(.headline)
+                
+                Text("Microphone sensitivity for voice detection")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 16) {
+                    Text("Less Sensitive")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    HStack(spacing: 16) {
-                        Text("Less Strict")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Slider(value: $viewModel.minSpeechLevel, in: 0.01...0.1, step: 0.005)
-                            .frame(minWidth: 200)
-                        
-                        Text("More Strict")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Slider(value: $viewModel.voiceThreshold, in: 0.05...0.5, step: 0.01)
                     
-                    HStack {
-                        Text("Current level:")
-                            .font(.caption)
-                        Text(String(format: "%.3f", viewModel.minSpeechLevel))
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .monospacedDigit()
-                        
-                        Spacer()
-                        
-                        // Show level indicator
-                        if viewModel.minSpeechLevel < 0.03 {
-                            Label("Very Permissive", systemImage: "speaker.wave.3.fill")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                        } else if viewModel.minSpeechLevel < 0.05 {
-                            Label("Permissive", systemImage: "speaker.wave.2.fill")
-                                .font(.caption)
-                                .foregroundColor(.blue)
-                        } else if viewModel.minSpeechLevel < 0.07 {
-                            Label("Normal", systemImage: "speaker.wave.1.fill")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        } else {
-                            Label("Strict", systemImage: "speaker.slash.fill")
-                                .font(.caption)
-                                .foregroundColor(.red)
-                        }
-                    }
-                    
-                    Text("💡 Lower values = more sensitive (may catch quiet speech)")
-                        .font(.caption2)
+                    Text("More Sensitive")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
-                Spacer()
-                
                 HStack {
-                    Spacer()
-                    Button("Save") {
-                        viewModel.saveSettings()
-                        dismiss()
-                    }
-                    .keyboardShortcut(.defaultAction)
+                    Text("Current threshold:")
+                        .font(.caption)
+                    Text(String(format: "%.2f", viewModel.voiceThreshold))
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .monospacedDigit()
                     
-                    Button("Cancel") {
-                        dismiss()
+                    Spacer()
+                    
+                    if viewModel.voiceThreshold < 0.15 {
+                        Label("Very Sensitive", systemImage: "speaker.wave.3.fill")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else if viewModel.voiceThreshold < 0.25 {
+                        Label("Sensitive", systemImage: "speaker.wave.2.fill")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    } else if viewModel.voiceThreshold < 0.35 {
+                        Label("Normal", systemImage: "speaker.wave.1.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    } else {
+                        Label("Less Sensitive", systemImage: "speaker.slash.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
                     }
-                    .keyboardShortcut(.cancelAction)
+                }
+                
+                HStack(spacing: 12) {
+                    Button(action: {
+                        Task {
+                            await viewModel.calibrateNoiseLevel()
+                        }
+                    }) {
+                        Label("Calibrate Noise Level (3s)", systemImage: "waveform.path")
+                    }
+                    .disabled(viewModel.isCalibrating)
+                    .buttonStyle(.bordered)
+                    
+                    if viewModel.isCalibrating {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+                    
+                    if viewModel.calibrationProgress > 0 {
+                        Text("\(Int(viewModel.calibrationProgress * 100))%")
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                if let calibratedThreshold = viewModel.calibratedNoiseLevel {
+                    HStack {
+                        Text("Calibrated threshold:")
+                            .font(.caption)
+                        Text(String(format: "%.2f", calibratedThreshold))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .monospacedDigit()
+                            .foregroundColor(.green)
+                        
+                        Spacer()
+                        
+                        Label("Applied ✓", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
                 }
             }
-            .padding(30)
+            
+            Divider()
+            
+            // Silence Timeout
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Silence Timeout")
+                    .font(.headline)
+                
+                Text("How long to wait for silence after speech ends before processing")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 16) {
+                    Text("0.5s")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Slider(value: $viewModel.silenceTimeout, in: 0.5...5.0, step: 0.5)
+                    
+                    Text("5.0s")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack {
+                    Text("Current timeout:")
+                        .font(.caption)
+                    Text("\(String(format: "%.1f", viewModel.silenceTimeout)) seconds")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .monospacedDigit()
+                    
+                    Spacer()
+                    
+                    if viewModel.silenceTimeout <= 1.0 {
+                        Label("Quick", systemImage: "bolt.fill")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else if viewModel.silenceTimeout <= 2.0 {
+                        Label("Normal", systemImage: "clock")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    } else if viewModel.silenceTimeout <= 3.0 {
+                        Label("Slow", systemImage: "clock.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    } else {
+                        Label("Very Slow", systemImage: "hourglass")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                Text("⚠️ Shorter timeout = faster but may cut off early speech")
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+            }
+            
+            Divider()
+            
+            // Min Speech Level
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Min Speech Level")
+                    .font(.headline)
+                
+                Text("Minimum audio level to validate speech (filters quiet noises)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 16) {
+                    Text("Less Strict")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Slider(value: $viewModel.minSpeechLevel, in: 0.01...0.1, step: 0.005)
+                    
+                    Text("More Strict")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack {
+                    Text("Current level:")
+                        .font(.caption)
+                    Text(String(format: "%.3f", viewModel.minSpeechLevel))
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .monospacedDigit()
+                    
+                    Spacer()
+                    
+                    if viewModel.minSpeechLevel < 0.03 {
+                        Label("Very Permissive", systemImage: "speaker.wave.3.fill")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    } else if viewModel.minSpeechLevel < 0.05 {
+                        Label("Permissive", systemImage: "speaker.wave.2.fill")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    } else if viewModel.minSpeechLevel < 0.07 {
+                        Label("Normal", systemImage: "speaker.wave.1.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    } else {
+                        Label("Strict", systemImage: "speaker.slash.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                Text("💡 Lower values = more sensitive (may catch quiet speech)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
-        .frame(width: 600, height: 850)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     
     private func logColor(for log: String) -> Color {

@@ -14,7 +14,7 @@ struct TTSRequest: Codable {
 }
 
 protocol OpenAITTSServiceProtocol {
-    func generateSpeech(text: String, voice: String, apiKey: String) async throws -> Data
+    func generateSpeech(text: String, model: String, voice: String, apiKey: String) async throws -> Data
 }
 
 class OpenAITTSService: OpenAITTSServiceProtocol {
@@ -24,9 +24,9 @@ class OpenAITTSService: OpenAITTSServiceProtocol {
         self.httpClient = httpClient
     }
     
-    func generateSpeech(text: String, voice: String, apiKey: String) async throws -> Data {
+    func generateSpeech(text: String, model: String, voice: String, apiKey: String) async throws -> Data {
         let request = TTSRequest(
-            model: APIConstants.Model.tts,
+            model: model,
             input: text,
             voice: voice
         )

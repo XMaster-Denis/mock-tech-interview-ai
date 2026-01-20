@@ -511,6 +511,13 @@ class VoiceDetector: NSObject, ObservableObject {
         // Нормализовать в диапазон 0.0-1.0 (максимум Int16 = 32768)
         return min(1.0, average / 32768.0)
     }
+
+    /// Рассчитать длительность WAV данных (16 kHz, 16-bit, mono)
+    private func wavDuration(from data: Data) -> TimeInterval {
+        guard data.count > 44 else { return 0.0 }
+        let bytesPerSecond = 32000.0  // 16kHz * 2 bytes * 1 channel
+        return Double(data.count - 44) / bytesPerSecond
+    }
     
     /// Обработать окончание речи
     /// Основная логика завершения записи и отправки аудиоданных
@@ -556,9 +563,17 @@ class VoiceDetector: NSObject, ObservableObject {
             // Обработать асинхронное обрезание в Task
             Task {
                 do {
-                    let trimmedData = try await trimWAVData(originalData, 
-                                                      startOffset: startOffset, 
-                                                      duration: speechDuration)
+                    let preRoll: TimeInterval = 0.5
+                    let adjustedStartOffset = max(0.0, startOffset - preRoll)
+                    let addedLeadIn = startOffset - adjustedStartOffset
+                    let maxDuration = max(0.0, wavDuration(from: originalData) - adjustedStartOffset)
+                    let adjustedDuration = min(maxDuration, speechDuration + addedLeadIn)
+                    
+                    let trimmedData = try await trimWAVData(
+                        originalData,
+                        startOffset: adjustedStartOffset,
+                        duration: adjustedDuration
+                    )
                     
                     // Проверить средний уровень аудио для фильтрации тихих шумов
                     let avgLevel = calculateAverageLevel(from: trimmedData)

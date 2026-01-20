@@ -60,6 +60,7 @@ class ConversationManager: ObservableObject {
     private var cachedNextTaskResponse: AIResponse?
     private var isPrefetchingNextTask: Bool = false
     private let ttsAudioCache = TTSAudioCache()
+    private let userAudioCache = UserAudioCache()
     
     // MARK: - Properties
     
@@ -87,6 +88,7 @@ class ConversationManager: ObservableObject {
     var onUserMessage: ((String) -> Void)?
     var onAIMessage: ((String) -> Void)?
     var onAIAudioAvailable: ((String, String) -> Void)?
+    var onUserAudioAvailable: ((String, String) -> Void)?
     var onError: ((String) -> Void)?
     var onCodeUpdate: ((String) -> Void)?
     var onTaskStateChanged: ((InterviewTaskState) -> Void)?
@@ -287,6 +289,7 @@ class ConversationManager: ObservableObject {
                 language: language,
                 mode: currentMode,
                 llmMode: .generateTask,
+                chatModel: settings.selectedChatModel,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -354,6 +357,7 @@ class ConversationManager: ObservableObject {
             let prompt = PromptTemplates.Whisper.prompt(for: settings.selectedLanguage)
             let userText = try await whisperService.transcribe(
                 audioData: audioData,
+                model: settings.selectedWhisperModel,
                 apiKey: apiKey,
                 language: settings.selectedLanguage.rawValue,
                 prompt: prompt,
@@ -372,10 +376,18 @@ class ConversationManager: ObservableObject {
                 return
             }
             
+            var remainingUserAudioFileName = userAudioCache.saveAudio(audioData)
             var didAddUserMessage = false
+            let addUserMessage: (String) -> Void = { [weak self] text in
+                self?.addMessage(role: TranscriptMessage.MessageRole.user, content: text)
+                self?.onUserMessage?(text)
+                if let fileName = remainingUserAudioFileName {
+                    self?.onUserAudioAvailable?(text, fileName)
+                    remainingUserAudioFileName = nil
+                }
+            }
             if currentMode != .codeTasks, case .noTask = currentTaskState {
-                addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                onUserMessage?(userText)
+                addUserMessage(userText)
                 didAddUserMessage = true
             }
             
@@ -399,24 +411,21 @@ class ConversationManager: ObservableObject {
                 
                 if isCompletionPhrase(userText, language: language) {
                     // User says they completed task
-                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                    onUserMessage?(userText)
+                    addUserMessage(userText)
                     await checkUserSolution()
                     return
                 }
                 
                 if let helpMode = HelpModeDetector.detectHelpMode(userText, language: language) {
                     // User asks for help
-                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                    onUserMessage?(userText)
+                    addUserMessage(userText)
                     await requestHelp(mode: helpMode, userMessage: userText)
                     return
                 }
                 
                 // Any other text is treated as an attempt at solution
                 // Add user message to history
-                addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                onUserMessage?(userText)
+                addUserMessage(userText)
                 
                 // Check the solution
                 await checkUserSolution()
@@ -432,16 +441,14 @@ class ConversationManager: ObservableObject {
                 
                 if isUnderstandingConfirmation(userText, language: language) {
                     // User confirms understanding - move to next question
-                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                    onUserMessage?(userText)
+                    addUserMessage(userText)
                     updateTaskState(.noTask)
                     
                     // Continue with next question
                     // Fall through to normal processing
                 } else {
                     // User didn't confirm understanding - ask again
-                    addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                    onUserMessage?(userText)
+                    addUserMessage(userText)
                     return
                 }
                 
@@ -453,8 +460,7 @@ class ConversationManager: ObservableObject {
             // Add user message to history BEFORE calling API
             // This ensures AI has context of what user just said
             if !didAddUserMessage {
-                addMessage(role: TranscriptMessage.MessageRole.user, content: userText)
-                onUserMessage?(userText)
+                addUserMessage(userText)
             }
             
             // Get AI response
@@ -478,6 +484,7 @@ class ConversationManager: ObservableObject {
                 language: settings.selectedLanguage,
                 mode: currentMode,
                 llmMode: .generateTask,
+                chatModel: settings.selectedChatModel,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -522,6 +529,7 @@ class ConversationManager: ObservableObject {
             let settings = settingsRepository.loadSettings()
             let audioData = try await ttsService.generateSpeech(
                 text: text,
+                model: settings.selectedTTSModel,
                 voice: settings.selectedVoice,
                 apiKey: apiKey
             )
@@ -646,6 +654,7 @@ class ConversationManager: ObservableObject {
                 language: settings.selectedLanguage,
                 mode: currentMode,
                 llmMode: .generateTask,
+                chatModel: settings.selectedChatModel,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -780,6 +789,7 @@ class ConversationManager: ObservableObject {
                 language: settings.selectedLanguage,
                 mode: currentMode,
                 llmMode: .checkSolution,
+                chatModel: settings.selectedChatModel,
                 apiKey: apiKey,
                 context: checkContext
             )
@@ -830,6 +840,7 @@ class ConversationManager: ObservableObject {
                 language: settings.selectedLanguage,
                 mode: currentMode,
                 llmMode: .generateTask,
+                chatModel: settings.selectedChatModel,
                 apiKey: apiKey,
                 context: contextSummary
             )
@@ -864,6 +875,7 @@ class ConversationManager: ObservableObject {
                     language: settings.selectedLanguage,
                     mode: currentMode,
                     llmMode: .generateTask,
+                    chatModel: settings.selectedChatModel,
                     apiKey: apiKey,
                     context: contextSummary
                 )
@@ -906,6 +918,7 @@ class ConversationManager: ObservableObject {
                 language: settings.selectedLanguage,
                 mode: currentMode,
                 llmMode: .assistHelp(mode),
+                chatModel: settings.selectedChatModel,
                 apiKey: apiKey,
                 context: helpContext
             )
@@ -1061,6 +1074,7 @@ class ConversationManager: ObservableObject {
         }
         
         do {
+            let chatModel = settingsRepository.loadSettings().selectedChatModel
             let response = try await chatService.sendMessageWithCode(
                 messages: [TranscriptMessage(role: .user, text: userText, timestamp: Date())],
                 codeContext: currentCodeContext,
@@ -1069,6 +1083,7 @@ class ConversationManager: ObservableObject {
                 language: language,
                 mode: currentMode,
                 llmMode: .languageCoach,
+                chatModel: chatModel,
                 apiKey: apiKey,
                 context: ""
             )
@@ -1300,7 +1315,8 @@ class ConversationManager: ObservableObject {
         audioManager.isSpeaking
     }
 
-    func clearTTSAudioCache() {
+    func clearAudioCaches() {
         ttsAudioCache.clear()
+        userAudioCache.clear()
     }
 }

@@ -82,7 +82,7 @@ class InterviewViewModel: ObservableObject {
         )
         
         setupBindings()
-        conversationManager.clearTTSAudioCache()
+        conversationManager.clearAudioCaches()
         loadTopics()
     }
     
@@ -112,7 +112,11 @@ class InterviewViewModel: ObservableObject {
         }
         
         conversationManager.onAIAudioAvailable = { [weak self] text, fileName in
-            self?.attachAudio(to: text, fileName: fileName)
+            self?.attachAudio(to: text, role: .assistant, fileName: fileName)
+        }
+        
+        conversationManager.onUserAudioAvailable = { [weak self] text, fileName in
+            self?.attachAudio(to: text, role: .user, fileName: fileName)
         }
         
         conversationManager.onError = { [weak self] error in
@@ -317,9 +321,9 @@ class InterviewViewModel: ObservableObject {
         session.transcript.append(message)
     }
     
-    private func attachAudio(to text: String, fileName: String) {
+    private func attachAudio(to text: String, role: TranscriptMessage.MessageRole, fileName: String) {
         guard let index = session.transcript.lastIndex(where: { message in
-            message.role == .assistant &&
+            message.role == role &&
             message.text == text &&
             message.audioFileName == nil
         }) else {
