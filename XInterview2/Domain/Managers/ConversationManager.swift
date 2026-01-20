@@ -62,6 +62,13 @@ class ConversationManager: ObservableObject {
     private let ttsAudioCache = TTSAudioCache()
     private let userAudioCache = UserAudioCache()
     
+    private var pendingUserAudio: Data?
+    private var pendingUserAudioEndTime: Date?
+    private var pendingMergeGap: TimeInterval?
+    private var pendingMergeTask: Task<Void, Never>?
+    private let mergeWindow: TimeInterval = 0.5
+    private let maxMergeGap: TimeInterval = 2.0
+    
     // MARK: - Properties
     
     private var currentTopic: InterviewTopic?
@@ -203,26 +210,22 @@ class ConversationManager: ObservableObject {
     // MARK: - Voice Event Handlers
     
     private func handleUserSpeechStarted() {
-        
-        // Only cancel if we're NOT processing a Chat API request
-        // This prevents "Network error: cancelled" when user speaks during API call
-        if processingTask != nil && !isProcessingChatRequest {
-            processingTask?.cancel()
-            processingTask = nil
+        if pendingUserAudio != nil {
+            pendingMergeTask?.cancel()
+            pendingMergeTask = nil
+            if let endTime = pendingUserAudioEndTime {
+                let gap = Date().timeIntervalSince(endTime)
+                pendingMergeGap = min(max(0.0, gap), maxMergeGap)
+            }
         }
     }
     
     private func handleUserSpeechEnded(audioData: Data) {
-        guard conversationState == .listening else {
+        guard conversationState != .idle else {
             return
         }
         
-        conversationState = .processing
-        isProcessing = true
-        
-        processingTask = Task { [weak self] in
-            await self?.processUserSpeech(audioData: audioData)
-        }
+        queueUserAudioForProcessing(audioData)
     }
     
     private func handleTTSCancelled() {
@@ -257,6 +260,44 @@ class ConversationManager: ObservableObject {
     }
     
     // MARK: - Message Processing
+
+    private func queueUserAudioForProcessing(_ audioData: Data) {
+        if let pending = pendingUserAudio {
+            let gap = pendingMergeGap ?? 0.0
+            if let merged = mergeWavData(first: pending, second: audioData, gap: gap) {
+                pendingUserAudio = merged
+            } else {
+                pendingUserAudio = audioData
+            }
+        } else {
+            pendingUserAudio = audioData
+        }
+        
+        pendingUserAudioEndTime = Date()
+        pendingMergeGap = nil
+        
+        pendingMergeTask?.cancel()
+        pendingMergeTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(self.mergeWindow * 1_000_000_000))
+            guard let mergedAudio = self.pendingUserAudio else { return }
+            self.pendingUserAudio = nil
+            self.pendingUserAudioEndTime = nil
+            
+            if self.isProcessing {
+                return
+            }
+            
+            self.conversationState = .processing
+            self.isProcessing = true
+            self.processingTask = Task { [weak self] in
+                await self?.processUserSpeech(audioData: mergedAudio)
+                await MainActor.run {
+                    self?.processingTask = nil
+                }
+            }
+        }
+    }
     
     private func sendOpeningMessage(topic: InterviewTopic, language: Language) async {
         // Check if stopping
@@ -1118,6 +1159,62 @@ class ConversationManager: ObservableObject {
         case .german:
             return "Besser wäre: \(correction)"
         }
+    }
+
+    private func mergeWavData(first: Data, second: Data, gap: TimeInterval) -> Data? {
+        guard first.count > 44, second.count > 44 else {
+            return nil
+        }
+        
+        let maxGap = max(0.0, min(gap, maxMergeGap))
+        let silence = silencePCMData(duration: maxGap)
+        let firstPCM = first.dropFirst(44)
+        let secondPCM = second.dropFirst(44)
+        
+        var combinedPCM = Data()
+        combinedPCM.append(firstPCM)
+        combinedPCM.append(silence)
+        combinedPCM.append(secondPCM)
+        
+        return makeWavData(fromPCM: combinedPCM)
+    }
+    
+    private func silencePCMData(duration: TimeInterval) -> Data {
+        guard duration > 0 else { return Data() }
+        let sampleRate = 16000.0
+        let samples = Int(sampleRate * duration)
+        let byteCount = samples * 2
+        return Data(count: byteCount)
+    }
+    
+    private func makeWavData(fromPCM pcmData: Data) -> Data {
+        let sampleRate: UInt32 = 16000
+        let channels: UInt16 = 1
+        let bitsPerSample: UInt16 = 16
+        let byteRate = sampleRate * UInt32(channels) * UInt32(bitsPerSample) / 8
+        let blockAlign = channels * bitsPerSample / 8
+        let dataSize = UInt32(pcmData.count)
+        let chunkSize = UInt32(36) + dataSize
+        
+        var header = Data()
+        header.append(contentsOf: [0x52, 0x49, 0x46, 0x46]) // RIFF
+        header.append(contentsOf: withUnsafeBytes(of: chunkSize.littleEndian, Array.init))
+        header.append(contentsOf: [0x57, 0x41, 0x56, 0x45]) // WAVE
+        header.append(contentsOf: [0x66, 0x6D, 0x74, 0x20]) // fmt 
+        header.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian, Array.init))
+        header.append(contentsOf: withUnsafeBytes(of: UInt16(1).littleEndian, Array.init))
+        header.append(contentsOf: withUnsafeBytes(of: channels.littleEndian, Array.init))
+        header.append(contentsOf: withUnsafeBytes(of: sampleRate.littleEndian, Array.init))
+        header.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian, Array.init))
+        header.append(contentsOf: withUnsafeBytes(of: blockAlign.littleEndian, Array.init))
+        header.append(contentsOf: withUnsafeBytes(of: bitsPerSample.littleEndian, Array.init))
+        header.append(contentsOf: [0x64, 0x61, 0x74, 0x61]) // data
+        header.append(contentsOf: withUnsafeBytes(of: dataSize.littleEndian, Array.init))
+        
+        var wav = Data()
+        wav.append(header)
+        wav.append(pcmData)
+        return wav
     }
     
     
