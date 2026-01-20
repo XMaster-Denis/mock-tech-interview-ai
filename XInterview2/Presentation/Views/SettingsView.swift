@@ -80,7 +80,7 @@ struct SettingsView: View {
                 Text("settings.interview_language")
                     .font(.headline)
                 
-                Picker("settings.language_label", selection: $viewModel.selectedLanguage) {
+                Picker("settings.language_label", selection: interviewLanguageBinding) {
                     ForEach(Language.allCases) { language in
                         Text(language.displayName).tag(language)
                     }
@@ -165,6 +165,17 @@ struct SettingsView: View {
 
     private var interfaceLanguage: Language {
         Language(rawValue: interfaceLanguageRaw) ?? .english
+    }
+    
+    private var interviewLanguageBinding: Binding<Language> {
+        Binding(
+            get: { viewModel.selectedLanguage },
+            set: { newValue in
+                DispatchQueue.main.async {
+                    viewModel.selectedLanguage = newValue
+                }
+            }
+        )
     }
     
     private var interfaceLanguageBinding: Binding<Language> {
