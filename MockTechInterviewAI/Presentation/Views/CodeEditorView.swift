@@ -34,14 +34,15 @@ final class CodeEditorCoordinator: TextViewCoordinator {
 
         isApplyingExternalChange = true
 
-        // полный диапазон текущего текста
-        let oldLen = (controller.text as NSString).length
-        let full = NSRange(location: 0, length: oldLen)
-
-        controller.textView.replaceCharacters(in: full, with: newValue)
+        controller.text = newValue
+        controller.textView.needsLayout = true
         controller.textView.needsDisplay = true
         controller.textView.layoutSubtreeIfNeeded()
-
+        NotificationCenter.default.post(name: NSView.frameDidChangeNotification, object: controller.textView)
+        if let scrollView = controller.textView.enclosingScrollView {
+            NotificationCenter.default.post(name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+        }
+        
         isApplyingExternalChange = false
     }
 }
