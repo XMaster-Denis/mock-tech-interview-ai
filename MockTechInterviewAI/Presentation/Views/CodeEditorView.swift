@@ -192,7 +192,7 @@ struct CodeEditorView: View {
                             )
                         ),
                         state: $editorState,
-                        coordinators: []
+                        coordinators: [coordinator]
                     )
                     .frame(minHeight: 120, maxHeight: 200)
                 }

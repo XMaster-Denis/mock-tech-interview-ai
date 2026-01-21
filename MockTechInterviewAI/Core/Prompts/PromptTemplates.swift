@@ -303,7 +303,7 @@ enum PromptTemplates {
             switch language {
             case .russian:
                 return """
-                Ты — генератор новых коротких задач по Swift (Junior).
+                Ты — генератор новых коротких задач по Swift (уровень \(level.displayName)).
                 Отвечай СТРОГО валидным JSON без Markdown.
                 В этом режиме НЕ проверяй решения и НЕ возвращай is_correct/hint/correct_code.
                 
@@ -316,12 +316,20 @@ enum PromptTemplates {
                 }
                 Правила:
                 - spoken_text: 1-2 предложения, супер коротко.
-                - aicode: шаблон функции с // YOUR CODE HERE и placeholder return (0/""/nil/false), НЕ полное решение.
+                - aicode: кодовый фрагмент под тип задачи. Используй один вариант:
+                  - Дописать функцию с // YOUR CODE HERE и placeholder return (0/""/nil/false)
+                  - Найти и исправить баг
+                  - Предсказать вывод кода
+                  - Проверить корректность кода (объяснить/исправить)
+                - Не давай полное корректное решение в aicode.
                 - Не повторяй темы из recent_topics.
+                
+                Уровень сложности:
+                \(levelTaskGuidelines(for: level, language: language))
                 """
             case .english:
                 return """
-                You generate short Swift coding tasks (Junior).
+                You generate short Swift coding tasks (\(level.displayName) level).
                 Respond ONLY with valid JSON, no Markdown.
                 In this mode do NOT check solutions and do NOT return is_correct/hint/correct_code.
                 
@@ -334,12 +342,20 @@ enum PromptTemplates {
                 }
                 Rules:
                 - spoken_text: 1-2 sentences, very short.
-                - aicode: function template with // YOUR CODE HERE and placeholder return (0/""/nil/false), NOT a full solution.
+                - aicode: code snippet tied to the task type. Use one of:
+                  - Function completion with // YOUR CODE HERE and placeholder return (0/""/nil/false)
+                  - Bug fix task (code contains a bug, user must fix it)
+                  - Output prediction task (code snippet to analyze)
+                  - Correctness check task (code may be correct or not; user explains/fixes)
+                - Never include a full correct solution in aicode.
                 - Avoid repeating topics from recent_topics.
+                
+                Difficulty:
+                \(levelTaskGuidelines(for: level, language: language))
                 """
             case .german:
                 return """
-                Du erzeugst kurze Swift-Aufgaben (Junior).
+                Du erzeugst kurze Swift-Aufgaben (Level \(level.displayName)).
                 Antworte NUR mit gueltigem JSON, ohne Markdown.
                 In diesem Modus keine Loesungspruefung und kein is_correct/hint/correct_code.
                 
@@ -352,9 +368,103 @@ enum PromptTemplates {
                 }
                 Regeln:
                 - spoken_text: 1-2 Saetze, sehr kurz.
-                - aicode: Funktions-Template mit // YOUR CODE HERE und Platzhalter-Return (0/""/nil/false), KEINE komplette Loesung.
+                - aicode: Codeausschnitt passend zum Aufgabentyp. Nutze eine Variante:
+                  - Funktions-Template mit // YOUR CODE HERE und Platzhalter-Return (0/""/nil/false)
+                  - Bug-Fix-Aufgabe (Code enthaelt einen Fehler, Nutzer behebt ihn)
+                  - Output-Prediction (Code analysieren, Ausgabe bestimmen)
+                  - Correctness-Check (Code kann korrekt oder falsch sein; erklaeren/verbessern)
+                - Keine vollstaendige korrekte Loesung in aicode.
                 - Wiederhole keine Themen aus recent_topics.
+                
+                Schwierigkeitsgrad:
+                \(levelTaskGuidelines(for: level, language: language))
                 """
+            }
+        }
+
+        private static func levelTaskGuidelines(for level: DeveloperLevel, language: Language) -> String {
+            switch language {
+            case .english:
+                switch level {
+                case .junior:
+                    return """
+                    - Focus on basics: arrays, strings, loops, optionals, simple control flow
+                    - Avoid tricky edge cases and concurrency
+                    - Keep tasks straightforward and solvable quickly
+                    """
+                case .middle:
+                    return """
+                    - Use data structures, complexity awareness, edge cases
+                    - Include small refactors or API usage constraints
+                    - Introduce simple async/await or error handling
+                    """
+                case .senior:
+                    return """
+                    - Require trade-offs, performance, or correctness reasoning
+                    - Use concurrency, memory, or API design concerns
+                    - Prefer multi-step fixes, non-trivial bugs, or subtle edge cases
+                    """
+                case .teamLead:
+                    return """
+                    - Emphasize code review, maintainability, and clarity
+                    - Include constraints, testing considerations, or design choices
+                    - Prefer tasks that require explaining decisions, not just coding
+                    """
+                }
+            case .russian:
+                switch level {
+                case .junior:
+                    return """
+                    - База: массивы, строки, циклы, optionals, простой control flow
+                    - Без сложных edge cases и без конкурентности
+                    - Задачи должны решаться быстро и прямо
+                    """
+                case .middle:
+                    return """
+                    - Структуры данных, оценка сложности, edge cases
+                    - Небольшой рефакторинг или ограничения API
+                    - Базовый async/await или обработка ошибок
+                    """
+                case .senior:
+                    return """
+                    - Требуются trade-offs, производительность или корректность
+                    - Конкурентность, память или дизайн API
+                    - Нетривиальные баги и тонкие кейсы
+                    """
+                case .teamLead:
+                    return """
+                    - Упор на code review, поддерживаемость, читаемость
+                    - Ограничения, тесты, архитектурные решения
+                    - Важно объяснение решений, не только код
+                    """
+                }
+            case .german:
+                switch level {
+                case .junior:
+                    return """
+                    - Grundlagen: Arrays, Strings, Schleifen, Optionals, einfache Logik
+                    - Keine kniffligen Edge-Cases und keine Konkurrenz
+                    - Aufgaben schnell und direkt loesbar
+                    """
+                case .middle:
+                    return """
+                    - Datenstrukturen, Komplexitaet, Edge-Cases
+                    - Kleine Refactorings oder API-Restriktionen
+                    - Einfaches async/await oder Fehlerbehandlung
+                    """
+                case .senior:
+                    return """
+                    - Trade-offs, Performance oder Korrektheit erfordern
+                    - Konkurrenz, Speicher oder API-Design
+                    - Nicht-triviale Bugs und subtile Edge-Cases
+                    """
+                case .teamLead:
+                    return """
+                    - Fokus auf Code-Review, Wartbarkeit, Klarheit
+                    - Constraints, Tests, Architekturentscheidungen
+                    - Entscheidungen erklaeren, nicht nur Code liefern
+                    """
+                }
             }
         }
         
@@ -540,127 +650,246 @@ enum PromptTemplates {
     // MARK: - Code Templates
     
     enum CodeTemplates {
-        /// Get code template for a specific language with placeholders
+        /// Get multi-variant code templates for a specific language
         static func templateFor(language: CodeLanguageInterview) -> String {
             switch language {
             case .swift:
                 return """
-                // Swift code template
-                // Use // YOUR CODE HERE for placeholders
+                // Swift code templates (choose one variant)
                 
+                // Variant A: function completion
                 func exampleFunction() -> ReturnType {
                     // YOUR CODE HERE
                     return defaultValue // Replace this line
                 }
+
+                // Variant B: bug fix
+                func sum(_ a: Int, _ b: Int) -> Int {
+                    return a - b // BUG: should add
+                }
+
+                // Variant C: output prediction
+                let numbers = [1, 2, 3]
+                let result = numbers.map { $0 * 2 }
+                print(result)
                 """
             case .python:
                 return """
-                // Python code template
-                // Use # YOUR CODE HERE for placeholders
+                # Python code templates (choose one variant)
                 
+                # Variant A: function completion
                 def example_function():
-                    // YOUR CODE HERE
+                    # YOUR CODE HERE
                     return None  # Replace this line
+
+                # Variant B: bug fix
+                def is_even(n):
+                    return n % 2 == 1  # BUG: should be 0
+
+                # Variant C: output prediction
+                nums = [1, 2, 3]
+                print([n * 2 for n in nums])
                 """
             case .javascript:
                 return """
-                // JavaScript code template
-                // Use // YOUR CODE HERE for placeholders
+                // JavaScript code templates (choose one variant)
                 
+                // Variant A: function completion
                 function exampleFunction() {
                     // YOUR CODE HERE
                     return null; // Replace this line
                 }
+
+                // Variant B: bug fix
+                function isEven(n) {
+                    return n % 2 === 1; // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                const nums = [1, 2, 3];
+                console.log(nums.map(n => n * 2));
                 """
             case .typescript:
                 return """
-                // TypeScript code template
-                // Use // YOUR CODE HERE for placeholders
+                // TypeScript code templates (choose one variant)
                 
+                // Variant A: function completion
                 function exampleFunction(): ReturnType {
                     // YOUR CODE HERE
                     return null as any; // Replace this line
                 }
+
+                // Variant B: bug fix
+                function isEven(n: number): boolean {
+                    return n % 2 === 1; // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                const nums = [1, 2, 3];
+                console.log(nums.map(n => n * 2));
                 """
             case .java:
                 return """
-                // Java code template
-                // Use // YOUR CODE HERE for placeholders
+                // Java code templates (choose one variant)
                 
+                // Variant A: function completion
                 public static ReturnType exampleFunction() {
                     // YOUR CODE HERE
                     return null; // Replace this line
                 }
+
+                // Variant B: bug fix
+                public static boolean isEven(int n) {
+                    return n % 2 == 1; // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                int[] nums = {1, 2, 3};
+                for (int n : nums) {
+                    System.out.print(n * 2);
+                }
                 """
             case .cpp:
                 return """
-                // C++ code template
-                // Use // YOUR CODE HERE for placeholders
+                // C++ code templates (choose one variant)
                 
+                // Variant A: function completion
                 ReturnType exampleFunction() {
                     // YOUR CODE HERE
                     return ReturnType(); // Replace this line
                 }
+
+                // Variant B: bug fix
+                bool isEven(int n) {
+                    return n % 2 == 1; // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                std::vector<int> nums = {1, 2, 3};
+                for (int n : nums) {
+                    std::cout << n * 2;
+                }
                 """
             case .csharp:
                 return """
-                // C# code template
-                // Use // YOUR CODE HERE for placeholders
+                // C# code templates (choose one variant)
                 
+                // Variant A: function completion
                 public static ReturnType ExampleFunction() {
                     // YOUR CODE HERE
                     return default; // Replace this line
                 }
+
+                // Variant B: bug fix
+                public static bool IsEven(int n) {
+                    return n % 2 == 1; // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                var nums = new[] { 1, 2, 3 };
+                foreach (var n in nums) {
+                    Console.Write(n * 2);
+                }
                 """
             case .go:
                 return """
-                // Go code template
-                // Use // YOUR CODE HERE for placeholders
+                // Go code templates (choose one variant)
                 
+                // Variant A: function completion
                 func exampleFunction() ReturnType {
                     // YOUR CODE HERE
                     return ReturnType{} // Replace this line
                 }
+
+                // Variant B: bug fix
+                func isEven(n int) bool {
+                    return n%2 == 1 // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                nums := []int{1, 2, 3}
+                for _, n := range nums {
+                    fmt.Print(n * 2)
+                }
                 """
             case .php:
                 return """
-                // PHP code template
-                // Use // YOUR CODE HERE for placeholders
+                // PHP code templates (choose one variant)
                 
+                // Variant A: function completion
                 function exampleFunction() {
                     // YOUR CODE HERE
                     return null; // Replace this line
                 }
+
+                // Variant B: bug fix
+                function isEven($n) {
+                    return $n % 2 == 1; // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                $nums = [1, 2, 3];
+                foreach ($nums as $n) {
+                    echo $n * 2;
+                }
                 """
             case .ruby:
                 return """
-                # Ruby code template
-                # Use # YOUR CODE HERE for placeholders
+                # Ruby code templates (choose one variant)
                 
+                # Variant A: function completion
                 def example_function
                   # YOUR CODE HERE
                   nil # Replace this line
                 end
+
+                # Variant B: bug fix
+                def is_even(n)
+                  n % 2 == 1 # BUG: should be 0
+                end
+
+                # Variant C: output prediction
+                nums = [1, 2, 3]
+                p nums.map { |n| n * 2 }
                 """
             case .kotlin:
                 return """
-                // Kotlin code template
-                // Use // YOUR CODE HERE for placeholders
+                // Kotlin code templates (choose one variant)
                 
+                // Variant A: function completion
                 fun exampleFunction(): ReturnType {
                     // YOUR CODE HERE
                     return TODO("Replace this line")
                 }
+
+                // Variant B: bug fix
+                fun isEven(n: Int): Boolean {
+                    return n % 2 == 1 // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                val nums = listOf(1, 2, 3)
+                println(nums.map { it * 2 })
                 """
             case .rust:
                 return """
-                // Rust code template
-                // Use // YOUR CODE HERE for placeholders
+                // Rust code templates (choose one variant)
                 
+                // Variant A: function completion
                 fn example_function() -> ReturnType {
                     // YOUR CODE HERE
                     Default::default() // Replace this line
                 }
+
+                // Variant B: bug fix
+                fn is_even(n: i32) -> bool {
+                    n % 2 == 1 // BUG: should be 0
+                }
+
+                // Variant C: output prediction
+                let nums = vec![1, 2, 3];
+                let result: Vec<i32> = nums.iter().map(|n| n * 2).collect();
+                println!("{:?}", result);
                 """
             }
         }
@@ -730,16 +959,17 @@ enum PromptTemplates {
             case .english:
                 return """
                 ## Code Tasks Mode
-                - Give short coding challenges (1 line max)
+                - Give short coding challenges (up to 10 lines)
                 - When presenting a task:
-                  1. Provide aicode with code template that includes:
-                     - Clear placeholder comments: `// YOUR CODE HERE`
-                     - Partial code structure but NOT complete solution
-                     - Function/method signature without implementation
-                     - Return placeholder value (0, "", nil, etc.) that user should replace
+                  1. Provide aicode as a code snippet that matches one task type:
+                     - Function completion (with `// YOUR CODE HERE` and placeholder return)
+                     - Bug fix (include a bug to find and fix)
+                     - Output prediction (code snippet to analyze)
+                     - Correctness check (code may be correct or not; explain/fix)
+                     - Do NOT include the full correct solution
                   2. Describe task in spoken_text (1-2 sentences max)
                 
-                Example of CORRECT template:
+                Example of CORRECT function-completion template:
                 ```swift
                 func calculateSum(_ a: Int, _ b: Int) -> Int {
                     // YOUR CODE HERE
@@ -759,16 +989,17 @@ enum PromptTemplates {
             case .russian:
                 return """
                 ## Режим задач по коду
-                - Давай короткие задачи по коду (максимум 1 строка)
+                - Давай короткие задачи по коду (до 10 строк)
                 - При представлении задачи:
-                  1. Предоставь aicode с шаблоном включая:
-                     - Ясные комментарии-заполнители: `// YOUR CODE HERE`
-                     - Частичную структуру кода, но НЕ полное решение
-                     - Сигнатуру функции/метода без реализации
-                     - Значение-заполнитель для возврата (0, "", nil и т.д.), которое пользователь должен заменить
+                  1. Предоставь aicode как кодовый фрагмент под один тип задачи:
+                     - Дописать функцию (с `// YOUR CODE HERE` и return-заглушкой)
+                     - Найти и исправить баг
+                     - Предсказать вывод кода
+                     - Проверить корректность кода (объяснить/исправить)
+                     - НЕ давать полное корректное решение
                   2. Опиши задачу в spoken_text (максимум 1-2 предложения)
                 
-                Пример ПРАВИЛЬНОГО шаблона:
+                Пример ПРАВИЛЬНОГО шаблона для дописывания функции:
                 ```swift
                 func calculateSum(_ a: Int, _ b: Int) -> Int {
                     // YOUR CODE HERE
@@ -788,16 +1019,17 @@ enum PromptTemplates {
             case .german:
                 return """
                 ## Code-Aufgaben Modus
-                - Gib kurze Code-Herausforderungen (max 1 Zeile)
+                - Gib kurze Code-Herausforderungen (bis zu 10 Zeilen)
                 - Bei Präsentation einer Aufgabe:
-                  1. Stelle aicode mit Vorlage bereit, die enthält:
-                     - Klare Platzhalter-Kommentare: `// YOUR CODE HERE`
-                     - Teilweise Code-Struktur aber KEINE vollständige Lösung
-                     - Funktions-/Methodensignatur ohne Implementierung
-                     - Platzhalter-Rückgabewert (0, "", nil, etc.), den Benutzer ersetzen soll
+                  1. Stelle aicode als Codeausschnitt fuer einen Aufgabentyp bereit:
+                     - Funktion vervollstaendigen (mit `// YOUR CODE HERE` und Return-Platzhalter)
+                     - Bug finden und beheben
+                     - Ausgabe vorhersagen
+                     - Korrektheit pruefen (erklaeren/verbessern)
+                     - KEINE vollstaendige korrekte Loesung
                   2. Beschreibe Aufgabe in spoken_text (max 1-2 Sätze)
                 
-                Beispiel von KORREKTER Vorlage:
+                Beispiel von KORREKTER Vorlage fuer Funktions-Ergaenzung:
                 ```swift
                 func calculateSum(_ a: Int, _ b: Int) -> Int {
                     // YOUR CODE HERE
@@ -824,16 +1056,17 @@ enum PromptTemplates {
                 ## Hybrid Mode
                 - Alternate between questions and code tasks
                 - Start with a question to gauge understanding
-                - Give code tasks (1-2 lines) when appropriate
+                - Give code tasks (up to 10 lines) when appropriate
                 - When presenting a task:
-                  1. Provide aicode with code template that includes:
-                     - Clear placeholder comments: `// YOUR CODE HERE`
-                     - Partial code structure but NOT complete solution
-                     - Function/method signature without implementation
-                     - Return placeholder value (0, "", nil, etc.) that user should replace
+                  1. Provide aicode as a code snippet for one task type:
+                     - Function completion (with `// YOUR CODE HERE` and placeholder return)
+                     - Bug fix
+                     - Output prediction
+                     - Correctness check
+                     - Do NOT include the full correct solution
                   2. Describe task in spoken_text (1-2 sentences max)
                 
-                Example of CORRECT template:
+                Example of CORRECT function-completion template:
                 ```swift
                 func greet(name: String) -> String {
                     // YOUR CODE HERE
@@ -855,16 +1088,17 @@ enum PromptTemplates {
                 ## Гибридный режим
                 - Чередуй вопросы и задачи по коду
                 - Начни с вопроса для оценки понимания
-                - Давай задачи по коду (1-2 строки) когда уместно
+                - Давай задачи по коду (до 10 строк) когда уместно
                 - При представлении задачи:
-                  1. Предоставь aicode с шаблоном включая:
-                     - Ясные комментарии-заполнители: `// YOUR CODE HERE`
-                     - Частичную структуру кода, но НЕ полное решение
-                     - Сигнатуру функции/метода без реализации
-                     - Значение-заполнитель для возврата (0, "", nil и т.д.), которое пользователь должен заменить
+                  1. Предоставь aicode как кодовый фрагмент под один тип задачи:
+                     - Дописать функцию (с `// YOUR CODE HERE` и return-заглушкой)
+                     - Найти и исправить баг
+                     - Предсказать вывод кода
+                     - Проверить корректность кода (объяснить/исправить)
+                     - НЕ давать полное корректное решение
                   2. Опиши задачу в spoken_text (максимум 1-2 предложения)
                 
-                Пример ПРАВИЛЬНОГО шаблона:
+                Пример ПРАВИЛЬНОГО шаблона для дописывания функции:
                 ```swift
                 func greet(name: String) -> String {
                     // YOUR CODE HERE
@@ -886,16 +1120,17 @@ enum PromptTemplates {
                 ## Hybrid Modus
                 - Wechsle zwischen Fragen und Code-Aufgaben
                 - Beginne mit einer Frage zum Verständnis
-                - Gib Code-Aufgaben (1-2 Zeilen) wenn angemessen
+                - Gib Code-Aufgaben (bis zu 10 Zeilen) wenn angemessen
                 - Bei Präsentation einer Aufgabe:
-                  1. Stelle aicode mit Vorlage bereit, die enthält:
-                     - Klare Platzhalter-Kommentare: `// YOUR CODE HERE`
-                     - Teilweise Code-Struktur aber KEINE vollständige Lösung
-                     - Funktions-/Methodensignatur ohne Implementierung
-                     - Platzhalter-Rückgabewert (0, "", nil, etc.), den Benutzer ersetzen soll
+                  1. Stelle aicode als Codeausschnitt fuer einen Aufgabentyp bereit:
+                     - Funktion vervollstaendigen (mit `// YOUR CODE HERE` und Return-Platzhalter)
+                     - Bug finden und beheben
+                     - Ausgabe vorhersagen
+                     - Korrektheit pruefen (erklaeren/verbessern)
+                     - KEINE vollstaendige korrekte Loesung
                   2. Beschreibe Aufgabe in spoken_text (max 1-2 Sätze)
                 
-                Beispiel von KORREKTER Vorlage:
+                Beispiel von KORREKTER Vorlage fuer Funktions-Ergaenzung:
                 ```swift
                 func greet(name: String) -> String {
                     // YOUR CODE HERE
@@ -928,7 +1163,7 @@ enum PromptTemplates {
                 
                 When presenting a code task:
                 - Set task_state to "task_presented"
-                - Provide aicode with incomplete template (NOT full solution)
+                - Provide aicode as a code snippet matching the task type (not a full solution)
                 - Keep spoken_text extremely short (1-2 sentences describing the task)
                 - DO NOT move to next question until user confirms completion
                 
@@ -973,7 +1208,7 @@ enum PromptTemplates {
                 
                 При представлении задачи по коду:
                 - Установи task_state в "task_presented"
-                - Предоставь aicode с неполным шаблоном (НЕ полное решение)
+                - Предоставь aicode как кодовый фрагмент под тип задачи (НЕ полное решение)
                 - Держи spoken_text максимально коротким (1-2 предложения с описанием задачи)
                 - НЕ переходи к следующему вопросу, пока пользователь не подтвердит завершение
                 
@@ -1018,7 +1253,7 @@ enum PromptTemplates {
                 
                 Bei Präsentation einer Code-Aufgabe:
                 - Setze task_state auf "task_presented"
-                - Stelle aicode mit unvollständiger Vorlage bereit (KEINE vollständige Lösung)
+                - Stelle aicode als Codeausschnitt passend zum Aufgabentyp bereit (KEINE vollständige Lösung)
                 - Halte spoken_text extrem kurz (1-2 Sätze mit Aufgabenbeschreibung)
                 - GEH NICHT zur nächsten Frage über, bis Benutzer Bestätigung gibt
                 
