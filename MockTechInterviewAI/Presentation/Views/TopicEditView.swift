@@ -38,95 +38,61 @@ struct TopicEditView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("topic_edit.info")) {
-                    TextField("topic_edit.title", text: $title)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    TextEditor(text: $prompt)
-                        .frame(minHeight: 80)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
+            VStack(alignment: .leading, spacing: 16) {
+                GroupBox(label: Text("topic_edit.info")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        TextField("topic_edit.title", text: $title)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        Text("topic_edit.description")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        TextEditor(text: $prompt)
+                            .frame(minHeight: 90)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .padding(.top, 4)
                 }
                 
-                Section(header: Text("topic_edit.settings")) {
-                    Picker("topic_edit.programming_language", selection: $codeLanguage) {
-                        ForEach(CodeLanguageInterview.allCases, id: \.self) { language in
-                            Text(language.displayName).tag(language)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    
-                    Picker("topic_edit.interview_mode", selection: $interviewMode) {
-                        ForEach(InterviewMode.allCases, id: \.self) { mode in
-                            VStack(alignment: .leading) {
-                                Text(mode.uiDisplayName)
-                                Text(mode.uiDescription)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                GroupBox(label: Text("topic_edit.settings")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("topic_edit.programming_language", selection: $codeLanguage) {
+                            ForEach(CodeLanguageInterview.allCases, id: \.self) { language in
+                                Text(language.displayName).tag(language)
                             }
-                            .tag(mode)
                         }
-                    }
-                    .pickerStyle(.menu)
-                    
-                    Picker("topic_edit.developer_level", selection: $level) {
-                        ForEach(DeveloperLevel.allCases, id: \.self) { level in
-                            Text(level.uiDisplayName).tag(level)
+                        .pickerStyle(.menu)
+                        
+                        Picker("topic_edit.interview_mode", selection: $interviewMode) {
+                            ForEach(InterviewMode.allCases, id: \.self) { mode in
+                                VStack(alignment: .leading) {
+                                    Text(mode.uiDisplayName)
+                                    Text(mode.uiDescription)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .tag(mode)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        
+                        Picker("topic_edit.developer_level", selection: $level) {
+                            ForEach(DeveloperLevel.allCases, id: \.self) { level in
+                                Text(level.uiDisplayName).tag(level)
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
-                    .pickerStyle(.menu)
+                    .padding(.top, 4)
                 }
                 
-                Section(header: Text("topic_edit.preview")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            Text(codeLanguage.displayName)
-                                .font(.caption2)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.2))
-                                .foregroundColor(.blue)
-                                .cornerRadius(6)
-                            
-                            Text(interviewMode.uiDisplayName)
-                                .font(.caption2)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.green.opacity(0.2))
-                                .foregroundColor(.green)
-                                .cornerRadius(6)
-                            
-                            Text(level.uiDisplayName)
-                                .font(.caption2)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.orange.opacity(0.2))
-                                .foregroundColor(.orange)
-                                .cornerRadius(6)
-                        }
-                        
-                        if !title.isEmpty {
-                            Text(title)
-                                .font(.headline)
-                                .lineLimit(1)
-                        }
-                        
-                        if !prompt.isEmpty {
-                            Text(prompt)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(3)
-                        }
-                    }
-                    .padding(12)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
+                Spacer(minLength: 0)
             }
-            .formStyle(.grouped)
+            .padding(16)
             .navigationTitle(topic.title.isEmpty ? LocalizedStringKey("topic_edit.new_title") : LocalizedStringKey("topic_edit.edit_title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -150,7 +116,7 @@ struct TopicEditView: View {
     
     private func saveTopic() {
         let updatedTopic = InterviewTopic(
-            id: topic.id == UUID() && topic.title.isEmpty ? UUID() : topic.id,
+            id: topic.id,
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             prompt: prompt.trimmingCharacters(in: .whitespacesAndNewlines),
             level: level,

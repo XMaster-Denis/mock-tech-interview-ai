@@ -35,6 +35,7 @@
 
 "topic_edit.info" = "Themeninfo";
 "topic_edit.title" = "Titel";
+"topic_edit.description" = "Beschreibung";
 "topic_edit.settings" = "Interview-Einstellungen";
 "topic_edit.programming_language" = "Programmiersprache";
 "topic_edit.interview_mode" = "Interview-Modus";

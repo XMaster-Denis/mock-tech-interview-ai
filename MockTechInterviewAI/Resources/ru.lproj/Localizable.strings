@@ -35,6 +35,7 @@
 
 "topic_edit.info" = "Информация о теме";
 "topic_edit.title" = "Название";
+"topic_edit.description" = "Описание";
 "topic_edit.settings" = "Параметры интервью";
 "topic_edit.programming_language" = "Язык программирования";
 "topic_edit.interview_mode" = "Режим интервью";

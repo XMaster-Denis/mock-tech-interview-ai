@@ -75,12 +75,11 @@ struct TopicsSidebarView: View {
                 TopicEditView(
                     topic: topicToEdit,
                     onSave: { updatedTopic in
-                        if topicToEdit.id == UUID() && topicToEdit.title.isEmpty {
-                            // New topic
-                            viewModel.addTopic(updatedTopic)
-                        } else {
-                            // Existing topic
+                        let isExisting = viewModel.topics.contains { $0.id == topicToEdit.id }
+                        if isExisting {
                             viewModel.updateTopic(updatedTopic)
+                        } else {
+                            viewModel.addTopic(updatedTopic)
                         }
                         viewModel.cancelEditing()
                     },

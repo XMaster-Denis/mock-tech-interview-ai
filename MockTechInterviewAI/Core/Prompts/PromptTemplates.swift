@@ -562,6 +562,106 @@ enum PromptTemplates {
                     // YOUR CODE HERE
                     return None  # Replace this line
                 """
+            case .javascript:
+                return """
+                // JavaScript code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                function exampleFunction() {
+                    // YOUR CODE HERE
+                    return null; // Replace this line
+                }
+                """
+            case .typescript:
+                return """
+                // TypeScript code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                function exampleFunction(): ReturnType {
+                    // YOUR CODE HERE
+                    return null as any; // Replace this line
+                }
+                """
+            case .java:
+                return """
+                // Java code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                public static ReturnType exampleFunction() {
+                    // YOUR CODE HERE
+                    return null; // Replace this line
+                }
+                """
+            case .cpp:
+                return """
+                // C++ code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                ReturnType exampleFunction() {
+                    // YOUR CODE HERE
+                    return ReturnType(); // Replace this line
+                }
+                """
+            case .csharp:
+                return """
+                // C# code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                public static ReturnType ExampleFunction() {
+                    // YOUR CODE HERE
+                    return default; // Replace this line
+                }
+                """
+            case .go:
+                return """
+                // Go code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                func exampleFunction() ReturnType {
+                    // YOUR CODE HERE
+                    return ReturnType{} // Replace this line
+                }
+                """
+            case .php:
+                return """
+                // PHP code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                function exampleFunction() {
+                    // YOUR CODE HERE
+                    return null; // Replace this line
+                }
+                """
+            case .ruby:
+                return """
+                # Ruby code template
+                # Use # YOUR CODE HERE for placeholders
+                
+                def example_function
+                  # YOUR CODE HERE
+                  nil # Replace this line
+                end
+                """
+            case .kotlin:
+                return """
+                // Kotlin code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                fun exampleFunction(): ReturnType {
+                    // YOUR CODE HERE
+                    return TODO("Replace this line")
+                }
+                """
+            case .rust:
+                return """
+                // Rust code template
+                // Use // YOUR CODE HERE for placeholders
+                
+                fn example_function() -> ReturnType {
+                    // YOUR CODE HERE
+                    Default::default() // Replace this line
+                }
+                """
             }
         }
         
