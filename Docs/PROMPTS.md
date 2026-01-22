@@ -1,7 +1,7 @@
 # MockTechInterview AI - Prompts
 
 ## Location
-System and developer prompts live in `MockTechInterviewAI/Core/Prompts/PromptTemplates.swift`.
+System and developer prompts live in `MockTechInterviewAI/Shared/Core/Prompts/PromptTemplates.swift`.
 
 ## Guidelines
 - Keep prompts short and mode-specific.

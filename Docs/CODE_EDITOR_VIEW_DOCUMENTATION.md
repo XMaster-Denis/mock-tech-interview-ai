@@ -2,7 +2,7 @@
 
 ## Обзор
 
-[`CodeEditorView`](MockTechInterviewAI/Presentation/Views/CodeEditorView.swift) - это SwiftUI view, который предоставляет редактор кода с подсветкой синтаксиса, используя библиотеку CodeEditSourceEditor.
+[`CodeEditorView`](MockTechInterviewAI/UI/macOS/CodeEditorView.swift) - это SwiftUI view, который предоставляет редактор кода с подсветкой синтаксиса, используя библиотеку CodeEditSourceEditor.
 
 ## Архитектура
 
@@ -194,8 +194,8 @@ guard controller.text != newValue else { return }
 - `CodeEditTextView` - Текстовый view
 
 ### Локальные файлы
-- [`EditorTheme+Default.swift`](MockTechInterviewAI/Presentation/Extensions/EditorTheme+Default.swift) - Расширение с темами light/dark
-- [`CodeLanguageInterview.swift`](MockTechInterviewAI/Domain/Models/CodeLanguageInterview.swift) - Перечисление языков
+- [`EditorTheme+Default.swift`](MockTechInterviewAI/UI/macOS/Extensions/EditorTheme+Default.swift) - Расширение с темами light/dark
+- [`CodeLanguageInterview.swift`](MockTechInterviewAI/Shared/Domain/Models/CodeLanguageInterview.swift) - Перечисление языков
 
 ## Примечания для будущей разработки
 
@@ -266,6 +266,6 @@ func setCode(_ newCode: String) {
 
 ## Заключение
 
-[`CodeEditorView`](MockTechInterviewAI/Presentation/Views/CodeEditorView.swift) - это критически важный компонент приложения, который обеспечивает отображение и редактирование кода. Ключевая особенность - использование `CodeEditorCoordinator` для синхронизации между внешним источником данных и внутренним текстовым редактором CodeEditSourceEditor.
+[`CodeEditorView`](MockTechInterviewAI/UI/macOS/CodeEditorView.swift) - это критически важный компонент приложения, который обеспечивает отображение и редактирование кода. Ключевая особенность - использование `CodeEditorCoordinator` для синхронизации между внешним источником данных и внутренним текстовым редактором CodeEditSourceEditor.
 
 **Главное правило**: НЕ изменять логику координатора и механизм синхронизации, если вы не полностью понимаете, как это работает. Любые изменения должны быть тщательно протестированы.

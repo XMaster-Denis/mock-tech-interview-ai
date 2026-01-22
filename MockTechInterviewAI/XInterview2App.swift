@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct XInterview2App: App {
     var body: some Scene {
+        #if os(macOS)
         WindowGroup {
             ContentView()
         }
@@ -22,11 +23,10 @@ struct XInterview2App: App {
                 .keyboardShortcut(",", modifiers: .command)
             }
         }
+        #else
+        WindowGroup {
+            ContentView()
+        }
+        #endif
     }
-}
-
-// MARK: - Notifications
-
-extension Notification.Name {
-    static let openSettings = Notification.Name("openSettings")
 }

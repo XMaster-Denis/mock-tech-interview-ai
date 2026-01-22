@@ -6,14 +6,14 @@ This document tracks known issues and limitations in MockTechInterview AI versio
 
 ### Swift 6 Sendable Warnings
 
-**Location:** `MockTechInterviewAI/Data/Networking/DefaultHTTPClient.swift`  
+**Location:** `MockTechInterviewAI/Shared/Data/Networking/DefaultHTTPClient.swift`  
 **Severity:** Low (warning only, doesn't affect functionality)  
 **Description:**  
 The HTTPClient protocol's `request` method has a Swift 6 Sendable warning for the `responseType` parameter (generic type `T.Type`). This is because generic type parameters are not automatically Sendable.
 
 **Example warning:**
 ```
-/Users/xmaster/Developer/iOS/MockTechInterview/MockTechInterviewAI/Data/Networking/DefaultHTTPClient.swift:17:10: warning: non-Sendable parameter type 'T.Type' cannot be sent from caller of protocol requirement 'request(endpoint:method:body:headers:responseType:)' into main actor-isolated implementation; this is an error in the Swift 6 language mode
+/Users/xmaster/Developer/iOS/MockTechInterview/MockTechInterviewAI/Shared/Data/Networking/DefaultHTTPClient.swift:17:10: warning: non-Sendable parameter type 'T.Type' cannot be sent from caller of protocol requirement 'request(endpoint:method:body:headers:responseType:)' into main actor-isolated implementation; this is an error in the Swift 6 language mode
 ```
 
 **Impact:** None - Build succeeds, app runs correctly.
@@ -26,7 +26,7 @@ The HTTPClient protocol's `request` method has a Swift 6 Sendable warning for th
 
 ### Voice Detection Sensitivity
 
-**Location:** `MockTechInterviewAI/Data/Audio/VoiceDetector.swift`  
+**Location:** `MockTechInterviewAI/Shared/Data/Audio/VoiceDetector.swift`  
 **Severity:** Low (configurable workaround exists)  
 **Description:**  
 Voice activity detection may have varying accuracy depending on:

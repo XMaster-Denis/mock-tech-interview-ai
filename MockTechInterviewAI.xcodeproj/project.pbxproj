@@ -11,6 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		638E5A01C50E4B7385E48615 /* MockInterview AI iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MockInterview AI iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2A5A99D2F13EDA700BBB0A0 /* MockInterview AI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MockInterview AI.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -23,6 +24,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		33BF8B2287A540F3A497D040 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E2A5A99A2F13EDA700BBB0A0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +54,7 @@
 			isa = PBXGroup;
 			children = (
 				E2A5A99D2F13EDA700BBB0A0 /* MockInterview AI.app */,
+				638E5A01C50E4B7385E48615 /* MockInterview AI iOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,6 +62,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		748AE8D440764E40A38445D8 /* MockInterview AI iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 674CB49A01944FC48884BEF3 /* Build configuration list for PBXNativeTarget "MockInterview AI iOS" */;
+			buildPhases = (
+				9BFC792B1ACA49809515BACB /* Sources */,
+				33BF8B2287A540F3A497D040 /* Frameworks */,
+				7A6CF69847BD49BFA8948B84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E2A5A99F2F13EDA700BBB0A0 /* MockTechInterviewAI */,
+			);
+			name = "MockInterview AI iOS";
+			productName = "MockInterview AI iOS";
+			productReference = 638E5A01C50E4B7385E48615 /* MockInterview AI iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 		E2A5A99C2F13EDA700BBB0A0 /* MockInterview AI */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E2A5A9A82F13EDA800BBB0A0 /* Build configuration list for PBXNativeTarget "MockInterview AI" */;
@@ -86,6 +115,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					748AE8D440764E40A38445D8 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					E2A5A99C2F13EDA700BBB0A0 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -111,11 +143,19 @@
 			projectRoot = "";
 			targets = (
 				E2A5A99C2F13EDA700BBB0A0 /* MockInterview AI */,
+				748AE8D440764E40A38445D8 /* MockInterview AI iOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7A6CF69847BD49BFA8948B84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E2A5A99B2F13EDA700BBB0A0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -126,6 +166,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9BFC792B1ACA49809515BACB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E2A5A9992F13EDA700BBB0A0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -136,6 +183,73 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		1601A2FDB5FA456683C44EC6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-iOS";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 38Y6LA5LS9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Info-iOS.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.xmaster.XInterview2.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		71BE1837AD6C452CA55FCB39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-iOS";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = 38Y6LA5LS9;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Info-iOS.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.xmaster.XInterview2.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		E2A5A9A62F13EDA800BBB0A0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -377,6 +491,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		674CB49A01944FC48884BEF3 /* Build configuration list for PBXNativeTarget "MockInterview AI iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				71BE1837AD6C452CA55FCB39 /* Debug */,
+				1601A2FDB5FA456683C44EC6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		E2A5A9982F13EDA700BBB0A0 /* Build configuration list for PBXProject "MockTechInterviewAI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

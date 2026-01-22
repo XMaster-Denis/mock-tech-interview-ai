@@ -70,6 +70,7 @@
 "settings.save" = "Save";
 "settings.cancel" = "Cancel";
 "settings.api_key" = "OpenAI API Key";
+"settings.title" = "Settings";
 "settings.api_key_placeholder" = "Enter your API key";
 "settings.api_key_valid" = "API key is valid ✓";
 "settings.api_key_required" = "API key is required - Get one at platform.openai.com";
