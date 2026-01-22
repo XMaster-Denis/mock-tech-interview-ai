@@ -5,6 +5,7 @@
 //  Right panel showing live transcript of conversation
 //
 
+#if os(iOS)
 import SwiftUI
 import AVFoundation
 import Combine
@@ -13,16 +14,17 @@ struct TranscriptView: View {
     @ObservedObject var viewModel: InterviewViewModel
     @FocusState private var isTextFieldFocused: Bool
     @StateObject private var audioPlayer = TranscriptAudioPlayer()
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
             Text("transcript.title")
                 .font(.headline)
-                .padding(3)
-            
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+
             Divider()
-            
+
             // Messages
             ScrollView {
                 ScrollViewReader { proxy in
@@ -56,7 +58,7 @@ struct TranscriptView: View {
                             }
                         }
                     }
-                    .padding(6)
+                    .padding(12)
                     .onChange(of: viewModel.session.transcript.count) { oldValue, newValue in
                         if let lastMessage = viewModel.session.transcript.last {
                             withAnimation {
@@ -66,25 +68,22 @@ struct TranscriptView: View {
                     }
                 }
             }
-            
+
             // Text Input Area
             Divider()
             messageInputArea
         }
-        #if os(macOS)
-        .frame(minWidth: 250)
-        #endif
         .background(Color.appTextBackground)
     }
-    
+
     // MARK: - Message Input Area
-    
+
     private var messageInputArea: some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 8) {
             // Text Input Field
             TextEditor(text: $viewModel.textInput)
                 .font(.body)
-                .frame(minHeight: 44, maxHeight: 44) // 2-3 lines
+                .frame(minHeight: 44, maxHeight: 88) // 2-3 lines
                 .scrollContentBackground(.hidden)
                 .background(Color.appTextBackground)
                 .cornerRadius(8)
@@ -94,10 +93,11 @@ struct TranscriptView: View {
                 )
                 .focused($isTextFieldFocused)
                 .disabled(!viewModel.session.isActive || viewModel.isSendingTextMessage)
-            
-            // Send Button
 
-                
+            // Send Button
+            HStack {
+                Spacer()
+
                 Button(action: {
                     viewModel.sendTextMessage()
                     isTextFieldFocused = true
@@ -122,8 +122,10 @@ struct TranscriptView: View {
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
+        }
+        .padding(12)
     }
-    
+
     private var canSendMessage: Bool {
         !viewModel.textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         viewModel.session.isActive &&
@@ -134,7 +136,7 @@ struct TranscriptView: View {
 struct MessageRowView: View {
     let message: TranscriptMessage
     let onPlayAudio: (TranscriptMessage) -> Void
-    
+
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 2) {
             HStack(spacing: 6) {
@@ -143,16 +145,16 @@ struct MessageRowView: View {
                         .font(.caption)
                         .foregroundColor(.accentColor)
                 }
-                
+
                 Text(message.role == .user ? LocalizedStringKey("transcript.you") : LocalizedStringKey("transcript.ai"))
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.secondary)
-                
+
                 Text(formatTime(message.timestamp))
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                
+
                 if message.role != .system, message.audioFileName != nil {
                     Button("transcript.listen") {
                         onPlayAudio(message)
@@ -161,7 +163,7 @@ struct MessageRowView: View {
                     .foregroundColor(.accentColor)
                     .buttonStyle(.plain)
                 }
-                
+
                 if let tooltip = translationTooltip {
                     Image(systemName: "globe")
                         .font(.caption2)
@@ -170,7 +172,7 @@ struct MessageRowView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
-            
+
             Text(message.text)
                 .font(.body)
                 .textSelection(.enabled)
@@ -180,23 +182,23 @@ struct MessageRowView: View {
                 .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
         }
     }
-    
+
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
-    
+
     private var translationTooltip: String? {
         guard message.role == .assistant, let translation = message.translationText else {
             return nil
         }
-        
+
         let notes = message.translationNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let notes, !notes.isEmpty {
             return "\(translation)\n\n\(notes)"
         }
-        
+
         return translation
     }
 }
@@ -204,13 +206,13 @@ struct MessageRowView: View {
 final class TranscriptAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     let objectWillChange = ObservableObjectPublisher()
     private var audioPlayer: AVAudioPlayer?
-    
+
     func play(_ fileURL: URL) {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             Logger.error("TTS audio file missing at \(fileURL.lastPathComponent)")
             return
         }
-        
+
         do {
             audioPlayer?.stop()
             audioPlayer = try AVAudioPlayer(contentsOf: fileURL)
@@ -226,3 +228,4 @@ final class TranscriptAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDele
 #Preview {
     TranscriptView(viewModel: InterviewViewModel())
 }
+#endif

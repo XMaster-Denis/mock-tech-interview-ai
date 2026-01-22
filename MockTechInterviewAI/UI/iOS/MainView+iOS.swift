@@ -123,26 +123,26 @@ struct MainView: View {
 
             Divider()
 
-            codeEditorScreen
+            codeEditorPanel
         }
     }
 
-//    private var codeEditorPanel: some View {
-//        VStack(alignment: .leading, spacing: 0) {
-//            CodeEditorView(
-//                code: $viewModel.code,
-//                hintText: viewModel.hintText,
-//                hintCode: viewModel.hintCode,
-//                solutionCode: viewModel.solutionCode,
-//                solutionExplanation: viewModel.solutionExplanation,
-//                language: .swift,
-//                isEditable: false
-//            )
-//            .padding(12)
-//        }
-//        .frame(height: 150)
-//        .background(Color.appSecondaryBackground)
-//    }
+    private var codeEditorPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            CodeEditorView(
+                code: $viewModel.code,
+                hintText: viewModel.hintText,
+                hintCode: viewModel.hintCode,
+                solutionCode: viewModel.solutionCode,
+                solutionExplanation: viewModel.solutionExplanation,
+                language: .swift,
+                isEditable: false
+            )
+            .padding(12)
+        }
+        .frame(height: 150)
+        .background(Color.appSecondaryBackground)
+    }
 
     private var codeEditorScreen: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -157,8 +157,6 @@ struct MainView: View {
             )
             .padding(12)
         }
-//        .frame(height: 150)
-        .background(Color.appSecondaryBackground)
     }
 
     private var controlPanel: some View {

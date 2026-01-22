@@ -1,3 +1,4 @@
+#if os(iOS)
 import SwiftUI
 
 extension View {
@@ -5,3 +6,4 @@ extension View {
         self.onReceive(NotificationCenter.default.publisher(for: name), perform: action)
     }
 }
+#endif

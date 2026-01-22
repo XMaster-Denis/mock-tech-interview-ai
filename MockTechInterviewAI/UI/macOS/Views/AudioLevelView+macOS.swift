@@ -1,16 +1,10 @@
-//
-//  AudioLevelView.swift
-//  XInterview2
-//
-//  Audio level visualizer component
-//
-
 import SwiftUI
 
+#if os(macOS)
 struct AudioLevelView: View {
     let audioLevel: Float
     let isRecording: Bool
-    
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<20, id: \.self) { index in
@@ -24,23 +18,22 @@ struct AudioLevelView: View {
         .frame(height: 20)
         .padding(.horizontal, 8)
     }
-    
+
     private func barHeight(for index: Int) -> CGFloat {
         let normalizedLevel = audioLevel * 20
         let barIndex = Float(index)
         return barIndex < normalizedLevel ? CGFloat(20) : CGFloat(4)
     }
-    
+
     private func barColor(for index: Int) -> Color {
         let normalizedLevel = audioLevel * 20
         let barIndex = Float(index)
-        
+
         if !isRecording {
             return Color.gray.opacity(0.3)
         } else if barIndex >= normalizedLevel {
             return Color.gray.opacity(0.5)
         } else {
-            // Color gradient based on intensity
             let intensity = Float(index) / 20.0
             if intensity < 0.5 {
                 return Color.green
@@ -52,3 +45,4 @@ struct AudioLevelView: View {
         }
     }
 }
+#endif

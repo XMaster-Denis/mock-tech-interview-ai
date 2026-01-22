@@ -1,25 +1,19 @@
-//
-//  TopicEditView.swift
-//  XInterview2
-//
-//  View for editing or creating interview topics
-//
-
 import SwiftUI
 
+#if os(macOS)
 struct TopicEditView: View {
     @State var topic: InterviewTopic
     let onSave: (InterviewTopic) -> Void
     let onCancel: () -> Void
-    
+
     @State private var title: String
     @State private var prompt: String
     @State private var level: DeveloperLevel
     @State private var codeLanguage: CodeLanguageInterview
     @State private var interviewMode: InterviewMode
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     init(topic: InterviewTopic, onSave: @escaping (InterviewTopic) -> Void, onCancel: @escaping () -> Void) {
         self._topic = State(initialValue: topic)
         self.onSave = onSave
@@ -30,12 +24,12 @@ struct TopicEditView: View {
         self._codeLanguage = State(initialValue: topic.codeLanguage)
         self._interviewMode = State(initialValue: topic.interviewMode)
     }
-    
+
     var isFormValid: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
+
     var body: some View {
         NavigationView {
             VStack(alignment: .leading, spacing: 16) {
@@ -43,11 +37,11 @@ struct TopicEditView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         TextField("topic_edit.title", text: $title)
                             .textFieldStyle(.roundedBorder)
-                        
+
                         Text("topic_edit.description")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
+
                         TextEditor(text: $prompt)
                             .frame(minHeight: 90)
                             .overlay(
@@ -57,7 +51,7 @@ struct TopicEditView: View {
                     }
                     .padding(.top, 4)
                 }
-                
+
                 GroupBox(label: Text("topic_edit.settings")) {
                     VStack(alignment: .leading, spacing: 12) {
                         Picker("topic_edit.programming_language", selection: $codeLanguage) {
@@ -66,7 +60,7 @@ struct TopicEditView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        
+
                         Picker("topic_edit.interview_mode", selection: $interviewMode) {
                             ForEach(InterviewMode.allCases, id: \.self) { mode in
                                 VStack(alignment: .leading) {
@@ -79,7 +73,7 @@ struct TopicEditView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        
+
                         Picker("topic_edit.developer_level", selection: $level) {
                             ForEach(DeveloperLevel.allCases, id: \.self) { level in
                                 Text(level.uiDisplayName).tag(level)
@@ -89,7 +83,7 @@ struct TopicEditView: View {
                     }
                     .padding(.top, 4)
                 }
-                
+
                 Spacer(minLength: 0)
             }
             .padding(16)
@@ -101,7 +95,7 @@ struct TopicEditView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("common.save") {
                         saveTopic()
@@ -111,11 +105,9 @@ struct TopicEditView: View {
                 }
             }
         }
-        #if os(macOS)
         .frame(minWidth: 500, minHeight: 400)
-        #endif
     }
-    
+
     private func saveTopic() {
         let updatedTopic = InterviewTopic(
             id: topic.id,
@@ -156,3 +148,4 @@ struct TopicEditView: View {
         onCancel: {}
     )
 }
+#endif
