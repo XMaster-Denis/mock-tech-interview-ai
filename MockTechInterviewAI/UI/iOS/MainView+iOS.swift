@@ -43,7 +43,7 @@ struct MainView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
                         Button(action: { isSettingsPresented = true }) {
                             Image(systemName: "gearshape")
                                 .imageScale(.small)
@@ -112,7 +112,6 @@ struct MainView: View {
         }
         .onAppear {
             requestMicrophonePermission()
-            WebKitPrewarmer.shared.warmUp()
         }
     }
 
@@ -266,7 +265,6 @@ struct MainView: View {
             }
         }
     }
-
 
     private var statusColor: Color {
         switch viewModel.conversationState {

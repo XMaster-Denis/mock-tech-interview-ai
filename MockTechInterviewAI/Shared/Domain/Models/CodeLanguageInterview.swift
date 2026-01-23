@@ -6,10 +6,7 @@
 //
 
 import Foundation
-
-#if os(macOS)
-import CodeEditLanguages
-#endif
+import SwiftUICodeEditorView
 
 
 enum CodeLanguageInterview: String, Codable, CaseIterable {
@@ -43,8 +40,11 @@ enum CodeLanguageInterview: String, Codable, CaseIterable {
         ]
     }
     
-    #if os(macOS)
-    var codeLanguageOfCodeEditSourceEditor: CodeLanguage {
+    var displayName: String {
+        self.rawValue
+    }
+
+    var swiftUICodeLanguage: CodeLanguage {
         switch self {
         case .swift: return .swift
         case .python: return .python
@@ -52,17 +52,12 @@ enum CodeLanguageInterview: String, Codable, CaseIterable {
         case .typescript: return .typescript
         case .java: return .java
         case .cpp: return .cpp
-        case .csharp: return .cSharp
+        case .csharp: return .csharp
         case .go: return .go
         case .php: return .php
         case .ruby: return .ruby
         case .kotlin: return .kotlin
         case .rust: return .rust
         }
-    }
-    #endif
-    
-    var displayName: String {
-        self.rawValue
     }
 }

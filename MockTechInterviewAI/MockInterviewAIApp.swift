@@ -1,6 +1,6 @@
 //
-//  XInterview2App.swift
-//  XInterview2
+//  MockInterviewAIApp.swift
+//  MockInterview AI
 //
 //  Main app entry point
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct XInterview2App: App {
+struct MockInterviewAIApp: App {
     var body: some Scene {
         #if os(macOS)
         WindowGroup {

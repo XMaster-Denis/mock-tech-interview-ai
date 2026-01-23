@@ -10,8 +10,6 @@ import Foundation
 import Combine
 
 #if os(macOS)
-import CodeEditLanguages
-
 struct MainView: View {
     @StateObject private var viewModel = InterviewViewModel()
     @State private var isSettingsPresented = false
@@ -33,10 +31,13 @@ struct MainView: View {
                 
                 // Center: Code Editor
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("main.code_editor")
-                        .font(.headline)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 12)
+                    HStack {
+                        Text("main.code_editor")
+                            .font(.headline)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
                     
                     Divider()
                     
@@ -267,6 +268,7 @@ struct MainView: View {
         // But we can show a setup prompt here if needed
         #endif
     }
+
 }
 
 #endif

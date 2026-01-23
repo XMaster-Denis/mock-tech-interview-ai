@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E2A5AB2F2F169F5900BBB0A0 /* CodeEditSourceEditor in Frameworks */ = {isa = PBXBuildFile; productRef = E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */; };
+		19D5D34B2B46414FAAA30161 /* SwiftUICodeEditorView in Frameworks */ = {isa = PBXBuildFile; productRef = 6E6B76281CD3464B87F31622 /* SwiftUICodeEditorView */; };
+		64C55FDFFCED4535AF818C7E /* SwiftUICodeEditorView in Frameworks */ = {isa = PBXBuildFile; productRef = 6E6B76281CD3464B87F31622 /* SwiftUICodeEditorView */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				19D5D34B2B46414FAAA30161 /* SwiftUICodeEditorView in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -35,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E2A5AB2F2F169F5900BBB0A0 /* CodeEditSourceEditor in Frameworks */,
+				64C55FDFFCED4535AF818C7E /* SwiftUICodeEditorView in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +80,9 @@
 				E2A5A99F2F13EDA700BBB0A0 /* MockTechInterviewAI */,
 			);
 			name = "MockInterview AI iOS";
+			packageProductDependencies = (
+				6E6B76281CD3464B87F31622 /* SwiftUICodeEditorView */,
+			);
 			productName = "MockInterview AI iOS";
 			productReference = 638E5A01C50E4B7385E48615 /* MockInterview AI iOS.app */;
 			productType = "com.apple.product-type.application";
@@ -99,7 +104,7 @@
 			);
 			name = "MockInterview AI";
 			packageProductDependencies = (
-				E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */,
+				6E6B76281CD3464B87F31622 /* SwiftUICodeEditorView */,
 			);
 			productName = "MockInterview AI";
 			productReference = E2A5A99D2F13EDA700BBB0A0 /* MockInterview AI.app */;
@@ -135,7 +140,7 @@
 			mainGroup = E2A5A9942F13EDA700BBB0A0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E2A5AB2D2F169F5900BBB0A0 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */,
+				7389958AD72A463687CEB2E7 /* XCRemoteSwiftPackageReference "SwiftUICodeEditorView" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E2A5A99E2F13EDA700BBB0A0 /* Products */;
@@ -521,21 +526,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E2A5AB2D2F169F5900BBB0A0 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */ = {
+		7389958AD72A463687CEB2E7 /* XCRemoteSwiftPackageReference "SwiftUICodeEditorView" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/CodeEditApp/CodeEditSourceEditor";
+			repositoryURL = "https://github.com/XMaster-Denis/SwiftUICodeEditorView.git";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.15.2;
+				branch = main;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E2A5AB2E2F169F5900BBB0A0 /* CodeEditSourceEditor */ = {
+		6E6B76281CD3464B87F31622 /* SwiftUICodeEditorView */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E2A5AB2D2F169F5900BBB0A0 /* XCRemoteSwiftPackageReference "CodeEditSourceEditor" */;
-			productName = CodeEditSourceEditor;
+			package = 7389958AD72A463687CEB2E7 /* XCRemoteSwiftPackageReference "SwiftUICodeEditorView" */;
+			productName = SwiftUICodeEditorView;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
