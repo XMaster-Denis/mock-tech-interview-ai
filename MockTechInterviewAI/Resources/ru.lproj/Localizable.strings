@@ -22,9 +22,12 @@
 "transcript.empty" = "Сообщений пока нет";
 "transcript.sending" = "Отправка...";
 "transcript.send" = "Отправить";
+"transcript.message_placeholder" = "Сообщение";
 "transcript.ai" = "AI";
 "transcript.you" = "Вы";
 "transcript.listen" = "Прослушать";
+"transcript.translation" = "Перевод";
+"transcript.translation_notes" = "Заметки";
 
 "topics.title" = "Темы";
 "topics.add" = "Добавить тему";

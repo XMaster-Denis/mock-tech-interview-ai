@@ -22,9 +22,12 @@
 "transcript.empty" = "No messages yet";
 "transcript.sending" = "Sending...";
 "transcript.send" = "Send";
+"transcript.message_placeholder" = "Message";
 "transcript.ai" = "AI";
 "transcript.you" = "You";
 "transcript.listen" = "Play";
+"transcript.translation" = "Translation";
+"transcript.translation_notes" = "Notes";
 
 "topics.title" = "Topics";
 "topics.add" = "Add new topic";

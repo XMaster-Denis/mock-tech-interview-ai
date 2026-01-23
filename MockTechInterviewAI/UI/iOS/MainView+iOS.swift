@@ -35,6 +35,7 @@ struct MainView: View {
                         }
                         .tag(Tab.code)
                 }
+                .padding(0)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button(action: { isTopicsPresented = true }) {
@@ -213,6 +214,32 @@ struct MainView: View {
 
                 Spacer()
 
+                if case .taskPresented = viewModel.taskState {
+                    Button(action: {
+                        viewModel.requestHelp()
+                        isHelpSheetPresented = true
+                    }) {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(helpButtonTitle)
+
+                    Button(action: { viewModel.confirmTaskCompletion() }) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityLabel(LocalizedStringKey("main.done"))
+                } else if case .waitingForUserConfirmation = viewModel.taskState {
+                    Button(action: { viewModel.confirmUnderstanding() }) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityLabel(LocalizedStringKey("main.understand"))
+                }
+
                 Button(action: { viewModel.toggleRecording() }) {
                     Image(systemName: viewModel.session.isActive ? "stop.circle.fill" : "play.circle.fill")
                         .font(.title2)
@@ -221,14 +248,6 @@ struct MainView: View {
                 .tint(viewModel.session.isActive ? .red : .green)
             }
 
-            HStack(spacing: 8) {
-                if hasHelpContent {
-                    Button(action: { isHelpSheetPresented = true }) {
-                        Label(helpButtonTitle, systemImage: "lightbulb")
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
         }
         .padding(12)
         .background(Color.appSecondaryBackground)

@@ -79,12 +79,11 @@ struct TranscriptView: View {
     // MARK: - Message Input Area
 
     private var messageInputArea: some View {
-        VStack(spacing: 8) {
-            // Text Input Field
-            TextEditor(text: $viewModel.textInput)
+        HStack(spacing: 8) {
+            TextField("transcript.message_placeholder", text: $viewModel.textInput)
                 .font(.body)
-                .frame(minHeight: 44, maxHeight: 88) // 2-3 lines
-                .scrollContentBackground(.hidden)
+                .frame(height: 36)
+                .padding(.horizontal, 10)
                 .background(Color.appTextBackground)
                 .cornerRadius(8)
                 .overlay(
@@ -93,35 +92,33 @@ struct TranscriptView: View {
                 )
                 .focused($isTextFieldFocused)
                 .disabled(!viewModel.session.isActive || viewModel.isSendingTextMessage)
-
-            // Send Button
-            HStack {
-                Spacer()
-
-                Button(action: {
-                    viewModel.sendTextMessage()
-                    isTextFieldFocused = true
-                }) {
-                    HStack(spacing: 6) {
-                        if viewModel.isSendingTextMessage {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        } else {
-                            Image(systemName: "paperplane.fill")
-                        }
-                        Text(viewModel.isSendingTextMessage ? LocalizedStringKey("transcript.sending") : LocalizedStringKey("transcript.send"))
+                .submitLabel(.send)
+                .onSubmit {
+                    if canSendMessage {
+                        viewModel.sendTextMessage()
+                        isTextFieldFocused = true
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(canSendMessage ? Color.accentColor : Color.gray)
-                    .cornerRadius(8)
                 }
-                .disabled(!canSendMessage)
-                .buttonStyle(.plain)
+
+            Button(action: {
+                viewModel.sendTextMessage()
+                isTextFieldFocused = true
+            }) {
+                if viewModel.isSendingTextMessage {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else {
+                    Image(systemName: "paperplane.fill")
+                }
             }
-            .padding(.horizontal, 12)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(canSendMessage ? Color.accentColor : Color.gray)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            .disabled(!canSendMessage)
+            .accessibilityLabel(LocalizedStringKey("transcript.send"))
         }
         .padding(12)
     }
@@ -136,6 +133,7 @@ struct TranscriptView: View {
 struct MessageRowView: View {
     let message: TranscriptMessage
     let onPlayAudio: (TranscriptMessage) -> Void
+    @State private var isTranslationSheetPresented = false
 
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 2) {
@@ -164,11 +162,20 @@ struct MessageRowView: View {
                     .buttonStyle(.plain)
                 }
 
-                if let tooltip = translationTooltip {
-                    Image(systemName: "globe")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .helpIfAvailable(tooltip)
+                if let translation = translationText {
+                    Button(action: { isTranslationSheetPresented = true }) {
+                        Image(systemName: "globe")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(LocalizedStringKey("transcript.translation"))
+                    .sheet(isPresented: $isTranslationSheetPresented) {
+                        TranslationSheetView(
+                            translation: translation,
+                            notes: translationNotes
+                        )
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
@@ -189,17 +196,50 @@ struct MessageRowView: View {
         return formatter.string(from: date)
     }
 
-    private var translationTooltip: String? {
+    private var translationText: String? {
         guard message.role == .assistant, let translation = message.translationText else {
             return nil
         }
-
-        let notes = message.translationNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let notes, !notes.isEmpty {
-            return "\(translation)\n\n\(notes)"
-        }
-
         return translation
+    }
+
+    private var translationNotes: String? {
+        message.translationNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct TranslationSheetView: View {
+    let translation: String
+    let notes: String?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(translation)
+                        .font(.body)
+
+                    if let notes, !notes.isEmpty {
+                        Text(LocalizedStringKey("transcript.translation_notes"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(notes)
+                            .font(.body)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .navigationTitle("transcript.translation")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("main.ok") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

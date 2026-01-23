@@ -137,6 +137,7 @@ struct TranscriptView: View {
 struct MessageRowView: View {
     let message: TranscriptMessage
     let onPlayAudio: (TranscriptMessage) -> Void
+    @State private var isTranslationSheetPresented = false
 
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 2) {
@@ -165,11 +166,20 @@ struct MessageRowView: View {
                     .buttonStyle(.plain)
                 }
 
-                if let tooltip = translationTooltip {
-                    Image(systemName: "globe")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .helpIfAvailable(tooltip)
+                if let translation = translationText {
+                    Button(action: { isTranslationSheetPresented = true }) {
+                        Image(systemName: "globe")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(LocalizedStringKey("transcript.translation"))
+                    .sheet(isPresented: $isTranslationSheetPresented) {
+                        TranslationSheetView(
+                            translation: translation,
+                            notes: translationNotes
+                        )
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
@@ -190,17 +200,51 @@ struct MessageRowView: View {
         return formatter.string(from: date)
     }
 
-    private var translationTooltip: String? {
+    private var translationText: String? {
         guard message.role == .assistant, let translation = message.translationText else {
             return nil
         }
-
-        let notes = message.translationNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let notes, !notes.isEmpty {
-            return "\(translation)\n\n\(notes)"
-        }
-
         return translation
+    }
+
+    private var translationNotes: String? {
+        message.translationNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct TranslationSheetView: View {
+    let translation: String
+    let notes: String?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(translation)
+                        .font(.body)
+
+                    if let notes, !notes.isEmpty {
+                        Text(LocalizedStringKey("transcript.translation_notes"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(notes)
+                            .font(.body)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .navigationTitle("transcript.translation")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("main.ok") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .frame(minWidth: 320, minHeight: 200)
     }
 }
 

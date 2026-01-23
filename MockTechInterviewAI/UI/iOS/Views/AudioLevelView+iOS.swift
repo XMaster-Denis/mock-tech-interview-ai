@@ -4,10 +4,11 @@ import SwiftUI
 struct AudioLevelView: View {
     let audioLevel: Float
     let isRecording: Bool
+    private let barCount = 10
 
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(0..<20, id: \.self) { index in
+            ForEach(0..<barCount, id: \.self) { index in
                 Rectangle()
                     .fill(barColor(for: index))
                     .frame(width: 4, height: barHeight(for: index))
@@ -20,13 +21,13 @@ struct AudioLevelView: View {
     }
 
     private func barHeight(for index: Int) -> CGFloat {
-        let normalizedLevel = audioLevel * 20
+        let normalizedLevel = audioLevel * Float(barCount)
         let barIndex = Float(index)
         return barIndex < normalizedLevel ? CGFloat(20) : CGFloat(4)
     }
 
     private func barColor(for index: Int) -> Color {
-        let normalizedLevel = audioLevel * 20
+        let normalizedLevel = audioLevel * Float(barCount)
         let barIndex = Float(index)
 
         if !isRecording {
@@ -34,7 +35,7 @@ struct AudioLevelView: View {
         } else if barIndex >= normalizedLevel {
             return Color.gray.opacity(0.5)
         } else {
-            let intensity = Float(index) / 20.0
+            let intensity = Float(index) / Float(barCount)
             if intensity < 0.5 {
                 return Color.green
             } else if intensity < 0.8 {
