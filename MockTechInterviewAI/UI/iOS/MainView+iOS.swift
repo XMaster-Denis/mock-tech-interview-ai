@@ -21,38 +21,36 @@ struct MainView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                TabView(selection: $selectedTab) {
-                    interviewScreen
-                        .tabItem {
-                            Label("transcript.title", systemImage: "text.bubble")
+            ZStack(alignment: .trailing) {
+                VStack(spacing: 0) {
+                    Group {
+                        switch selectedTab {
+                        case .transcript:
+                            interviewScreen
+                        case .code:
+                            codeEditorScreen
                         }
-                        .tag(Tab.transcript)
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button(action: { isTopicsPresented = true }) {
+                                Image(systemName: "line.3.horizontal")
+                                    .imageScale(.small)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        ToolbarItemGroup(placement: .navigationBarTrailing) {
+                            Button(action: { isSettingsPresented = true }) {
+                                Image(systemName: "gearshape")
+                                    .imageScale(.small)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    controlPanel
+                }
 
-                    codeEditorScreen
-                        .tabItem {
-                            Label("main.code_editor", systemImage: "chevron.left.slash.chevron.right")
-                        }
-                        .tag(Tab.code)
-                }
-                .padding(0)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: { isTopicsPresented = true }) {
-                            Image(systemName: "line.3.horizontal")
-                                .imageScale(.small)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        Button(action: { isSettingsPresented = true }) {
-                            Image(systemName: "gearshape")
-                                .imageScale(.small)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                controlPanel
+                floatingTabButtons
             }
             .sheet(isPresented: $isTopicsPresented) {
                 NavigationStack {
@@ -113,6 +111,37 @@ struct MainView: View {
         }
         .onAppear {
             requestMicrophonePermission()
+        }
+    }
+
+    private var floatingTabButtons: some View {
+        GeometryReader { proxy in
+            VStack(spacing: 8) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedTab = .transcript
+                    }
+                }) {
+                    Image(systemName: "text.bubble")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .floatingTabButtonStyle(isSelected: selectedTab == .transcript)
+                .accessibilityLabel(LocalizedStringKey("transcript.title"))
+
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedTab = .code
+                    }
+                }) {
+                    Image(systemName: "chevron.left.slash.chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .floatingTabButtonStyle(isSelected: selectedTab == .code)
+                .accessibilityLabel(LocalizedStringKey("main.code_editor"))
+            }
+            .padding(.trailing, 12)
+            .padding(.top, proxy.size.height * 0.7)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
     }
 
@@ -222,21 +251,21 @@ struct MainView: View {
                         Image(systemName: "questionmark.circle.fill")
                             .font(.title3)
                     }
-                    .buttonStyle(.bordered)
+                    .darkIconButtonStyle(tint: .blue)
                     .accessibilityLabel(helpButtonTitle)
 
                     Button(action: { viewModel.confirmTaskCompletion() }) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title3)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .darkIconButtonStyle(tint: .green, isProminent: true)
                     .accessibilityLabel(LocalizedStringKey("main.done"))
                 } else if case .waitingForUserConfirmation = viewModel.taskState {
                     Button(action: { viewModel.confirmUnderstanding() }) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title3)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .darkIconButtonStyle(tint: .green, isProminent: true)
                     .accessibilityLabel(LocalizedStringKey("main.understand"))
                 }
 
@@ -304,6 +333,61 @@ struct MainView: View {
         } else {
             AVAudioSession.sharedInstance().requestRecordPermission { _ in }
         }
+    }
+}
+
+private struct FloatingTabButtonStyle: ButtonStyle {
+    let isSelected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(isSelected ? .black : .white.opacity(0.7))
+            .frame(width: 36, height: 36)
+            .background(isSelected ? Color.white : Color.black.opacity(0.55))
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(isSelected ? Color.black.opacity(0.2) : Color.white.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.4), radius: 6, x: 0, y: 2)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isSelected)
+    }
+}
+
+private extension View {
+    func floatingTabButtonStyle(isSelected: Bool) -> some View {
+        buttonStyle(FloatingTabButtonStyle(isSelected: isSelected))
+    }
+}
+
+private struct DarkIconButtonStyle: ButtonStyle {
+    let tint: Color
+    var isProminent: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        let background = isProminent ? tint.opacity(0.5) : Color.white.opacity(0.08)
+        let border = isProminent ? tint.opacity(0.8) : Color.white.opacity(0.15)
+
+        return configuration.label
+            .foregroundColor(isProminent ? .white : tint)
+            .frame(width: 34, height: 34)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(background.opacity(configuration.isPressed ? 0.7 : 1.0))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(border, lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.2), value: isProminent)
+    }
+}
+
+private extension View {
+    func darkIconButtonStyle(tint: Color, isProminent: Bool = false) -> some View {
+        buttonStyle(DarkIconButtonStyle(tint: tint, isProminent: isProminent))
     }
 }
 #endif
