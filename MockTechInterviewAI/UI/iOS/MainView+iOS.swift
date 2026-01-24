@@ -37,6 +37,8 @@ struct MainView: View {
                             Button(action: { isTopicsPresented = true }) {
                                 Image(systemName: "line.3.horizontal")
                                     .imageScale(.small)
+                                    .frame(width: 32, height: 32)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
@@ -44,6 +46,8 @@ struct MainView: View {
                             Button(action: { isSettingsPresented = true }) {
                                 Image(systemName: "gearshape")
                                     .imageScale(.small)
+                                    .frame(width: 32, height: 32)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }

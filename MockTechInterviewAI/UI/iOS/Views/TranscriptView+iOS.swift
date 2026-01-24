@@ -111,11 +111,7 @@ struct TranscriptView: View {
                 }
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(canSendMessage ? Color.accentColor : Color.gray)
-            .foregroundColor(.white)
-            .cornerRadius(8)
+            .sendButtonStyle(isEnabled: canSendMessage)
             .disabled(!canSendMessage)
             .accessibilityLabel(LocalizedStringKey("transcript.send"))
         }
@@ -126,6 +122,27 @@ struct TranscriptView: View {
         !viewModel.textInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         viewModel.session.isActive &&
         !viewModel.isSendingTextMessage
+    }
+}
+
+private extension View {
+    func sendButtonStyle(isEnabled: Bool) -> some View {
+        let background = isEnabled ? Color.accentColor.opacity(0.2) : Color.white.opacity(0.06)
+        let border = isEnabled ? Color.accentColor.opacity(0.7) : Color.white.opacity(0.15)
+        let foreground = isEnabled ? Color.accentColor : Color.white.opacity(0.6)
+
+        return self
+            .foregroundColor(foreground)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(background)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(border, lineWidth: 1)
+            )
     }
 }
 
