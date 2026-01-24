@@ -12,7 +12,6 @@ struct MainView: View {
     @State private var isSilenceTimerActive: Bool = false
     @State private var selectedTab: Tab = .transcript
     @State private var isTopicsPresented = false
-    @State private var isHelpSheetPresented = false
 
     private enum Tab {
         case code
@@ -76,12 +75,6 @@ struct MainView: View {
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView()
                 .preferredColorScheme(.dark)
-        }
-        .sheet(isPresented: $isHelpSheetPresented) {
-            NavigationStack {
-                helpEditorSheet
-            }
-            .preferredColorScheme(.dark)
         }
         .onNotification(.silenceTimerUpdated) { notification in
             if let progress = notification.userInfo?["progress"] as? Double {
@@ -149,10 +142,12 @@ struct MainView: View {
         VStack(spacing: 0) {
             TranscriptView(viewModel: viewModel)
                 .frame(maxHeight: .infinity)
+                .layoutPriority(1)
 
             Divider()
 
             codeEditorPanel
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -169,7 +164,6 @@ struct MainView: View {
             )
             .padding(12)
         }
-        .frame(height: 150)
         .background(Color.appSecondaryBackground)
     }
 
@@ -244,10 +238,7 @@ struct MainView: View {
                 Spacer()
 
                 if case .taskPresented = viewModel.taskState {
-                    Button(action: {
-                        viewModel.requestHelp()
-                        isHelpSheetPresented = true
-                    }) {
+                    Button(action: { viewModel.requestHelp() }) {
                         Image(systemName: "questionmark.circle.fill")
                             .font(.title3)
                     }
@@ -268,6 +259,7 @@ struct MainView: View {
                     .darkIconButtonStyle(tint: .green, isProminent: true)
                     .accessibilityLabel(LocalizedStringKey("main.understand"))
                 }
+                Spacer()
 
                 Button(action: { viewModel.toggleRecording() }) {
                     Image(systemName: viewModel.session.isActive ? "stop.circle.fill" : "play.circle.fill")
@@ -292,26 +284,6 @@ struct MainView: View {
     private var helpButtonTitle: LocalizedStringKey {
         let solution = viewModel.solutionCode?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return solution.isEmpty ? "code_panel.hint" : "code_panel.solution"
-    }
-
-    private var helpEditorSheet: some View {
-        CodeEditorView(
-            code: .constant(viewModel.code),
-            hintText: viewModel.hintText,
-            hintCode: viewModel.hintCode,
-            solutionCode: viewModel.solutionCode,
-            solutionExplanation: viewModel.solutionExplanation,
-            language: .swift,
-            isEditable: false
-        )
-        .navigationTitle(helpButtonTitle)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("main.ok") {
-                    isHelpSheetPresented = false
-                }
-            }
-        }
     }
 
     private var statusColor: Color {

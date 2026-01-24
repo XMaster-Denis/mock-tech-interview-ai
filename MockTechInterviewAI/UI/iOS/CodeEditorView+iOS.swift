@@ -13,6 +13,8 @@ struct CodeEditorView: View {
     let isEditable: Bool
 
     @State private var isHelpPanelCollapsed = false
+    private let lineHeight: CGFloat = 20
+    private let codePadding: CGFloat = 12
 
     init(
         code: Binding<String>,
@@ -34,12 +36,19 @@ struct CodeEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SwiftUICodeEditorView(
+            let editor = SwiftUICodeEditorView(
                 text: $code,
                 language: language.swiftUICodeLanguage,
                 isEditable: isEditable,
                 showsLineNumbers: true
             )
+            if isEditable {
+                editor
+                    .frame(maxHeight: .infinity)
+            } else {
+                editor
+                    .frame(height: codeEditorHeight)
+            }
 
             if showHintPanel || showSolutionPanel {
                 Divider()
@@ -47,7 +56,7 @@ struct CodeEditorView: View {
                     collapsedHelpBar
                 } else {
                     helpPanel
-                        .frame(maxHeight: 220)
+                        .frame(maxHeight: helpPanelHeight)
                 }
             }
         }
@@ -75,9 +84,46 @@ struct CodeEditorView: View {
         !previewCode.isEmpty
     }
 
+    private var codeEditorHeight: CGFloat {
+        let lines = max(1, lineCount(code))
+        let displayLines = min(max(lines + 2, 7), 14)
+        return CGFloat(displayLines) * lineHeight + codePadding
+    }
+
+    private var previewCodeHeight: CGFloat {
+        let lines = max(1, lineCount(previewCode))
+        let displayLines = min(max(lines + 2, 6), 10)
+        return CGFloat(displayLines) * lineHeight + (codePadding * 0.5)
+    }
+
+    private var helpPanelHeight: CGFloat {
+        var height: CGFloat = 44
+        if showSolutionPanel {
+            if let explanation = solutionExplanation, !explanation.isEmpty {
+                height += 44
+            }
+        } else if showHintPanel {
+            if let hintText, !hintText.isEmpty {
+                height += 44
+            }
+        }
+        if showCodePreview {
+            height += previewCodeHeight + 8
+        }
+        return min(height, 260)
+    }
+
+    private func lineCount(_ text: String?) -> Int {
+        let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty {
+            return 0
+        }
+        return trimmed.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).count
+    }
+
     private var helpPanel: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(showSolutionPanel ? LocalizedStringKey("code_panel.solution") : LocalizedStringKey("code_panel.hint"))
                         .font(.headline)
@@ -109,10 +155,10 @@ struct CodeEditorView: View {
                         isEditable: false,
                         showsLineNumbers: true
                     )
-                    .frame(minHeight: 120, maxHeight: 200)
+                    .frame(height: previewCodeHeight)
                 }
             }
-            .padding(12)
+            .padding(0)
         }
     }
 

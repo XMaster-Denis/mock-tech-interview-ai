@@ -206,6 +206,17 @@ class ConversationManager: ObservableObject {
             isStopping = false
         }
     }
+
+    func pauseListeningForPlayback() {
+        audioManager.pauseListening()
+    }
+
+    func resumeListeningAfterPlayback() {
+        guard conversationState == .listening else {
+            return
+        }
+        audioManager.resumeListening()
+    }
     
     // MARK: - Voice Event Handlers
     

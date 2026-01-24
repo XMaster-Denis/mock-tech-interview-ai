@@ -52,6 +52,12 @@ struct TranscriptView: View {
                                         case .system:
                                             return
                                         }
+                                        audioPlayer.onStart = {
+                                            viewModel.pauseListeningForPlayback()
+                                        }
+                                        audioPlayer.onFinish = {
+                                            viewModel.resumeListeningAfterPlayback()
+                                        }
                                         audioPlayer.play(fileURL)
                                     }
                                 )
@@ -176,6 +182,7 @@ struct MessageRowView: View {
                     .accessibilityLabel(LocalizedStringKey("transcript.translation"))
                     .sheet(isPresented: $isTranslationSheetPresented) {
                         TranslationSheetView(
+                            original: message.text,
                             translation: translation,
                             notes: translationNotes
                         )
@@ -213,6 +220,7 @@ struct MessageRowView: View {
 }
 
 private struct TranslationSheetView: View {
+    let original: String
     let translation: String
     let notes: String?
     @Environment(\.dismiss) private var dismiss
@@ -221,6 +229,15 @@ private struct TranslationSheetView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    Text(LocalizedStringKey("transcript.original"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(original)
+                        .font(.body)
+
+                    Text(LocalizedStringKey("transcript.translation"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Text(translation)
                         .font(.body)
 
@@ -251,6 +268,8 @@ private struct TranslationSheetView: View {
 final class TranscriptAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
     let objectWillChange = ObservableObjectPublisher()
     private var audioPlayer: AVAudioPlayer?
+    var onStart: (() -> Void)?
+    var onFinish: (() -> Void)?
 
     func play(_ fileURL: URL) {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -259,6 +278,7 @@ final class TranscriptAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDele
         }
 
         do {
+            onStart?()
             audioPlayer?.stop()
             audioPlayer = try AVAudioPlayer(contentsOf: fileURL)
             audioPlayer?.delegate = self
@@ -267,6 +287,14 @@ final class TranscriptAudioPlayer: NSObject, ObservableObject, AVAudioPlayerDele
         } catch {
             Logger.error("Failed to play TTS audio", error: error)
         }
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        onFinish?()
+    }
+
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        onFinish?()
     }
 }
 

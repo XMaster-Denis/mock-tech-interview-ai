@@ -464,6 +464,20 @@ class InterviewViewModel: ObservableObject {
             await conversationManager.confirmUnderstanding()
         }
     }
+
+    func pauseListeningForPlayback() {
+        guard session.isActive else {
+            return
+        }
+        conversationManager.pauseListeningForPlayback()
+    }
+
+    func resumeListeningAfterPlayback() {
+        guard session.isActive else {
+            return
+        }
+        conversationManager.resumeListeningAfterPlayback()
+    }
     
     // MARK: - Computed Properties
     

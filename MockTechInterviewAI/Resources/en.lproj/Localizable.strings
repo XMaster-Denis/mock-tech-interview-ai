@@ -26,6 +26,7 @@
 "transcript.ai" = "AI";
 "transcript.you" = "You";
 "transcript.listen" = "Play";
+"transcript.original" = "Original";
 "transcript.translation" = "Translation";
 "transcript.translation_notes" = "Notes";
 
