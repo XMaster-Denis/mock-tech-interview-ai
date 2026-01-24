@@ -87,6 +87,34 @@ class TopicsRepository {
                 level: .middle,
                 codeLanguage: .swift,
                 interviewMode: .hybrid
+            ),
+            InterviewTopic(
+                title: "Python Algorithms",
+                prompt: "Ask the candidate to solve a basic algorithmic task in Python and explain time/space complexity.",
+                level: .junior,
+                codeLanguage: .python,
+                interviewMode: .codeTasks
+            ),
+            InterviewTopic(
+                title: "JavaScript Fundamentals",
+                prompt: "Discuss JS core concepts like closures, event loop, and async patterns with a short coding task.",
+                level: .junior,
+                codeLanguage: .javascript,
+                interviewMode: .hybrid
+            ),
+            InterviewTopic(
+                title: "Java OOP Basics",
+                prompt: "Questions about OOP principles and a small Java class design task.",
+                level: .middle,
+                codeLanguage: .java,
+                interviewMode: .questionsOnly
+            ),
+            InterviewTopic(
+                title: "Go Concurrency",
+                prompt: "Cover goroutines, channels, and a small concurrency coding exercise in Go.",
+                level: .middle,
+                codeLanguage: .go,
+                interviewMode: .codeTasks
             )
         ]
     }

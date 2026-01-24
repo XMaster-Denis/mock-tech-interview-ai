@@ -28,6 +28,9 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Text("settings.language_interview")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Picker("settings.language_label", selection: interviewLanguageBinding) {
                         ForEach(Language.allCases) { language in
                             Text(language.displayName).tag(language)
@@ -35,6 +38,9 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
 
+                    Text("settings.language_interface")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                     Picker("settings.language_label", selection: interfaceLanguageBinding) {
                         ForEach(Language.allCases) { language in
                             Text(language.displayName).tag(language)

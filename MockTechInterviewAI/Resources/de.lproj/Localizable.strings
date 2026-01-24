@@ -79,6 +79,8 @@
 "settings.api_key_valid" = "API Key ist gültig ✓";
 "settings.api_key_required" = "API Key erforderlich – erhalte ihn auf platform.openai.com";
 "settings.interview_language" = "Interview-Sprache";
+"settings.language_interview" = "Interviewsprache";
+"settings.language_interface" = "Sprache der Benutzeroberflache";
 "settings.interface_language" = "UI-Sprache";
 "settings.language_label" = "Sprache";
 "settings.ai_models" = "KI-Modelle";

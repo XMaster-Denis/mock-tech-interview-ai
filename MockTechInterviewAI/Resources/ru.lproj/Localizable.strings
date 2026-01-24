@@ -79,6 +79,8 @@
 "settings.api_key_valid" = "API ключ валиден ✓";
 "settings.api_key_required" = "API ключ обязателен — получите его на platform.openai.com";
 "settings.interview_language" = "Язык интервью";
+"settings.language_interview" = "Язык интервью";
+"settings.language_interface" = "Язык интерфейса";
 "settings.interface_language" = "Язык интерфейса";
 "settings.language_label" = "Язык";
 "settings.ai_models" = "Модели ИИ";
