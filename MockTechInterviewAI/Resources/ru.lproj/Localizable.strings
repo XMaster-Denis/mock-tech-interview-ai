@@ -72,6 +72,7 @@
 "error.start_interview_first" = "Сначала запустите интервью";
 
 "settings.save" = "Сохранить";
+"settings.open" = "Открыть настройки";
 "settings.cancel" = "Отмена";
 "settings.api_key" = "OpenAI API Key";
 "settings.title" = "Настройки";

@@ -72,6 +72,7 @@
 "error.start_interview_first" = "Please start the interview first";
 
 "settings.save" = "Save";
+"settings.open" = "Open Settings";
 "settings.cancel" = "Cancel";
 "settings.api_key" = "OpenAI API Key";
 "settings.title" = "Settings";

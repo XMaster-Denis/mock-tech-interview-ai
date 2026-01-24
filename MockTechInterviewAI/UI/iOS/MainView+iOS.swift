@@ -12,6 +12,8 @@ struct MainView: View {
     @State private var isSilenceTimerActive: Bool = false
     @State private var selectedTab: Tab = .transcript
     @State private var isTopicsPresented = false
+    @State private var showMissingApiKeyAlert = false
+    private let settingsRepository = SettingsRepository()
 
     private enum Tab {
         case code
@@ -102,8 +104,17 @@ struct MainView: View {
                 Text(error)
             }
         }
+        .alert("main.error_title", isPresented: $showMissingApiKeyAlert) {
+            Button("settings.open") {
+                isSettingsPresented = true
+            }
+            Button("main.ok") { }
+        } message: {
+            Text("error.api_key_required")
+        }
         .onAppear {
             requestMicrophonePermission()
+            checkApiKeyOnLaunch()
         }
     }
 
@@ -305,6 +316,11 @@ struct MainView: View {
         } else {
             AVAudioSession.sharedInstance().requestRecordPermission { _ in }
         }
+    }
+
+    private func checkApiKeyOnLaunch() {
+        let apiKey = settingsRepository.loadSettings().apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        showMissingApiKeyAlert = apiKey.isEmpty
     }
 }
 

@@ -18,6 +18,8 @@ struct MainView: View {
     @State private var silenceTimeout: Double = 1.5  // Timeout from settings
     @State private var isSilenceTimerActive: Bool = false
     @State private var showAudioDebug: Bool = false  // Toggle for audio debug info
+    @State private var showMissingApiKeyAlert = false
+    private let settingsRepository = SettingsRepository()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -94,9 +96,18 @@ struct MainView: View {
                 Text(error)
             }
         }
+        .alert("main.error_title", isPresented: $showMissingApiKeyAlert) {
+            Button("settings.open") {
+                isSettingsPresented = true
+            }
+            Button("main.ok") { }
+        } message: {
+            Text("error.api_key_required")
+        }
         .onAppear {
             // Request microphone permission
             requestMicrophonePermission()
+            checkApiKeyOnLaunch()
         }
     }
     
@@ -267,6 +278,11 @@ struct MainView: View {
         // Microphone permission is automatically requested on first use in macOS
         // But we can show a setup prompt here if needed
         #endif
+    }
+
+    private func checkApiKeyOnLaunch() {
+        let apiKey = settingsRepository.loadSettings().apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        showMissingApiKeyAlert = apiKey.isEmpty
     }
 
 }
